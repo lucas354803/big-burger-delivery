@@ -35,7 +35,7 @@ export default async function handler(req, res) {
           transaction_amount: valor_total,
           description: `Big Burger Pedido ${pedido.id}`,
           payment_method_id: 'pix',
-          payer: { email: `cliente-${Date.now()}@bigburger.local`, first_name: cliente_nome }
+          payer: { email: 'teste@teste.com', first_name: cliente_nome || 'Cliente' }
         })
       });
       const mp = await mpRes.json();
