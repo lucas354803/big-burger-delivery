@@ -18,6 +18,8 @@
         <button class="main-tab active" onclick="abrirMain('pedidos')">📋 Pedidos</button>
         <button class="main-tab" onclick="abrirMain('editor')">🧾 Editor de Cardápio</button>
         <button class="main-tab" onclick="abrirMain('entrega')">📍 Entrega</button>
+        <button class="main-tab" onclick="abrirMain('loja')">🏪 Loja aberta/horários</button>
+        <button class="main-tab" onclick="abrirMain('financeiro')">💸 Financeiro</button>
         <button class="main-tab" onclick="abrirMain('clientes')">👥 Clientes</button>
       </div>
 
@@ -29,6 +31,45 @@
             <button class="outline" onclick="toggleSomPedidos()" id="btnSomPedidos">🔔 Som ligado</button>
           </div>
           <div class="orders-board" id="pedidosBoard">Carregando pedidos...</div>
+        </div>
+      </div>
+
+
+      <div id="main-loja" class="main-content">
+        <div class="editor-title">
+          <h1>🏪 Loja aberta, pedido automático e horários</h1>
+          <p>Controle se a loja recebe pedidos, tempo de entrega, aceite automático, som e horário de funcionamento que aparece no cardápio.</p>
+        </div>
+        <form class="admin-form admin-card" onsubmit="salvarConfigLoja(event)">
+          <div class="mini-grid">
+            <label class="check switch-line"><input id="cfg_loja_aberta" type="checkbox" checked> Loja aberta manualmente</label>
+            <label class="check switch-line"><input id="cfg_pedido_automatico" type="checkbox" checked> Pedido automático: aceitar sozinho</label>
+          </div>
+          <div class="mini-grid">
+            <label class="check switch-line"><input id="cfg_som_pedidos" type="checkbox" checked> Som quando chegar pedido</label>
+            <label>Tempo de entrega padrão (min)<input id="cfg_tempo_entrega" type="number" value="40"></label>
+          </div>
+          <div class="mini-grid">
+            <label>Pontos por R$ 1,00<input id="cfg_pontos_real" type="number" step="0.01" value="1"></label>
+            <label>Mensagem quando fechado<input id="cfg_mensagem_fechado" value="Estamos fechados no momento. Volte no nosso horário de atendimento."></label>
+          </div>
+          <h2>Horários de funcionamento</h2>
+          <div id="horariosBox" class="hours-box"></div>
+          <button class="btn red">Salvar configuração da loja</button>
+          <button type="button" class="btn ghost" onclick="loadConfigLoja()">Recarregar</button>
+          <div id="configLojaStatus" class="small"></div>
+        </form>
+      </div>
+
+      <div id="main-financeiro" class="main-content">
+        <div class="editor-title">
+          <h1>💸 Relatório financeiro completo</h1>
+          <p>Resumo automático com faturamento, pedidos, formas de pagamento, taxa de entrega e ticket médio.</p>
+        </div>
+        <div id="financeiroResumo" class="stats-grid"></div>
+        <div class="admin-card">
+          <h2>Pedidos no financeiro</h2>
+          <div id="financeiroOut">Carregando financeiro...</div>
         </div>
       </div>
 

@@ -1,4 +1,5 @@
 import { supabaseFetch } from './_supabase.js';
+import { getSettings } from './store-settings.js';
 export default async function handler(req, res) {
   try {
     const paymentId = req.query?.['data.id'] || req.query?.id || req.body?.data?.id || req.body?.id;
@@ -12,7 +13,8 @@ export default async function handler(req, res) {
     const status = mp.status === 'approved' ? 'aprovado' : mp.status;
     await supabaseFetch(`pagamentos?id=eq.${pagamento.id}`, { method: 'PATCH', body: JSON.stringify({ status }) });
     if (status === 'aprovado') {
-      await supabaseFetch(`pedidos?id=eq.${pagamento.pedido_id}`, { method: 'PATCH', body: JSON.stringify({ status: 'pago' }) });
+      const settings = await getSettings();
+      await supabaseFetch(`pedidos?id=eq.${pagamento.pedido_id}`, { method: 'PATCH', body: JSON.stringify({ status: settings.config.pedido_automatico ? 'em_preparo' : 'pago', tempo_estimado_minutos: settings.config.tempo_entrega_padrao || 40 }) });
       const pedidos = await supabaseFetch(`pedidos?id=eq.${pagamento.pedido_id}&select=*`, { method: 'GET', headers: { Prefer: '' } });
       const taxa = Number(pedidos?.[0]?.taxa_entrega || 0);
       await supabaseFetch('corridas', { method: 'POST', body: JSON.stringify({ pedido_id: pagamento.pedido_id, status: 'disponivel', valor_entrega: taxa }) });

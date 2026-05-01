@@ -23,6 +23,7 @@
       <section class="hero-pro">
         <div class="hero-copy">
           <p class="tag">🔥 Feito na hora • entrega rápida</p>
+          <div id="lojaStatus" class="store-status open">🟢 Loja aberta <small>Carregando horário...</small></div>
           <h1>O MELHOR <span>BURGER</span> DA CIDADE!</h1>
           <p>Ingredientes selecionados, sabor irresistível e Pix direto no pedido.</p>
           <button class="cta" onclick="document.querySelector('#cardapio').scrollIntoView({behavior:'smooth'})">PEÇA AGORA ›</button>
@@ -34,7 +35,7 @@
       </section>
 
       <section class="benefits">
-        <div>🏍️ <b>Entrega rápida</b><small>Receba quentinho</small></div>
+        <div>🏍️ <b>Entrega rápida</b><small id="tempoEntregaInfo">Tempo médio: 40 min</small></div>
         <div>⭐ <b>Qualidade garantida</b><small>Ingredientes frescos</small></div>
         <div>🔐 <b>Pagamento seguro</b><small>Pix Mercado Pago</small></div>
         <div>🎁 <b>Fidelidade</b><small>Promoções exclusivas</small></div>
@@ -71,6 +72,7 @@
 
       <div class="side-card" id="checkout">
         <h3>📍 Dados para entrega</h3>
+        <div id="checkoutStatus"></div>
         <input id="nome" placeholder="Seu nome completo">
         <input id="telefone" placeholder="WhatsApp / telefone">
         <select id="cidade" onchange="atualizarBairros()">

@@ -1,4 +1,5 @@
 import { supabaseFetch } from './_supabase.js';
+import { getSettings } from './store-settings.js';
 
 const fallbackCategorias = [{ id:'destaques', nome:'Destaques', ordem:1 },{ id:'combos', nome:'Combos', ordem:2 }];
 const fallbackProdutos = [
@@ -26,16 +27,18 @@ const fallbackComplementos = [
 
 export default async function handler(req, res) {
   try {
-    const [categorias, produtos, categorias_complementos, complementos, produto_complemento_categorias, cidades_entrega, bairros_entrega] = await Promise.all([
+    const settingsPromise = getSettings();
+    const [categorias, produtos, categorias_complementos, complementos, produto_complemento_categorias, cidades_entrega, bairros_entrega, settings] = await Promise.all([
       supabaseFetch('categorias?select=*&ativo=eq.true&order=ordem.asc,nome.asc'),
       supabaseFetch('produtos?select=*&ativo=eq.true&order=ordem.asc,nome.asc'),
       supabaseFetch('categorias_complementos?select=*&ativo=eq.true&order=ordem.asc,nome.asc'),
       supabaseFetch('complementos?select=*&ativo=eq.true&order=ordem.asc,nome.asc'),
       supabaseFetch('produto_complemento_categorias?select=*'),
       supabaseFetch('cidades_entrega?select=*&ativo=eq.true&order=ordem.asc,nome.asc'),
-      supabaseFetch('bairros_entrega?select=*&ativo=eq.true&order=ordem.asc,nome.asc')
+      supabaseFetch('bairros_entrega?select=*&ativo=eq.true&order=ordem.asc,nome.asc'),
+      settingsPromise
     ]);
-    res.status(200).json({ ok:true, categorias, produtos, categorias_complementos, complementos, produto_complemento_categorias, cidades_entrega, bairros_entrega });
+    res.status(200).json({ ok:true, categorias, produtos, categorias_complementos, complementos, produto_complemento_categorias, cidades_entrega, bairros_entrega, loja_config:settings.config, horarios_funcionamento:settings.horarios, loja_status:settings.status });
   } catch (e) {
     res.status(200).json({
       ok:false,
@@ -47,7 +50,10 @@ export default async function handler(req, res) {
       complementos:fallbackComplementos,
       produto_complemento_categorias:[],
       cidades_entrega:[],
-      bairros_entrega:[]
+      bairros_entrega:[],
+      loja_config:{loja_aberta:true,pedido_automatico:true,som_pedidos:true,tempo_entrega_padrao:40,pontos_por_real:1,mensagem_fechado:'Estamos fechados no momento.'},
+      horarios_funcionamento:[],
+      loja_status:{aberto:true,motivo:'fallback'}
     });
   }
 }

@@ -253,3 +253,52 @@ SELECT p.id, cc.id
 FROM produtos p
 CROSS JOIN categorias_complementos cc
 ON CONFLICT DO NOTHING;
+
+
+-- Atualização: loja aberta/fechada, pedido automático, som, tempo de entrega, horários e fidelidade
+ALTER TABLE pedidos ADD COLUMN IF NOT EXISTS pontos_fidelidade integer NOT NULL DEFAULT 0;
+
+CREATE TABLE IF NOT EXISTS loja_config (
+  id integer PRIMARY KEY DEFAULT 1,
+  loja_aberta boolean NOT NULL DEFAULT true,
+  pedido_automatico boolean NOT NULL DEFAULT true,
+  som_pedidos boolean NOT NULL DEFAULT true,
+  tempo_entrega_padrao integer NOT NULL DEFAULT 40,
+  pontos_por_real numeric(10,2) NOT NULL DEFAULT 1,
+  mensagem_fechado text NOT NULL DEFAULT 'Estamos fechados no momento. Volte no nosso horário de atendimento.',
+  updated_at timestamptz NOT NULL DEFAULT now()
+);
+
+CREATE TABLE IF NOT EXISTS horarios_funcionamento (
+  id uuid PRIMARY KEY DEFAULT uuid_generate_v4(),
+  dia_semana integer NOT NULL UNIQUE,
+  nome_dia text NOT NULL,
+  abre text NOT NULL DEFAULT '18:30',
+  fecha text NOT NULL DEFAULT '00:00',
+  ativo boolean NOT NULL DEFAULT true,
+  updated_at timestamptz NOT NULL DEFAULT now()
+);
+
+ALTER TABLE loja_config ENABLE ROW LEVEL SECURITY;
+ALTER TABLE horarios_funcionamento ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "loja_config_all" ON loja_config;
+DROP POLICY IF EXISTS "horarios_funcionamento_all" ON horarios_funcionamento;
+CREATE POLICY "loja_config_all" ON loja_config FOR ALL USING (true) WITH CHECK (true);
+CREATE POLICY "horarios_funcionamento_all" ON horarios_funcionamento FOR ALL USING (true) WITH CHECK (true);
+
+INSERT INTO loja_config (id, loja_aberta, pedido_automatico, som_pedidos, tempo_entrega_padrao, pontos_por_real)
+VALUES (1, true, true, true, 40, 1)
+ON CONFLICT (id) DO UPDATE SET
+  pedido_automatico = EXCLUDED.pedido_automatico,
+  som_pedidos = EXCLUDED.som_pedidos,
+  tempo_entrega_padrao = EXCLUDED.tempo_entrega_padrao;
+
+INSERT INTO horarios_funcionamento (dia_semana, nome_dia, abre, fecha, ativo) VALUES
+(0,'Domingo','18:30','00:00',true),
+(1,'Segunda','18:30','00:00',false),
+(2,'Terça','18:30','00:00',true),
+(3,'Quarta','18:30','00:00',true),
+(4,'Quinta','18:30','00:00',true),
+(5,'Sexta','18:30','01:00',true),
+(6,'Sábado','18:30','01:00',true)
+ON CONFLICT (dia_semana) DO NOTHING;

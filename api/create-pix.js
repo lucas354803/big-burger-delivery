@@ -1,4 +1,5 @@
 import { supabaseFetch } from './_supabase.js';
+import { getSettings } from './store-settings.js';
 
 function money(n){ return Number(Number(n || 0).toFixed(2)); }
 
@@ -6,6 +7,10 @@ export default async function handler(req, res) {
   if (req.method !== 'POST') return res.status(405).json({ error: 'Use POST' });
   try {
     const body = req.body || {};
+    const settings = await getSettings();
+    if(!settings.status.aberto){
+      return res.status(403).json({ error: settings.config.mensagem_fechado || 'Loja fechada no momento.', loja_fechada:true, status_loja:settings.status });
+    }
     const cliente_nome = String(body.cliente_nome || '').trim();
     const cliente_telefone = String(body.cliente_telefone || '').trim();
     const endereco = String(body.endereco || '').trim();
@@ -22,10 +27,12 @@ export default async function handler(req, res) {
       return res.status(400).json({ error: 'Preencha nome, telefone, endereço e pedido.' });
     }
 
-    const statusInicial = forma_pagamento === 'pix' ? 'aguardando_pagamento' : 'pedido_recebido';
+    const statusInicial = forma_pagamento === 'pix' ? 'aguardando_pagamento' : (settings.config.pedido_automatico ? 'em_preparo' : 'pedido_recebido');
+    const tempoEstimado = Number(body.tempo_estimado_minutos || settings.config.tempo_entrega_padrao || 40);
+    const pontosFidelidade = Math.floor(valor_total * Number(settings.config.pontos_por_real || 1));
     const [pedido] = await supabaseFetch('pedidos', {
       method: 'POST',
-      body: JSON.stringify({ cliente_nome, cliente_telefone, endereco, cidade, bairro, rua, forma_pagamento, taxa_entrega, subtotal, observacao, itens, valor_total, status: statusInicial })
+      body: JSON.stringify({ cliente_nome, cliente_telefone, endereco, cidade, bairro, rua, forma_pagamento, taxa_entrega, subtotal, observacao, itens, valor_total, status: statusInicial, tempo_estimado_minutos: tempoEstimado, pontos_fidelidade: pontosFidelidade })
     });
 
     let pix = null;

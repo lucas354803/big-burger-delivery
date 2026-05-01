@@ -1,5 +1,5 @@
 
-const state={categorias:[],produtos:[],categorias_complementos:[],complementos:[],produto_complemento_categorias:[],cidades_entrega:[],bairros_entrega:[],clientes:[],clientesResumo:null};
+const state={categorias:[],produtos:[],categorias_complementos:[],complementos:[],produto_complemento_categorias:[],cidades_entrega:[],bairros_entrega:[],clientes:[],clientesResumo:null,financeiro:null,loja_config:null,horarios_funcionamento:[]};
 const brl=v=>Number(v||0).toLocaleString('pt-BR',{style:'currency',currency:'BRL'});
 function abrirMain(id){
   document.querySelectorAll('.main-tab,.main-content').forEach(x=>x.classList.remove('active'));
@@ -73,7 +73,8 @@ function cardPedido(p){
   return `<div class="order-card"><div class="order-title"><b>#${numeroPedido(p)}</b><span>${brl(p.valor_total)}</span></div><div class="order-customer">👤 ${p.cliente_nome||''}<br>📞 ${p.cliente_telefone||''}</div><div class="order-items">${itens}</div><div class="order-address">📍 ${enderecoPedido(p)}<br>💳 ${p.forma_pagamento||'pix'} • 🚚 ${brl(p.taxa_entrega||0)}</div><div class="order-actions">${acoes}<button class="order-action whats" onclick='abrirWhats(${JSON.stringify(p).replaceAll("'","&#39;")},"aceito")'>💬 WhatsApp</button></div></div>`;
 }
 function tocarSomPedido(){try{const ctx=new (window.AudioContext||window.webkitAudioContext)();const osc=ctx.createOscillator();const gain=ctx.createGain();osc.type='sine';osc.frequency.value=880;gain.gain.value=.12;osc.connect(gain);gain.connect(ctx.destination);osc.start();setTimeout(()=>{osc.frequency.value=660},120);setTimeout(()=>{osc.stop();ctx.close()},360)}catch(e){}}
-function toggleSomPedidos(){somPedidosLigado=!somPedidosLigado;localStorage.setItem('somPedidosLigado',somPedidosLigado?'1':'0');const b=document.getElementById('btnSomPedidos');if(b)b.textContent=somPedidosLigado?'🔔 Som ligado':'🔕 Som desligado'}
+function atualizarBotaoSom(){const b=document.getElementById('btnSomPedidos');if(b)b.textContent=somPedidosLigado?'🔔 Som ligado':'🔕 Som desligado'}
+function toggleSomPedidos(){somPedidosLigado=!somPedidosLigado;localStorage.setItem('somPedidosLigado',somPedidosLigado?'1':'0');atualizarBotaoSom()}
 function renderPedidosGestor(){
   const out=document.getElementById('pedidosBoard'); if(!out) return;
   const busca=(document.getElementById('pedidoBusca')?.value||'').toLowerCase().trim();
@@ -81,7 +82,8 @@ function renderPedidosGestor(){
   if(busca) lista=lista.filter(p=>[p.id,p.cliente_nome,p.cliente_telefone,enderecoPedido(p),itensTexto(p.itens)].join(' ').toLowerCase().includes(busca));
   const totalNovos=lista.filter(p=>normalizarStatusPedido(p.status)==='em_analise').length;
   out.innerHTML=`<div class="orders-summary"><div><b>${lista.length}</b><span>Pedidos totais</span></div><div><b>${totalNovos}</b><span>Em análise</span></div><div><b>${brl(lista.reduce((s,p)=>s+Number(p.valor_total||0),0))}</b><span>Valor dos pedidos</span></div></div><div class="kanban">${orderStatuses.map(col=>{const pedidos=lista.filter(p=>normalizarStatusPedido(p.status)===col.id);const valor=pedidos.reduce((s,p)=>s+Number(p.valor_total||0),0);return `<section class="kanban-col ${col.cls}"><h3>${col.emoji} ${col.titulo} <em>${pedidos.length}</em></h3><small>${brl(valor)}</small><div class="kanban-list">${pedidos.map(cardPedido).join('')||'<p class="empty-col">Sem pedidos</p>'}</div></section>`}).join('')}</div>`;
-  toggleSomPedidos();
+  atualizarBotaoSom();
+  renderFinanceiro();
 }
 async function loadPedidos(){
   const out=document.getElementById('pedidosBoard')||document.getElementById('pedidosOut'); if(out) out.innerHTML='Carregando pedidos...';
@@ -89,6 +91,7 @@ async function loadPedidos(){
     const r=await fetch('/api/admin'); const d=await r.json();
     if(!r.ok||!d.ok) throw new Error(d.error||JSON.stringify(d));
     pedidosCache=d.pedidos||[];
+    state.financeiro=d.resumo||null;
     const novoTotal=pedidosCache.length;
     if(ultimoTotalPedidos && novoTotal>ultimoTotalPedidos && somPedidosLigado) tocarSomPedido();
     ultimoTotalPedidos=novoTotal;
@@ -172,4 +175,44 @@ async function salvar(e,t){e.preventDefault();try{let body={},id=''; if(t==='cat
  }
  await loadTudo(); novo(t); alert('Salvo com sucesso!');}catch(err){alert('Erro: '+err.message)}}
 async function excluir(t,id){if(!confirm('Excluir este item?'))return;try{await api(t==='promocoes'?'produtos':t,'DELETE',null,id);await loadTudo()}catch(e){alert('Erro: '+e.message)}}
-loadPedidos();loadClientes();loadTudo();
+
+
+async function loadConfigLoja(){
+  const out=document.getElementById('configLojaStatus'); if(out) out.textContent='Carregando configuração...';
+  try{
+    const r=await fetch('/api/store-settings'); const d=await r.json();
+    if(!r.ok||!d.ok) throw new Error(d.error||JSON.stringify(d));
+    state.loja_config=d.config||{}; state.horarios_funcionamento=d.horarios||[];
+    renderConfigLoja();
+    if(out) out.innerHTML=`✅ Configuração carregada. Status do cardápio: <b>${d.status?.aberto?'ABERTO':'FECHADO'}</b>`;
+  }catch(e){ if(out) out.innerHTML='<span class="err">Erro ao carregar: '+e.message+'</span>'; }
+}
+function renderConfigLoja(){
+  const c=state.loja_config||{};
+  if(typeof cfg_loja_aberta!=='undefined') cfg_loja_aberta.checked=c.loja_aberta!==false;
+  if(typeof cfg_pedido_automatico!=='undefined') cfg_pedido_automatico.checked=c.pedido_automatico!==false;
+  if(typeof cfg_som_pedidos!=='undefined') cfg_som_pedidos.checked=c.som_pedidos!==false;
+  if(typeof cfg_tempo_entrega!=='undefined') cfg_tempo_entrega.value=c.tempo_entrega_padrao||40;
+  if(typeof cfg_pontos_real!=='undefined') cfg_pontos_real.value=c.pontos_por_real||1;
+  if(typeof cfg_mensagem_fechado!=='undefined') cfg_mensagem_fechado.value=c.mensagem_fechado||'Estamos fechados no momento. Volte no nosso horário de atendimento.';
+  const box=document.getElementById('horariosBox'); if(!box) return;
+  const nomes=['Domingo','Segunda','Terça','Quarta','Quinta','Sexta','Sábado'];
+  const horarios=state.horarios_funcionamento?.length?state.horarios_funcionamento:nomes.map((n,i)=>({dia_semana:i,nome_dia:n,abre:'18:30',fecha:i>=5?'01:00':'00:00',ativo:i!==1}));
+  box.innerHTML=horarios.map(h=>`<div class="hour-row" data-dia="${h.dia_semana}"><label class="check"><input class="h-ativo" type="checkbox" ${h.ativo!==false?'checked':''}> ${h.nome_dia||nomes[h.dia_semana]}</label><input class="h-abre" type="time" value="${h.abre||'18:30'}"><span>até</span><input class="h-fecha" type="time" value="${h.fecha||'00:00'}"></div>`).join('');
+}
+async function salvarConfigLoja(e){
+  e.preventDefault();
+  const horarios=[...document.querySelectorAll('.hour-row')].map(row=>({dia_semana:Number(row.dataset.dia),nome_dia:row.querySelector('label')?.textContent.trim()||'',ativo:row.querySelector('.h-ativo').checked,abre:row.querySelector('.h-abre').value,fecha:row.querySelector('.h-fecha').value}));
+  const payload={config:{loja_aberta:cfg_loja_aberta.checked,pedido_automatico:cfg_pedido_automatico.checked,som_pedidos:cfg_som_pedidos.checked,tempo_entrega_padrao:cfg_tempo_entrega.value,pontos_por_real:cfg_pontos_real.value,mensagem_fechado:cfg_mensagem_fechado.value},horarios};
+  const out=document.getElementById('configLojaStatus'); if(out) out.textContent='Salvando...';
+  try{const r=await fetch('/api/store-settings',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)});const d=await r.json();if(!r.ok||!d.ok)throw new Error(d.error||JSON.stringify(d));state.loja_config=d.config;state.horarios_funcionamento=d.horarios;renderConfigLoja();if(out)out.innerHTML='✅ Configuração salva com sucesso!';somPedidosLigado=cfg_som_pedidos.checked;localStorage.setItem('somPedidosLigado',somPedidosLigado?'1':'0');atualizarBotaoSom();}catch(err){if(out)out.innerHTML='<span class="err">Erro: '+err.message+'</span>';}
+}
+function renderFinanceiro(){
+  const resumo=state.financeiro||{};
+  const box=document.getElementById('financeiroResumo');
+  const out=document.getElementById('financeiroOut');
+  if(box){box.innerHTML=`<div class="stat-card"><b>${brl(resumo.faturamento_hoje||0)}</b><span>Faturamento hoje</span></div><div class="stat-card"><b>${brl(resumo.faturamento_total||0)}</b><span>Faturamento total</span></div><div class="stat-card"><b>${resumo.pedidos_hoje||0}</b><span>Pedidos hoje</span></div><div class="stat-card"><b>${brl(resumo.ticket_medio||0)}</b><span>Ticket médio</span></div><div class="stat-card"><b>${brl(resumo.pix||0)}</b><span>Pix</span></div><div class="stat-card"><b>${brl(resumo.dinheiro||0)}</b><span>Dinheiro</span></div><div class="stat-card"><b>${brl(resumo.cartao||0)}</b><span>Cartão</span></div><div class="stat-card"><b>${brl(resumo.taxa_entrega_total||0)}</b><span>Taxas de entrega</span></div>`;}
+  if(out){const lista=[...pedidosCache].filter(p=>normalizarStatusPedido(p.status)!=='cancelado');out.innerHTML=lista.length?`<table class="table"><tr><th>Pedido</th><th>Cliente</th><th>Pagamento</th><th>Status</th><th>Total</th><th>Data</th></tr>${lista.map(p=>`<tr><td>#${numeroPedido(p)}</td><td>${p.cliente_nome||''}</td><td>${p.forma_pagamento||''}</td><td>${normalizarStatusPedido(p.status)}</td><td><b>${brl(p.valor_total||0)}</b></td><td>${dataBR(p.created_at)}</td></tr>`).join('')}</table>`:'<p>Nenhum pedido no financeiro.</p>';}
+}
+
+loadPedidos();loadClientes();loadTudo();loadConfigLoja();

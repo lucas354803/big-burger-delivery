@@ -6,6 +6,9 @@ let produtoComplementoCategorias=[];
 let cidadesEntrega=[];
 let bairrosEntrega=[];
 let taxaEntregaSelecionada=0;
+let lojaConfig={loja_aberta:true,pedido_automatico:true,som_pedidos:true,tempo_entrega_padrao:40,pontos_por_real:1,mensagem_fechado:'Estamos fechados no momento.'};
+let horariosFuncionamento=[];
+let lojaStatus={aberto:true,motivo:'fallback'};
 
 const produtosFallback=[
   {id:'big-classico',categoria_id:'hamburgueres',nome:'🍔✨ Big Clássico',descricao:'Pão macio, carne suculenta, queijo derretido, cebola caramelizada, alface, tomate e maionese especial.',preco:19.90,desconto_ativo:true,preco_promocional:16.90,badge:'Mais Pedido'},
@@ -58,11 +61,36 @@ async function carregarMenu(){
     produtoComplementoCategorias=Array.isArray(d.produto_complemento_categorias)?d.produto_complemento_categorias:[];
     cidadesEntrega=Array.isArray(d.cidades_entrega)?d.cidades_entrega:[];
     bairrosEntrega=Array.isArray(d.bairros_entrega)?d.bairros_entrega:[];
+    lojaConfig=d.loja_config||lojaConfig;
+    horariosFuncionamento=Array.isArray(d.horarios_funcionamento)?d.horarios_funcionamento:[];
+    lojaStatus=d.loja_status||lojaStatus;
   }catch(e){categorias=categoriasFallback.filter(c=>c.id!=='todos');produtos=produtosFallback;categoriasComplementos=categoriasComplementosFallback;adicionais=adicionaisFallback;produtoComplementoCategorias=[];cidadesEntrega=[];bairrosEntrega=[];}
   renderCidadesEntrega();
+  renderStatusLoja();
   render();
 }
 
+
+
+function proximoHorarioTexto(){
+  if(!horariosFuncionamento.length) return '';
+  const ativos=horariosFuncionamento.filter(h=>h.ativo!==false);
+  const nomes=['Domingo','Segunda','Terça','Quarta','Quinta','Sexta','Sábado'];
+  return ativos.map(h=>`${h.nome_dia||nomes[h.dia_semana]} ${h.abre} às ${h.fecha}`).join(' • ');
+}
+function renderStatusLoja(){
+  const aberto=lojaStatus?.aberto!==false;
+  const statusEl=document.getElementById('lojaStatus');
+  const entregaEl=document.getElementById('tempoEntregaInfo');
+  const checkoutAlert=document.getElementById('checkoutStatus');
+  if(statusEl){
+    statusEl.className='store-status '+(aberto?'open':'closed');
+    statusEl.innerHTML=aberto?`🟢 Loja aberta <small>Tempo de entrega: ${lojaConfig.tempo_entrega_padrao||40} min</small>`:`🔴 Loja fechada <small>${lojaConfig.mensagem_fechado||'Não estamos recebendo pedidos agora.'}</small>`;
+  }
+  if(entregaEl) entregaEl.textContent=`Tempo médio: ${lojaConfig.tempo_entrega_padrao||40} min`;
+  if(checkoutAlert) checkoutAlert.innerHTML=aberto?`<div class="ok mini">✅ Estamos recebendo pedidos agora. Entrega média: ${lojaConfig.tempo_entrega_padrao||40} min.</div>`:`<div class="err"><b>Loja fechada.</b><br>${lojaConfig.mensagem_fechado||'Volte no horário de atendimento.'}<br><small>${proximoHorarioTexto()}</small></div>`;
+  if(typeof btnFinalizar!=='undefined' && btnFinalizar){btnFinalizar.disabled=!aberto;btnFinalizar.classList.toggle('disabled',!aberto)}
+}
 
 function produtoCardHtml(p){
   const i=produtos.findIndex(x=>String(x.id)===String(p.id));
@@ -191,17 +219,18 @@ async function finalizar(){
   const bairroNome=nomeSelecionado(bairro);
   const ruaTexto=(rua?.value||'').trim();
   const forma=(formaPagamento?.value||'pix');
+  if(lojaStatus?.aberto===false){result.innerHTML='<div class="err"><b>Loja fechada.</b><br>'+ (lojaConfig.mensagem_fechado||'Não estamos recebendo pedidos agora.') +'</div>';return}
   if(!carrinho.length){result.innerHTML='<div class="err"><b>Adicione pelo menos um item ao pedido.</b></div>';return}
   if(!nome.value||!telefone.value||!cidade.value||!bairro.value||!ruaTexto){result.innerHTML='<div class="err"><b>Preencha nome, WhatsApp, cidade, bairro e rua.</b></div>';return}
   result.innerHTML= forma==='pix' ? '<p>Gerando Pix...</p>' : '<p>Finalizando pedido...</p>';
   try{
     const r=await fetch('/api/create-pix',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({
       cliente_nome:nome.value,cliente_telefone:telefone.value,cidade_id:cidade.value,cidade:cidadeNome,bairro_id:bairro.value,bairro:bairroNome,rua:ruaTexto,
-      endereco:`${ruaTexto} - ${bairroNome} - ${cidadeNome}`,forma_pagamento:forma,taxa_entrega:Number(taxaEntregaSelecionada||0),observacao:obs.value,itens:carrinho,subtotal,valor_total:valor
+      endereco:`${ruaTexto} - ${bairroNome} - ${cidadeNome}`,forma_pagamento:forma,taxa_entrega:Number(taxaEntregaSelecionada||0),observacao:obs.value,itens:carrinho,subtotal,valor_total:valor,tempo_estimado_minutos:Number(lojaConfig.tempo_entrega_padrao||40)
     })});
     const data=await r.json();
     if(!r.ok)throw new Error((data.error||'Erro')+' '+(data.detalhes?JSON.stringify(data.detalhes):''));
-    if(data.pix?.qr_code_base64){result.innerHTML=`<div class="ok"><h3>Pix gerado!</h3><p>Total com entrega: <b>${fmt(valor)}</b></p><img class="qr" src="data:image/png;base64,${data.pix.qr_code_base64}"><textarea readonly>${data.pix.pix_copia_cola}</textarea><p class="small">Após pagar, o webhook libera a entrega automaticamente.</p></div>`}
+    if(data.pix?.qr_code_base64){result.innerHTML=`<div class="ok"><h3>Pix gerado!</h3><p>Total com entrega: <b>${fmt(valor)}</b></p><img class="qr" src="data:image/png;base64,${data.pix.qr_code_base64}"><textarea readonly>${data.pix.pix_copia_cola}</textarea><p class="small">Após pagar, o pedido entra automaticamente no painel e avisa a loja.</p></div>`}
     else{result.innerHTML=`<div class="ok"><h3>Pedido criado!</h3><p>Forma de pagamento: <b>${forma==='dinheiro'?'Dinheiro':'Cartão na entrega'}</b></p><p>Total com entrega: <b>${fmt(valor)}</b></p></div>`}
   }catch(e){result.innerHTML=`<div class="err"><b>Erro:</b> ${e.message}</div>`}
 }
