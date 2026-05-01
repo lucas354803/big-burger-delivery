@@ -1,113 +1,138 @@
 -- BIG BURGER DELIVERY + ROTA EXPRESS - BANCO LIMPO COM ADMIN DE CARDÁPIO
 -- ATENÇÃO: isso apaga as tabelas antigas e recria do zero.
 
-drop table if exists corridas cascade;
-drop table if exists pagamentos cascade;
-drop table if exists pedidos cascade;
-drop table if exists produtos cascade;
-drop table if exists complementos cascade;
-drop table if exists categorias cascade;
+DROP TABLE IF EXISTS corridas CASCADE;
+DROP TABLE IF EXISTS pagamentos CASCADE;
+DROP TABLE IF EXISTS pedidos CASCADE;
+DROP TABLE IF EXISTS produtos CASCADE;
+DROP TABLE IF EXISTS complementos CASCADE;
+DROP TABLE IF EXISTS categorias_complementos CASCADE;
+DROP TABLE IF EXISTS categorias CASCADE;
 
-create extension if not exists "uuid-ossp";
+CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
 
-create table categorias (
-  id uuid primary key default uuid_generate_v4(),
-  nome text not null,
-  ordem integer not null default 0,
-  ativo boolean not null default true,
-  created_at timestamptz not null default now()
+CREATE TABLE categorias (
+  id uuid PRIMARY KEY DEFAULT uuid_generate_v4(),
+  nome text NOT NULL,
+  ordem integer NOT NULL DEFAULT 0,
+  ativo boolean NOT NULL DEFAULT true,
+  created_at timestamptz NOT NULL DEFAULT now()
 );
 
-create table produtos (
-  id uuid primary key default uuid_generate_v4(),
-  categoria_id uuid references categorias(id) on delete set null,
-  nome text not null,
+CREATE TABLE produtos (
+  id uuid PRIMARY KEY DEFAULT uuid_generate_v4(),
+  categoria_id uuid REFERENCES categorias(id) ON DELETE SET NULL,
+  nome text NOT NULL,
   descricao text,
-  preco numeric(10,2) not null default 0,
+  preco numeric(10,2) NOT NULL DEFAULT 0,
   badge text,
   imagem_url text,
-  ordem integer not null default 0,
-  ativo boolean not null default true,
-  created_at timestamptz not null default now()
+  ordem integer NOT NULL DEFAULT 0,
+  ativo boolean NOT NULL DEFAULT true,
+  created_at timestamptz NOT NULL DEFAULT now()
 );
 
-create table complementos (
-  id uuid primary key default uuid_generate_v4(),
-  nome text not null,
-  preco numeric(10,2) not null default 0,
-  ordem integer not null default 0,
-  ativo boolean not null default true,
-  created_at timestamptz not null default now()
+CREATE TABLE categorias_complementos (
+  id uuid PRIMARY KEY DEFAULT uuid_generate_v4(),
+  nome text NOT NULL,
+  min_escolha integer NOT NULL DEFAULT 0,
+  max_escolha integer NOT NULL DEFAULT 6,
+  ordem integer NOT NULL DEFAULT 0,
+  ativo boolean NOT NULL DEFAULT true,
+  created_at timestamptz NOT NULL DEFAULT now()
 );
 
-create table pedidos (
-  id uuid primary key default uuid_generate_v4(),
-  cliente_nome text not null,
-  cliente_telefone text not null,
-  endereco text not null,
+CREATE TABLE complementos (
+  id uuid PRIMARY KEY DEFAULT uuid_generate_v4(),
+  categoria_complemento_id uuid REFERENCES categorias_complementos(id) ON DELETE SET NULL,
+  nome text NOT NULL,
+  preco numeric(10,2) NOT NULL DEFAULT 0,
+  ordem integer NOT NULL DEFAULT 0,
+  ativo boolean NOT NULL DEFAULT true,
+  created_at timestamptz NOT NULL DEFAULT now()
+);
+
+CREATE TABLE pedidos (
+  id uuid PRIMARY KEY DEFAULT uuid_generate_v4(),
+  cliente_nome text NOT NULL,
+  cliente_telefone text NOT NULL,
+  endereco text NOT NULL,
   observacao text,
-  itens jsonb not null default '[]'::jsonb,
-  valor_total numeric(10,2) not null default 0,
-  status text not null default 'aguardando_pagamento',
-  created_at timestamptz not null default now()
+  itens jsonb NOT NULL DEFAULT '[]'::jsonb,
+  valor_total numeric(10,2) NOT NULL DEFAULT 0,
+  status text NOT NULL DEFAULT 'aguardando_pagamento',
+  created_at timestamptz NOT NULL DEFAULT now()
 );
 
-create table pagamentos (
-  id uuid primary key default uuid_generate_v4(),
-  pedido_id uuid not null references pedidos(id) on delete cascade,
+CREATE TABLE pagamentos (
+  id uuid PRIMARY KEY DEFAULT uuid_generate_v4(),
+  pedido_id uuid NOT NULL REFERENCES pedidos(id) ON DELETE CASCADE,
   mp_payment_id text,
-  status text not null default 'pendente',
-  valor numeric(10,2) not null default 0,
+  status text NOT NULL DEFAULT 'pendente',
+  valor numeric(10,2) NOT NULL DEFAULT 0,
   pix_copia_cola text,
   qr_code_base64 text,
-  created_at timestamptz not null default now()
+  created_at timestamptz NOT NULL DEFAULT now()
 );
 
-create table corridas (
-  id uuid primary key default uuid_generate_v4(),
-  pedido_id uuid not null references pedidos(id) on delete cascade,
+CREATE TABLE corridas (
+  id uuid PRIMARY KEY DEFAULT uuid_generate_v4(),
+  pedido_id uuid NOT NULL REFERENCES pedidos(id) ON DELETE CASCADE,
   motoboy_nome text,
-  status text not null default 'disponivel',
-  valor_entrega numeric(10,2) not null default 7.00,
-  created_at timestamptz not null default now()
+  status text NOT NULL DEFAULT 'disponivel',
+  valor_entrega numeric(10,2) NOT NULL DEFAULT 7.00,
+  created_at timestamptz NOT NULL DEFAULT now()
 );
 
-alter table categorias enable row level security;
-alter table produtos enable row level security;
-alter table complementos enable row level security;
-alter table pedidos enable row level security;
-alter table pagamentos enable row level security;
-alter table corridas enable row level security;
+ALTER TABLE categorias ENABLE ROW LEVEL SECURITY;
+ALTER TABLE produtos ENABLE ROW LEVEL SECURITY;
+ALTER TABLE categorias_complementos ENABLE ROW LEVEL SECURITY;
+ALTER TABLE complementos ENABLE ROW LEVEL SECURITY;
+ALTER TABLE pedidos ENABLE ROW LEVEL SECURITY;
+ALTER TABLE pagamentos ENABLE ROW LEVEL SECURITY;
+ALTER TABLE corridas ENABLE ROW LEVEL SECURITY;
 
-create policy "categorias_all" on categorias for all using (true) with check (true);
-create policy "produtos_all" on produtos for all using (true) with check (true);
-create policy "complementos_all" on complementos for all using (true) with check (true);
-create policy "pedidos_all" on pedidos for all using (true) with check (true);
-create policy "pagamentos_all" on pagamentos for all using (true) with check (true);
-create policy "corridas_all" on corridas for all using (true) with check (true);
+CREATE POLICY "categorias_all" ON categorias FOR ALL USING (true) WITH CHECK (true);
+CREATE POLICY "produtos_all" ON produtos FOR ALL USING (true) WITH CHECK (true);
+CREATE POLICY "categorias_complementos_all" ON categorias_complementos FOR ALL USING (true) WITH CHECK (true);
+CREATE POLICY "complementos_all" ON complementos FOR ALL USING (true) WITH CHECK (true);
+CREATE POLICY "pedidos_all" ON pedidos FOR ALL USING (true) WITH CHECK (true);
+CREATE POLICY "pagamentos_all" ON pagamentos FOR ALL USING (true) WITH CHECK (true);
+CREATE POLICY "corridas_all" ON corridas FOR ALL USING (true) WITH CHECK (true);
 
-insert into categorias (nome, ordem) values
+INSERT INTO categorias (nome, ordem) VALUES
 ('Destaques', 1),
 ('Combos', 2),
 ('Bebidas', 3);
 
-insert into produtos (categoria_id, nome, descricao, preco, badge, ordem)
-select c.id, 'Big Burger Smash', 'Blend smash, queijo cheddar, bacon, cebola crispy e molho especial da casa.', 28.90, 'MAIS PEDIDO', 1 from categorias c where c.nome='Destaques';
-insert into produtos (categoria_id, nome, descricao, preco, ordem)
-select c.id, 'Big Onion Burger', 'Blend artesanal, queijo prato, onion rings, barbecue e maionese da casa.', 27.90, 2 from categorias c where c.nome='Destaques';
-insert into produtos (categoria_id, nome, descricao, preco, ordem)
-select c.id, 'Big Bacon Cheddar', 'Blend artesanal, cheddar cremoso, bacon em tiras e molho especial.', 29.90, 3 from categorias c where c.nome='Destaques';
-insert into produtos (categoria_id, nome, descricao, preco, ordem)
-select c.id, 'Big Chicken Crispy', 'Frango empanado crocante, queijo, alface, tomate e maionese temperada.', 25.90, 4 from categorias c where c.nome='Destaques';
-insert into produtos (categoria_id, nome, descricao, preco, badge, ordem)
-select c.id, 'Combo Duplo', '2 burgers + fritas crocantes + refrigerante 600ml.', 39.90, 'COMBO', 1 from categorias c where c.nome='Combos';
-insert into produtos (categoria_id, nome, descricao, preco, badge, ordem)
-select c.id, 'Combo Família', '4 burgers + 4 fritas + refrigerante 1,5L para dividir.', 84.90, 'FAMÍLIA', 2 from categorias c where c.nome='Combos';
+INSERT INTO produtos (categoria_id, nome, descricao, preco, badge, ordem)
+SELECT c.id, 'Big Burger Smash', 'Blend smash, queijo cheddar, bacon, cebola crispy e molho especial da casa.', 28.90, 'MAIS PEDIDO', 1 FROM categorias c WHERE c.nome='Destaques';
+INSERT INTO produtos (categoria_id, nome, descricao, preco, ordem)
+SELECT c.id, 'Big Onion Burger', 'Blend artesanal, queijo prato, onion rings, barbecue e maionese da casa.', 27.90, 2 FROM categorias c WHERE c.nome='Destaques';
+INSERT INTO produtos (categoria_id, nome, descricao, preco, ordem)
+SELECT c.id, 'Big Bacon Cheddar', 'Blend artesanal, cheddar cremoso, bacon em tiras e molho especial.', 29.90, 3 FROM categorias c WHERE c.nome='Destaques';
+INSERT INTO produtos (categoria_id, nome, descricao, preco, ordem)
+SELECT c.id, 'Big Chicken Crispy', 'Frango empanado crocante, queijo, alface, tomate e maionese temperada.', 25.90, 4 FROM categorias c WHERE c.nome='Destaques';
+INSERT INTO produtos (categoria_id, nome, descricao, preco, badge, ordem)
+SELECT c.id, 'Combo Duplo', '2 burgers + fritas crocantes + refrigerante 600ml.', 39.90, 'COMBO', 1 FROM categorias c WHERE c.nome='Combos';
+INSERT INTO produtos (categoria_id, nome, descricao, preco, badge, ordem)
+SELECT c.id, 'Combo Família', '4 burgers + 4 fritas + refrigerante 1,5L para dividir.', 84.90, 'FAMÍLIA', 2 FROM categorias c WHERE c.nome='Combos';
 
-insert into complementos (nome, preco, ordem) values
-('Bacon em cubos', 5.00, 1),
-('Calabresa', 5.00, 2),
-('Queijo mussarela', 3.00, 3),
-('Cheddar extra', 4.00, 4),
-('Onion rings', 5.00, 5),
-('Maionese da casa', 2.00, 6);
+INSERT INTO categorias_complementos (nome, min_escolha, max_escolha, ordem) VALUES
+('🥩 Carnes', 0, 3, 1),
+('🧀 Queijos', 0, 3, 2),
+('🍟 Extras', 0, 6, 3),
+('🥫 Molhos', 0, 4, 4);
+
+INSERT INTO complementos (categoria_complemento_id, nome, preco, ordem)
+SELECT cc.id, 'Bacon em cubos', 5.00, 1 FROM categorias_complementos cc WHERE cc.nome='🥩 Carnes';
+INSERT INTO complementos (categoria_complemento_id, nome, preco, ordem)
+SELECT cc.id, 'Calabresa', 5.00, 2 FROM categorias_complementos cc WHERE cc.nome='🥩 Carnes';
+INSERT INTO complementos (categoria_complemento_id, nome, preco, ordem)
+SELECT cc.id, 'Queijo mussarela', 3.00, 1 FROM categorias_complementos cc WHERE cc.nome='🧀 Queijos';
+INSERT INTO complementos (categoria_complemento_id, nome, preco, ordem)
+SELECT cc.id, 'Cheddar extra', 4.00, 2 FROM categorias_complementos cc WHERE cc.nome='🧀 Queijos';
+INSERT INTO complementos (categoria_complemento_id, nome, preco, ordem)
+SELECT cc.id, 'Onion rings', 5.00, 1 FROM categorias_complementos cc WHERE cc.nome='🍟 Extras';
+INSERT INTO complementos (categoria_complemento_id, nome, preco, ordem)
+SELECT cc.id, 'Maionese da casa', 2.00, 1 FROM categorias_complementos cc WHERE cc.nome='🥫 Molhos';

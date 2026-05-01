@@ -1,5 +1,6 @@
 let produtos=[];
 let adicionais=[];
+let categoriasComplementos=[];
 const produtosFallback=[
   {nome:'Big Burger Smash',descricao:'Blend smash, queijo cheddar, bacon, cebola crispy e molho especial da casa.',preco:28.90,badge:'MAIS PEDIDO'},
   {nome:'Big Onion Burger',descricao:'Blend artesanal, queijo prato, onion rings, barbecue e maionese da casa.',preco:27.90},
@@ -8,8 +9,19 @@ const produtosFallback=[
   {nome:'Combo Duplo',descricao:'2 burgers + fritas crocantes + refrigerante 600ml.',preco:39.90,badge:'COMBO'},
   {nome:'Combo Família',descricao:'4 burgers + 4 fritas + refrigerante 1,5L para dividir.',preco:84.90,badge:'FAMÍLIA'}
 ];
+const categoriasComplementosFallback=[
+  {id:'carnes',nome:'🥩 Carnes',min_escolha:0,max_escolha:3,ordem:1},
+  {id:'queijos',nome:'🧀 Queijos',min_escolha:0,max_escolha:3,ordem:2},
+  {id:'extras',nome:'🍟 Extras',min_escolha:0,max_escolha:6,ordem:3},
+  {id:'molhos',nome:'🥫 Molhos',min_escolha:0,max_escolha:4,ordem:4}
+];
 const adicionaisFallback=[
-  {nome:'Bacon em cubos',preco:5},{nome:'Calabresa',preco:5},{nome:'Queijo mussarela',preco:3},{nome:'Cheddar extra',preco:4},{nome:'Onion rings',preco:5},{nome:'Maionese da casa',preco:2}
+  {id:'bacon',categoria_complemento_id:'carnes',nome:'Bacon em cubos',preco:5},
+  {id:'calabresa',categoria_complemento_id:'carnes',nome:'Calabresa',preco:5},
+  {id:'mussarela',categoria_complemento_id:'queijos',nome:'Queijo mussarela',preco:3},
+  {id:'cheddar',categoria_complemento_id:'queijos',nome:'Cheddar extra',preco:4},
+  {id:'onion',categoria_complemento_id:'extras',nome:'Onion rings',preco:5},
+  {id:'maionese',categoria_complemento_id:'molhos',nome:'Maionese da casa',preco:2}
 ];
 let carrinho=[];
 let produtoAberto=null;
@@ -21,8 +33,9 @@ async function carregarMenu(){
     const r=await fetch('/api/menu');
     const d=await r.json();
     produtos=(d.produtos&&d.produtos.length?d.produtos:produtosFallback).map(p=>({...p,preco:Number(p.preco||0)}));
+    categoriasComplementos=(d.categorias_complementos&&d.categorias_complementos.length?d.categorias_complementos:categoriasComplementosFallback);
     adicionais=(d.complementos&&d.complementos.length?d.complementos:adicionaisFallback).map(a=>({...a,preco:Number(a.preco||0)}));
-  }catch(e){produtos=produtosFallback;adicionais=adicionaisFallback;}
+  }catch(e){produtos=produtosFallback;categoriasComplementos=categoriasComplementosFallback;adicionais=adicionaisFallback;}
   render();
 }
 
@@ -53,13 +66,31 @@ function abrirProduto(i){
   modalDesc.textContent=p.descricao||'';
   modalPreco.textContent=fmt(p.preco);
   if(p.imagem_url){modalImg.style.backgroundImage=`url('${p.imagem_url}')`;modalImg.classList.add('tem-imagem')}else{modalImg.style.backgroundImage='';modalImg.classList.remove('tem-imagem')}
-  addons.innerHTML=adicionais.map((a,idx)=>`<div class="addon" id="addon-${idx}"><span>${a.nome}<br><small>+ ${fmt(a.preco)}</small></span><button onclick="toggleAddon(${idx})">+</button></div>`).join('');
+  addons.innerHTML=renderAddonsAgrupados();
   modal.hidden=false;
+}
+function renderAddonsAgrupados(){
+  const grupos = categoriasComplementos.length ? categoriasComplementos : [{id:'geral',nome:'Adicionais',min_escolha:0,max_escolha:6}];
+  let html='';
+  grupos.forEach(g=>{
+    const itens=adicionais.map((a,idx)=>({...a,idx})).filter(a=>(a.categoria_complemento_id||'geral')===g.id);
+    if(!itens.length) return;
+    html+=`<div class="addon-group"><div class="addon-title"><b>${g.nome}</b><small>Escolha de ${g.min_escolha||0} até ${g.max_escolha||6} opções</small></div>`;
+    html+=itens.map(a=>`<div class="addon" id="addon-${a.idx}"><span>${a.nome}<br><small>+ ${fmt(a.preco)}</small></span><button onclick="toggleAddon(${a.idx})">+</button></div>`).join('');
+    html+='</div>';
+  });
+  const semCat=adicionais.map((a,idx)=>({...a,idx})).filter(a=>!a.categoria_complemento_id && !categoriasComplementos.length);
+  return html || semCat.map(a=>`<div class="addon" id="addon-${a.idx}"><span>${a.nome}<br><small>+ ${fmt(a.preco)}</small></span><button onclick="toggleAddon(${a.idx})">+</button></div>`).join('');
 }
 function fecharModal(){modal.hidden=true;}
 function toggleAddon(idx){
+  const add=adicionais[idx];
+  const grupo=categoriasComplementos.find(g=>g.id===add.categoria_complemento_id);
+  const selecionadosGrupo=addonsSelecionados.filter(i=>adicionais[i]?.categoria_complemento_id===add.categoria_complemento_id);
   const exists=addonsSelecionados.includes(idx);
-  if(exists) addonsSelecionados=addonsSelecionados.filter(x=>x!==idx); else if(addonsSelecionados.length<6) addonsSelecionados.push(idx);
+  if(exists) addonsSelecionados=addonsSelecionados.filter(x=>x!==idx);
+  else if(!grupo || selecionadosGrupo.length < Number(grupo.max_escolha||6)) addonsSelecionados.push(idx);
+  else alert(`Você pode escolher no máximo ${grupo.max_escolha} opções em ${grupo.nome}.`);
   adicionais.forEach((_,i)=>document.getElementById('addon-'+i)?.classList.toggle('active',addonsSelecionados.includes(i)));
 }
 function adicionarModal(){
