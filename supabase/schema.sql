@@ -302,3 +302,18 @@ INSERT INTO horarios_funcionamento (dia_semana, nome_dia, abre, fecha, ativo) VA
 (5,'Sexta','18:30','01:00',true),
 (6,'Sábado','18:30','01:00',true)
 ON CONFLICT (dia_semana) DO NOTHING;
+
+-- Clientes cadastrados manualmente pelo painel admin
+CREATE TABLE IF NOT EXISTS clientes_cadastros (
+  id uuid PRIMARY KEY DEFAULT uuid_generate_v4(),
+  cliente_nome text NOT NULL,
+  cliente_telefone text,
+  email text,
+  cidade text,
+  bairro text,
+  rua text,
+  numero text,
+  endereco text,
+  observacao text,
+  created_at timestamptz NOT NULL DEFAULT now()
+);

@@ -1,5 +1,5 @@
 
-const state={categorias:[],produtos:[],categorias_complementos:[],complementos:[],produto_complemento_categorias:[],cidades_entrega:[],bairros_entrega:[],clientes:[],clientesResumo:null,financeiro:null,loja_config:null,horarios_funcionamento:[]};
+const state={categorias:[],produtos:[],categorias_complementos:[],complementos:[],produto_complemento_categorias:[],cidades_entrega:[],bairros_entrega:[],clientes:[],clientesResumo:null,financeiro:null,loja_config:null,horarios_funcionamento:[],clientesPagina:1,clientesPorPagina:20,clienteEditando:null};
 const brl=v=>Number(v||0).toLocaleString('pt-BR',{style:'currency',currency:'BRL'});
 function abrirMain(id){
   document.querySelectorAll('.main-tab,.main-content').forEach(x=>x.classList.remove('active'));
@@ -114,19 +114,73 @@ async function loadClientes(){
 }
 function dataBR(v){return v?new Date(v).toLocaleString('pt-BR'):''}
 function whatsLink(tel){const limpo=String(tel||'').replace(/\D/g,'');return limpo?`https://wa.me/55${limpo.replace(/^55/,'')}`:'#'}
+function escapeHtml(v){return String(v??'').replace(/[&<>"]/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[m]))}
 function renderClientes(){
   if(typeof clientesOut==='undefined') return;
   let lista=[...(state.clientes||[])];
   const busca=(clienteBusca?.value||'').toLowerCase().trim();
   const ordem=clienteOrdem?.value||'gasto';
-  if(busca){lista=lista.filter(c=>[c.cliente_nome,c.cliente_telefone,c.endereco,c.cidade,c.bairro,c.rua].join(' ').toLowerCase().includes(busca));}
+  if(busca){lista=lista.filter(c=>[c.cliente_nome,c.cliente_telefone,c.email,c.endereco,c.cidade,c.bairro,c.rua,c.observacao].join(' ').toLowerCase().includes(busca));}
   if(ordem==='gasto') lista.sort((a,b)=>Number(b.total_gasto||0)-Number(a.total_gasto||0));
   if(ordem==='pedidos') lista.sort((a,b)=>Number(b.total_pedidos||0)-Number(a.total_pedidos||0));
   if(ordem==='recente') lista.sort((a,b)=>new Date(b.ultimo_pedido||0)-new Date(a.ultimo_pedido||0));
   if(ordem==='nome') lista.sort((a,b)=>String(a.cliente_nome||'').localeCompare(String(b.cliente_nome||''),'pt-BR'));
   const resumo=state.clientesResumo||{};
-  clientesResumo.innerHTML=`<div class="stat-card"><b>${resumo.total_clientes||0}</b><span>Clientes</span></div><div class="stat-card"><b>${resumo.total_pedidos||0}</b><span>Pedidos</span></div><div class="stat-card"><b>${brl(resumo.faturamento_total||0)}</b><span>Total gasto</span></div><div class="stat-card"><b>${brl(resumo.ticket_medio||0)}</b><span>Ticket médio</span></div>`;
-  clientesOut.innerHTML=lista.length?`<table class="table clientes-table"><tr><th>Cliente</th><th>WhatsApp</th><th>Pedidos</th><th>Total gasto</th><th>Endereço</th><th>Último pedido</th></tr>${lista.map(c=>`<tr><td><b>${c.cliente_nome||''}</b><br><small>Status último: ${c.ultimo_status||''}</small></td><td>${c.cliente_telefone||''}<br><a href="${whatsLink(c.cliente_telefone)}" target="_blank">Chamar no WhatsApp</a></td><td><b>${c.total_pedidos||0}</b></td><td><b>${brl(c.total_gasto||0)}</b></td><td>${[c.cidade,c.bairro,c.rua].filter(Boolean).join(' • ') || c.endereco || ''}</td><td>${dataBR(c.ultimo_pedido)}</td></tr>`).join('')}</table>`:'<p>Nenhum cliente registrado ainda. Quando fizerem pedidos, eles aparecerão aqui automaticamente.</p>';
+  clientesResumo.innerHTML=`<div class="stat-card dark-stat client-stat"><div>👥</div><b>${resumo.total_clientes||0}</b><span>Clientes cadastrados</span></div><div class="stat-card dark-stat client-stat"><div>🛍️</div><b>${resumo.total_pedidos||0}</b><span>Pedidos realizados</span></div><div class="stat-card dark-stat client-stat"><div>💰</div><b>${brl(resumo.faturamento_total||0)}</b><span>Total gasto</span></div><div class="stat-card dark-stat client-stat"><div>🧾</div><b>${brl(resumo.ticket_medio||0)}</b><span>Ticket médio</span></div>`;
+  const total=lista.length;
+  const porPagina=Number(state.clientesPorPagina||20);
+  const paginas=Math.max(1,Math.ceil(total/porPagina));
+  if(state.clientesPagina>paginas) state.clientesPagina=paginas;
+  if(state.clientesPagina<1) state.clientesPagina=1;
+  const inicio=(state.clientesPagina-1)*porPagina;
+  const pagina=lista.slice(inicio,inicio+porPagina);
+  const rows=pagina.map(c=>`<tr><td><b>${escapeHtml(c.cliente_nome||'')}</b><br><small>${escapeHtml(c.origem==='manual'?'Cadastro manual':(c.origem==='manual+pedido'?'Manual + pedidos':'Pedido automático'))}</small></td><td>${escapeHtml(c.cliente_telefone||'')}<br>${c.cliente_telefone?`<a href="${whatsLink(c.cliente_telefone)}" target="_blank">Chamar no WhatsApp</a>`:''}</td><td>${escapeHtml(c.email||'')}</td><td><b>${c.total_pedidos||0}</b></td><td><b>${brl(c.total_gasto||0)}</b></td><td>${dataBR(c.ultimo_pedido)}</td><td class="client-actions"><button title="Ver" onclick='verCliente(${JSON.stringify(c).replaceAll("'","&#39;")})'>👁️</button>${c.id?`<button title="Editar" onclick='editarCliente(${JSON.stringify(c).replaceAll("'","&#39;")})'>✏️</button><button title="Excluir" onclick="excluirCliente('${c.id}')">🗑️</button>`:`<button title="Cliente vindo de pedido" disabled>🔒</button>`}</td></tr>`).join('');
+  clientesOut.innerHTML=total?`<div class="client-table-wrap"><table class="table clientes-table dark-table"><thead><tr><th>Nome</th><th>Telefone</th><th>E-mail</th><th>Pedidos</th><th>Total gasto</th><th>Último pedido</th><th>Ações</th></tr></thead><tbody>${rows}</tbody></table></div><div class="client-pagination"><span>Mostrando ${total?inicio+1:0} a ${Math.min(inicio+porPagina,total)} de ${total} clientes</span><div><button onclick="mudarPaginaClientes(1)" ${state.clientesPagina===1?'disabled':''}>Primeira</button><button onclick="mudarPaginaClientes(${state.clientesPagina-1})" ${state.clientesPagina===1?'disabled':''}>Anterior</button><b>${state.clientesPagina}</b><button onclick="mudarPaginaClientes(${state.clientesPagina+1})" ${state.clientesPagina===paginas?'disabled':''}>Próxima</button><button onclick="mudarPaginaClientes(${paginas})" ${state.clientesPagina===paginas?'disabled':''}>Última</button></div><label>Itens por página:<select onchange="state.clientesPorPagina=Number(this.value);state.clientesPagina=1;renderClientes()"><option value="20" ${porPagina===20?'selected':''}>20</option><option value="40" ${porPagina===40?'selected':''}>40</option><option value="60" ${porPagina===60?'selected':''}>60</option></select></label></div>`:'<p class="empty-finance">Nenhum cliente registrado ainda. Cadastre manualmente ou aguarde os pedidos aparecerem aqui automaticamente.</p>';
+}
+function mudarPaginaClientes(p){state.clientesPagina=Number(p||1);renderClientes()}
+function abrirCadastroCliente(){
+  state.clienteEditando=null;
+  clienteFormTitulo.textContent='Cadastrar novo cliente';
+  clienteId.value=''; clienteNome.value=''; clienteTelefone.value=''; clienteEmail.value=''; clienteCidade.value=''; clienteBairro.value=''; clienteRua.value=''; clienteNumero.value=''; clienteObservacao.value='';
+  clienteModal.classList.add('active');
+}
+function fecharCadastroCliente(){clienteModal.classList.remove('active')}
+function editarCliente(c){
+  state.clienteEditando=c;
+  clienteFormTitulo.textContent='Editar cliente';
+  clienteId.value=c.id||''; clienteNome.value=c.cliente_nome||''; clienteTelefone.value=c.cliente_telefone||''; clienteEmail.value=c.email||''; clienteCidade.value=c.cidade||''; clienteBairro.value=c.bairro||''; clienteRua.value=c.rua||''; clienteNumero.value=c.numero||''; clienteObservacao.value=c.observacao||'';
+  clienteModal.classList.add('active');
+}
+function verCliente(c){
+  alert(`Cliente: ${c.cliente_nome||''}\nTelefone: ${c.cliente_telefone||''}\nE-mail: ${c.email||''}\nPedidos: ${c.total_pedidos||0}\nTotal gasto: ${brl(c.total_gasto||0)}\nEndereço: ${[c.cidade,c.bairro,c.rua,c.numero].filter(Boolean).join(' • ') || c.endereco || ''}\nObs: ${c.observacao||''}`);
+}
+async function salvarClienteManual(ev){
+  ev.preventDefault();
+  const payload={
+    cliente_nome:clienteNome.value.trim(), cliente_telefone:clienteTelefone.value.trim(), email:clienteEmail.value.trim(),
+    cidade:clienteCidade.value.trim(), bairro:clienteBairro.value.trim(), rua:clienteRua.value.trim(), numero:clienteNumero.value.trim(), observacao:clienteObservacao.value.trim()
+  };
+  if(!payload.cliente_nome){alert('Informe o nome do cliente.');return;}
+  const id=clienteId.value;
+  const r=await fetch('/api/clientes'+(id?'?id='+encodeURIComponent(id):''),{method:id?'PUT':'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)});
+  const d=await r.json();
+  if(!r.ok||!d.ok){alert('Erro ao salvar cliente: '+(d.error||JSON.stringify(d)));return;}
+  fecharCadastroCliente();
+  await loadClientes();
+}
+async function excluirCliente(id){
+  if(!confirm('Excluir este cliente cadastrado manualmente? Os pedidos feitos por ele não serão apagados.')) return;
+  const r=await fetch('/api/clientes?id='+encodeURIComponent(id),{method:'DELETE'});
+  const d=await r.json();
+  if(!r.ok||!d.ok){alert('Erro ao excluir cliente: '+(d.error||JSON.stringify(d)));return;}
+  await loadClientes();
+}
+function exportarClientesCSV(){
+  const lista=state.clientes||[];
+  const header=['Nome','Telefone','Email','Pedidos','Total gasto','Cidade','Bairro','Rua','Numero','Ultimo pedido','Observacao'];
+  const linhas=lista.map(c=>[c.cliente_nome,c.cliente_telefone,c.email,c.total_pedidos,Number(c.total_gasto||0).toFixed(2),c.cidade,c.bairro,c.rua,c.numero,dataBR(c.ultimo_pedido),c.observacao].map(v=>`"${String(v||'').replaceAll('"','""')}"`).join(';'));
+  const blob=new Blob([[header.join(';'),...linhas].join('\n')],{type:'text/csv;charset=utf-8'});
+  const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='clientes-big-burger.csv';a.click();URL.revokeObjectURL(a.href);
 }
 async function loadTudo(){try{state.categorias=await api('categorias');state.produtos=await api('produtos');state.categorias_complementos=await api('categorias_complementos');state.complementos=await api('complementos');state.produto_complemento_categorias=await api('produto_complemento_categorias');state.cidades_entrega=await api('cidades_entrega');state.bairros_entrega=await api('bairros_entrega');renderAdmin();}catch(e){document.querySelector('.admin-panel').insertAdjacentHTML('afterbegin','<div class="err">Erro: '+e.message+'</div>')}}
 function renderAdmin(){

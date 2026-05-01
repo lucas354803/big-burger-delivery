@@ -129,17 +129,18 @@
       <div id="main-clientes" class="main-content">
         <div class="editor-title">
           <h1>👥 Clientes</h1>
-          <p>Todos os clientes ficam registrados automaticamente quando fazem pedidos. Veja WhatsApp, endereço, quantidade de pedidos e quanto cada cliente gastou.</p>
+          <p>Gerencie seus clientes cadastrados, visualize informações e cadastre novos clientes manualmente.</p>
         </div>
         <div class="admin-head">
           <h2>Clientes registrados</h2>
-          <button class="btn red" onclick="loadClientes()">Atualizar clientes</button>
+          <div class="client-head-actions"><button class="btn red" onclick="abrirCadastroCliente()">+ Cadastrar novo cliente</button><button class="btn ghost" onclick="exportarClientesCSV()">⬇ Exportar clientes</button><button class="btn red" onclick="loadClientes()">Atualizar clientes</button></div>
         </div>
         <div id="clientesResumo" class="stats-grid"></div>
         <div class="admin-card">
           <div class="client-toolbar">
             <input id="clienteBusca" placeholder="Buscar por nome, WhatsApp, cidade, bairro ou endereço" oninput="renderClientes()">
             <select id="clienteOrdem" onchange="renderClientes()">
+              <option value="recente">Ordenar por mais recentes</option>
               <option value="gasto">Ordenar por quem mais gastou</option>
               <option value="pedidos">Ordenar por mais pedidos</option>
               <option value="recente">Ordenar por pedido mais recente</option>
@@ -283,5 +284,35 @@
   </main>
 
 <script src="/admin_script.js"></script>
+
+
+  <div id="clienteModal" class="modal-overlay">
+    <form class="modal-box cliente-form" onsubmit="salvarClienteManual(event)">
+      <div class="modal-head">
+        <h2 id="clienteFormTitulo">Cadastrar novo cliente</h2>
+        <button type="button" onclick="fecharCadastroCliente()">×</button>
+      </div>
+      <input type="hidden" id="clienteId">
+      <div class="mini-grid">
+        <label>Nome do cliente<input id="clienteNome" placeholder="Ex: Lucas Alves Fernandes"></label>
+        <label>WhatsApp / telefone<input id="clienteTelefone" placeholder="Ex: (48) 99999-9999"></label>
+      </div>
+      <label>E-mail<input id="clienteEmail" placeholder="Opcional"></label>
+      <div class="mini-grid">
+        <label>Cidade<input id="clienteCidade" placeholder="Ex: Criciúma"></label>
+        <label>Bairro<input id="clienteBairro" placeholder="Ex: Centro"></label>
+      </div>
+      <div class="mini-grid">
+        <label>Rua<input id="clienteRua" placeholder="Nome da rua"></label>
+        <label>Número<input id="clienteNumero" placeholder="Nº"></label>
+      </div>
+      <label>Observação<textarea id="clienteObservacao" placeholder="Ex: cliente fiel, preferência, ponto de referência..."></textarea></label>
+      <div class="modal-actions">
+        <button type="button" class="btn ghost" onclick="fecharCadastroCliente()">Cancelar</button>
+        <button class="btn red">Salvar cliente</button>
+      </div>
+    </form>
+  </div>
+
 </body>
 </html>
