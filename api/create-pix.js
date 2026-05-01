@@ -61,6 +61,6 @@ export default async function handler(req, res) {
       qr_code_base64: mp.point_of_interaction?.transaction_data?.qr_code_base64
     })
   } catch (err) {
-    return res.status(500).json({ error: err?.message || 'Erro ao gerar Pix' })
+    return res.status(500).json({ error: err?.message || 'Erro ao gerar Pix', detalhe: err?.cause || err?.response || null })
   }
 }
