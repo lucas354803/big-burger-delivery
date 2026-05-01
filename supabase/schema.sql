@@ -30,6 +30,7 @@ CREATE TABLE produtos (
   desconto_percentual numeric(5,2) NOT NULL DEFAULT 0,
   preco_promocional numeric(10,2),
   badge text,
+  promocao_ativa boolean NOT NULL DEFAULT false,
   imagem_url text,
   ordem integer NOT NULL DEFAULT 0,
   ativo boolean NOT NULL DEFAULT true,
@@ -130,8 +131,10 @@ INSERT INTO produtos (categoria_id, nome, descricao, preco, ordem)
 SELECT c.id, 'Big Chicken Crispy', 'Frango empanado crocante, queijo, alface, tomate e maionese temperada.', 25.90, 4 FROM categorias c WHERE c.nome='🍔 HAMBÚRGUERES';
 INSERT INTO produtos (categoria_id, nome, descricao, preco, badge, ordem)
 SELECT c.id, 'Combo Duplo', '2 burgers + fritas crocantes + refrigerante 600ml.', 39.90, 'COMBO', 1 FROM categorias c WHERE c.nome='🔥 COMBOS';
+UPDATE produtos SET promocao_ativa=true, desconto_ativo=true, preco_promocional=39.90, desconto_percentual=0 WHERE nome='Combo Duplo';
 INSERT INTO produtos (categoria_id, nome, descricao, preco, badge, ordem)
 SELECT c.id, 'Combo Família', '4 burgers + 4 fritas + refrigerante 1,5L para dividir.', 84.90, 'FAMÍLIA', 2 FROM categorias c WHERE c.nome='🔥 COMBOS';
+UPDATE produtos SET promocao_ativa=true WHERE nome='Combo Família';
 
 INSERT INTO categorias_complementos (nome, min_escolha, max_escolha, ordem) VALUES
 ('🍔 Transforme em combo', 0, 3, 1),

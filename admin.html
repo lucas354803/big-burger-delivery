@@ -18,6 +18,7 @@
         <button class="tab active" onclick="abrirTab('pedidos')">📋 Pedidos</button>
         <button class="tab" onclick="abrirTab('categorias')">🏷️ Categorias</button>
         <button class="tab" onclick="abrirTab('produtos')">🍔 Produtos</button>
+        <button class="tab" onclick="abrirTab('promocoes')">⭐ Promoções</button>
         <button class="tab" onclick="abrirTab('catcomp')">🧩 Categorias dos complementos</button>
         <button class="tab" onclick="abrirTab('complementos')">➕ Complementos</button>
       </div>
@@ -63,6 +64,7 @@
               <label>Ordem<input id="prod_ordem" type="number" value="0"></label>
               <label class="check switch-line"><input id="prod_desconto_ativo" type="checkbox"> Adicionar desconto</label>
             </div>
+            <label class="check"><input id="prod_promocao_ativa" type="checkbox"> Aparecer em ⭐ Combos especiais / Promoções</label>
             <label class="check"><input id="prod_ativo" type="checkbox" checked> Produto ativo</label>
             <hr>
             <h2>Complementos deste produto</h2>
@@ -71,6 +73,40 @@
             <button class="btn red">Salvar produto</button>
           </form>
           <div id="produtosOut" class="admin-card"></div>
+        </div>
+      </div>
+
+
+      <div id="promocoes" class="tab-content">
+        <div class="admin-head"><h1>Promoções do cardápio</h1><button class="btn green" onclick="novo('promocoes')">Nova promoção</button></div>
+        <div class="admin-grid wide">
+          <form class="admin-form produto-form" onsubmit="salvar(event,'promocoes')">
+            <input type="hidden" id="promo_id">
+            <h2>Produto promocional</h2>
+            <p class="small">Tudo que você cadastrar aqui aparece na seção <b>⭐ Combos especiais / Promoções para pedir hoje</b> do cardápio.</p>
+            <label>Categoria do produto<select id="promo_categoria"></select></label>
+            <label>Nome da promoção<input id="promo_nome" placeholder="Ex: Combo Duplo Especial"></label>
+            <label>Descrição<textarea id="promo_descricao" placeholder="Ex: 2 burgers + fritas + refri 600ml"></textarea></label>
+            <div class="mini-grid">
+              <label>Preço normal<input id="promo_preco" type="number" step="0.01" placeholder="49.90"></label>
+              <label>Preço promocional<input id="promo_preco_promocional" type="number" step="0.01" placeholder="39.90"></label>
+            </div>
+            <div class="mini-grid">
+              <label>Desconto %<input id="promo_desconto_percentual" type="number" step="0.01" placeholder="Ex: 20"></label>
+              <label>Selo<input id="promo_badge" value="PROMOÇÃO"></label>
+            </div>
+            <label>URL da imagem<input id="promo_imagem" placeholder="Opcional: link da imagem"></label>
+            <div class="mini-grid">
+              <label>Ordem<input id="promo_ordem" type="number" value="0"></label>
+              <label class="check switch-line"><input id="promo_ativo" type="checkbox" checked> Promoção ativa</label>
+            </div>
+            <hr>
+            <h2>Complementos desta promoção</h2>
+            <p class="small">Escolha quais categorias de complementos aparecem quando o cliente abrir a promoção.</p>
+            <div id="promo_categorias_complementos" class="checks-box"></div>
+            <button class="btn red">Salvar promoção</button>
+          </form>
+          <div id="promocoesOut" class="admin-card"></div>
         </div>
       </div>
 
@@ -119,10 +155,13 @@ async function loadPedidos(){pedidosOut.innerHTML='Carregando...';try{const r=aw
 async function loadTudo(){try{state.categorias=await api('categorias');state.produtos=await api('produtos');state.categorias_complementos=await api('categorias_complementos');state.complementos=await api('complementos');state.produto_complemento_categorias=await api('produto_complemento_categorias');renderAdmin();}catch(e){document.querySelector('.admin-panel').insertAdjacentHTML('afterbegin','<div class="err">Erro: '+e.message+'</div>')}}
 function renderAdmin(){
  prod_categoria.innerHTML=state.categorias.map(c=>`<option value="${c.id}">${c.nome}</option>`).join('');
+ promo_categoria.innerHTML=prod_categoria.innerHTML;
  comp_categoria.innerHTML=state.categorias_complementos.map(c=>`<option value="${c.id}">${c.nome}</option>`).join('');
  renderProdutoComplementosChecks();
+ renderPromoComplementosChecks();
  categoriasOut.innerHTML=lista(state.categorias,'categorias',c=>`<b>${c.nome}</b><small>Ordem ${c.ordem||0} • ${c.ativo?'Ativo':'Inativo'}</small>`);
- produtosOut.innerHTML=lista(state.produtos,'produtos',p=>`<b>${p.nome}</b><small>${precoProdutoTexto(p)} • ${state.categorias.find(c=>c.id===p.categoria_id)?.nome||'Sem categoria'} • ${p.ativo?'Ativo':'Inativo'}</small><p>${p.descricao||''}</p><p class="small"><b>Complementos:</b> ${nomesComplementosProduto(p.id)}</p>`);
+ produtosOut.innerHTML=lista(state.produtos,'produtos',p=>`<b>${p.nome}</b><small>${precoProdutoTexto(p)} • ${state.categorias.find(c=>c.id===p.categoria_id)?.nome||'Sem categoria'} • ${p.promocao_ativa?'⭐ Promoção • ':''}${p.ativo?'Ativo':'Inativo'}</small><p>${p.descricao||''}</p><p class="small"><b>Complementos:</b> ${nomesComplementosProduto(p.id)}</p>`);
+ promocoesOut.innerHTML=lista(state.produtos.filter(p=>p.promocao_ativa),'promocoes',p=>`<b>${p.nome}</b><small>${precoProdutoTexto(p)} • ${state.categorias.find(c=>c.id===p.categoria_id)?.nome||'Sem categoria'} • ${p.ativo?'Ativa':'Inativa'}</small><p>${p.descricao||''}</p><p class="small"><b>Complementos:</b> ${nomesComplementosProduto(p.id)}</p>`);
  catcompOut.innerHTML=lista(state.categorias_complementos,'categorias_complementos',c=>`<b>${c.nome}</b><small>Escolha de ${c.min_escolha||0} até ${c.max_escolha||0} • Ordem ${c.ordem||0} • ${c.ativo?'Ativo':'Inativo'}</small>`);
  complementosOut.innerHTML=lista(state.complementos,'complementos',c=>`<b>${c.nome}</b><small>${brl(c.preco)} • ${state.categorias_complementos.find(x=>x.id===c.categoria_complemento_id)?.nome||'Sem categoria'} • Ordem ${c.ordem||0} • ${c.ativo?'Ativo':'Inativo'}</small>`);
 }
@@ -133,17 +172,22 @@ function renderProdutoComplementosChecks(produtoId=''){
  const vinculadas=new Set(state.produto_complemento_categorias.filter(v=>v.produto_id===produtoId).map(v=>v.categoria_complemento_id));
  prod_categorias_complementos.innerHTML=state.categorias_complementos.length?state.categorias_complementos.map(c=>`<label class="check card-check"><input type="checkbox" class="produto-catcomp" value="${c.id}" ${!produtoId||vinculadas.has(c.id)?'checked':''}> ${c.nome}<small>Escolha de ${c.min_escolha||0} até ${c.max_escolha||6}</small></label>`).join(''):'<p class="small">Cadastre as categorias dos complementos primeiro.</p>';
 }
-function novo(t){if(t==='categorias'){cat_id.value='';cat_nome.value='';cat_ordem.value=0;cat_ativo.checked=true} if(t==='produtos'){prod_id.value='';prod_nome.value='';prod_descricao.value='';prod_preco.value='';prod_preco_promocional.value='';prod_desconto_percentual.value='';prod_badge.value='';prod_imagem.value='';prod_ordem.value=0;prod_desconto_ativo.checked=false;prod_ativo.checked=true;renderProdutoComplementosChecks('')} if(t==='categorias_complementos'){cc_id.value='';cc_nome.value='';cc_min.value=0;cc_max.value=6;cc_ordem.value=0;cc_ativo.checked=true} if(t==='complementos'){comp_id.value='';comp_nome.value='';comp_preco.value='';comp_ordem.value=0;comp_ativo.checked=true}}
-function editar(t,x){if(t==='categorias_complementos')abrirTab('catcomp');else abrirTab(t); if(t==='categorias'){cat_id.value=x.id;cat_nome.value=x.nome;cat_ordem.value=x.ordem||0;cat_ativo.checked=x.ativo!==false} if(t==='produtos'){prod_id.value=x.id;prod_categoria.value=x.categoria_id||'';prod_nome.value=x.nome;prod_descricao.value=x.descricao||'';prod_preco.value=x.preco||0;prod_preco_promocional.value=x.preco_promocional||'';prod_desconto_percentual.value=x.desconto_percentual||'';prod_desconto_ativo.checked=x.desconto_ativo===true;prod_badge.value=x.badge||'';prod_imagem.value=x.imagem_url||'';prod_ordem.value=x.ordem||0;prod_ativo.checked=x.ativo!==false;renderProdutoComplementosChecks(x.id)} if(t==='categorias_complementos'){cc_id.value=x.id;cc_nome.value=x.nome;cc_min.value=x.min_escolha||0;cc_max.value=x.max_escolha||6;cc_ordem.value=x.ordem||0;cc_ativo.checked=x.ativo!==false} if(t==='complementos'){comp_id.value=x.id;comp_categoria.value=x.categoria_complemento_id||'';comp_nome.value=x.nome;comp_preco.value=x.preco||0;comp_ordem.value=x.ordem||0;comp_ativo.checked=x.ativo!==false}}
-async function salvar(e,t){e.preventDefault();try{let body={},id=''; if(t==='categorias'){id=cat_id.value;body={id,nome:cat_nome.value,ordem:cat_ordem.value,ativo:cat_ativo.checked}} if(t==='produtos'){id=prod_id.value;body={id,categoria_id:prod_categoria.value,nome:prod_nome.value,descricao:prod_descricao.value,preco:prod_preco.value,desconto_ativo:prod_desconto_ativo.checked,desconto_percentual:prod_desconto_percentual.value,preco_promocional:prod_preco_promocional.value,badge:prod_badge.value,imagem_url:prod_imagem.value,ordem:prod_ordem.value,ativo:prod_ativo.checked}} if(t==='categorias_complementos'){id=cc_id.value;body={id,nome:cc_nome.value,min_escolha:cc_min.value,max_escolha:cc_max.value,ordem:cc_ordem.value,ativo:cc_ativo.checked}} if(t==='complementos'){id=comp_id.value;body={id,categoria_complemento_id:comp_categoria.value,nome:comp_nome.value,preco:comp_preco.value,ordem:comp_ordem.value,ativo:comp_ativo.checked}}
- const saved=await api(t,id?'PUT':'POST',body);
- if(t==='produtos'){
+function renderPromoComplementosChecks(produtoId=''){
+ const vinculadas=new Set(state.produto_complemento_categorias.filter(v=>v.produto_id===produtoId).map(v=>v.categoria_complemento_id));
+ promo_categorias_complementos.innerHTML=state.categorias_complementos.length?state.categorias_complementos.map(c=>`<label class="check card-check"><input type="checkbox" class="promo-catcomp" value="${c.id}" ${!produtoId||vinculadas.has(c.id)?'checked':''}> ${c.nome}<small>Escolha de ${c.min_escolha||0} até ${c.max_escolha||6}</small></label>`).join(''):'<p class="small">Cadastre as categorias dos complementos primeiro.</p>';
+}
+function novo(t){if(t==='categorias'){cat_id.value='';cat_nome.value='';cat_ordem.value=0;cat_ativo.checked=true} if(t==='produtos'){prod_id.value='';prod_nome.value='';prod_descricao.value='';prod_preco.value='';prod_preco_promocional.value='';prod_desconto_percentual.value='';prod_badge.value='';prod_imagem.value='';prod_ordem.value=0;prod_desconto_ativo.checked=false;prod_promocao_ativa.checked=false;prod_ativo.checked=true;renderProdutoComplementosChecks('')} if(t==='promocoes'){promo_id.value='';promo_nome.value='';promo_descricao.value='';promo_preco.value='';promo_preco_promocional.value='';promo_desconto_percentual.value='';promo_badge.value='PROMOÇÃO';promo_imagem.value='';promo_ordem.value=0;promo_ativo.checked=true;renderPromoComplementosChecks('')} if(t==='categorias_complementos'){cc_id.value='';cc_nome.value='';cc_min.value=0;cc_max.value=6;cc_ordem.value=0;cc_ativo.checked=true} if(t==='complementos'){comp_id.value='';comp_nome.value='';comp_preco.value='';comp_ordem.value=0;comp_ativo.checked=true}}
+function editar(t,x){if(t==='categorias_complementos')abrirTab('catcomp');else if(t==='promocoes')abrirTab('promocoes');else abrirTab(t); if(t==='categorias'){cat_id.value=x.id;cat_nome.value=x.nome;cat_ordem.value=x.ordem||0;cat_ativo.checked=x.ativo!==false} if(t==='produtos'){prod_id.value=x.id;prod_categoria.value=x.categoria_id||'';prod_nome.value=x.nome;prod_descricao.value=x.descricao||'';prod_preco.value=x.preco||0;prod_preco_promocional.value=x.preco_promocional||'';prod_desconto_percentual.value=x.desconto_percentual||'';prod_desconto_ativo.checked=x.desconto_ativo===true;prod_promocao_ativa.checked=x.promocao_ativa===true;prod_badge.value=x.badge||'';prod_imagem.value=x.imagem_url||'';prod_ordem.value=x.ordem||0;prod_ativo.checked=x.ativo!==false;renderProdutoComplementosChecks(x.id)} if(t==='promocoes'){promo_id.value=x.id;promo_categoria.value=x.categoria_id||'';promo_nome.value=x.nome;promo_descricao.value=x.descricao||'';promo_preco.value=x.preco||0;promo_preco_promocional.value=x.preco_promocional||'';promo_desconto_percentual.value=x.desconto_percentual||'';promo_badge.value=x.badge||'PROMOÇÃO';promo_imagem.value=x.imagem_url||'';promo_ordem.value=x.ordem||0;promo_ativo.checked=x.ativo!==false;renderPromoComplementosChecks(x.id)} if(t==='categorias_complementos'){cc_id.value=x.id;cc_nome.value=x.nome;cc_min.value=x.min_escolha||0;cc_max.value=x.max_escolha||6;cc_ordem.value=x.ordem||0;cc_ativo.checked=x.ativo!==false} if(t==='complementos'){comp_id.value=x.id;comp_categoria.value=x.categoria_complemento_id||'';comp_nome.value=x.nome;comp_preco.value=x.preco||0;comp_ordem.value=x.ordem||0;comp_ativo.checked=x.ativo!==false}}
+async function salvar(e,t){e.preventDefault();try{let body={},id=''; if(t==='categorias'){id=cat_id.value;body={id,nome:cat_nome.value,ordem:cat_ordem.value,ativo:cat_ativo.checked}} if(t==='produtos'){id=prod_id.value;body={id,categoria_id:prod_categoria.value,nome:prod_nome.value,descricao:prod_descricao.value,preco:prod_preco.value,desconto_ativo:prod_desconto_ativo.checked,desconto_percentual:prod_desconto_percentual.value,preco_promocional:prod_preco_promocional.value,badge:prod_badge.value,imagem_url:prod_imagem.value,ordem:prod_ordem.value,ativo:prod_ativo.checked,promocao_ativa:prod_promocao_ativa.checked}} if(t==='promocoes'){id=promo_id.value;body={id,categoria_id:promo_categoria.value,nome:promo_nome.value,descricao:promo_descricao.value,preco:promo_preco.value,desconto_ativo:true,desconto_percentual:promo_desconto_percentual.value,preco_promocional:promo_preco_promocional.value,badge:promo_badge.value||'PROMOÇÃO',imagem_url:promo_imagem.value,ordem:promo_ordem.value,ativo:promo_ativo.checked,promocao_ativa:true}} if(t==='categorias_complementos'){id=cc_id.value;body={id,nome:cc_nome.value,min_escolha:cc_min.value,max_escolha:cc_max.value,ordem:cc_ordem.value,ativo:cc_ativo.checked}} if(t==='complementos'){id=comp_id.value;body={id,categoria_complemento_id:comp_categoria.value,nome:comp_nome.value,preco:comp_preco.value,ordem:comp_ordem.value,ativo:comp_ativo.checked}}
+ const tabelaSalvar=t==='promocoes'?'produtos':t;
+ const saved=await api(tabelaSalvar,id?'PUT':'POST',body);
+ if(t==='produtos'||t==='promocoes'){
    const produtoId=id || saved?.id;
-   const categorias_ids=[...document.querySelectorAll('.produto-catcomp:checked')].map(x=>x.value);
+   const categorias_ids=[...document.querySelectorAll(t==='promocoes'?'.promo-catcomp:checked':'.produto-catcomp:checked')].map(x=>x.value);
    if(produtoId){await api('produto_complemento_categorias_set','POST',{produto_id:produtoId,categorias_ids});}
  }
  await loadTudo(); novo(t); alert('Salvo com sucesso!');}catch(err){alert('Erro: '+err.message)}}
-async function excluir(t,id){if(!confirm('Excluir este item?'))return;try{await api(t,'DELETE',null,id);await loadTudo()}catch(e){alert('Erro: '+e.message)}}
+async function excluir(t,id){if(!confirm('Excluir este item?'))return;try{await api(t==='promocoes'?'produtos':t,'DELETE',null,id);await loadTudo()}catch(e){alert('Erro: '+e.message)}}
 loadPedidos();loadTudo();
 </script>
 </body>

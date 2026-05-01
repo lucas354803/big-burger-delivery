@@ -9,8 +9,8 @@ const produtosFallback=[
   {id:'big-smash',categoria_id:'hamburgueres',nome:'Big Burger Smash',descricao:'Blend smash, queijo cheddar, bacon, cebola crispy e molho especial da casa.',preco:28.90,desconto_ativo:true,preco_promocional:25.90,badge:'MAIS PEDIDO'},
   {id:'big-onion',categoria_id:'hamburgueres',nome:'Big Onion Burger',descricao:'Blend artesanal, queijo prato, onion rings, barbecue e maionese da casa.',preco:27.90},
   {id:'big-bacon',categoria_id:'hamburgueres',nome:'Big Bacon Cheddar',descricao:'Blend artesanal, cheddar cremoso, bacon em tiras e molho especial.',preco:29.90},
-  {id:'combo-duplo',categoria_id:'combos',nome:'Combo Duplo',descricao:'2 burgers + fritas crocantes + refrigerante 600ml.',preco:39.90,badge:'COMBO'},
-  {id:'combo-familia',categoria_id:'combos',nome:'Combo Família',descricao:'4 burgers + 4 fritas + refrigerante 1,5L para dividir.',preco:84.90,badge:'FAMÍLIA'}
+  {id:'combo-duplo',categoria_id:'combos',nome:'Combo Duplo',descricao:'2 burgers + fritas crocantes + refrigerante 600ml.',preco:39.90,badge:'COMBO',promocao_ativa:true},
+  {id:'combo-familia',categoria_id:'combos',nome:'Combo Família',descricao:'4 burgers + 4 fritas + refrigerante 1,5L para dividir.',preco:84.90,badge:'FAMÍLIA',promocao_ativa:true}
 ];
 const categoriasFallback=[
   {id:'todos',nome:'🔥 Todos',ordem:0},
@@ -57,15 +57,10 @@ async function carregarMenu(){
   render();
 }
 
-function render(){
-  renderCategorias();
-  const visiveis = categoriaSelecionada==='todos' ? produtos : produtos.filter(p=>String(p.categoria_id||'')===String(categoriaSelecionada));
-  if(typeof menuTitle !== 'undefined' && menuTitle){
-    const cat = categoriaSelecionada==='todos' ? null : categorias.find(c=>String(c.id)===String(categoriaSelecionada));
-    menuTitle.textContent = cat ? cat.nome.replace(/^[^A-Za-zÀ-ÿ0-9]+\s*/, '') : 'Os mais pedidos da Big Burger';
-  }
-  menu.innerHTML=visiveis.map((p)=>{ const i=produtos.findIndex(x=>String(x.id)===String(p.id)); return `
-    <article class="card" onclick="abrirProduto(${i})">
+
+function produtoCardHtml(p){
+  const i=produtos.findIndex(x=>String(x.id)===String(p.id));
+  return `<article class="card" onclick="abrirProduto(${i})">
       ${p.badge?`<div class="badge">${p.badge}</div>`:''}
       ${p.desconto_ativo&&p.preco_promocional?`<div class="badge discount">OFERTA</div>`:''}
       <div class="food-img" style="${p.imagem_url?`background-image:url('${p.imagem_url}')`:''}"></div>
@@ -77,7 +72,21 @@ function render(){
           <button class="mini-btn" onclick="event.stopPropagation(); abrirProduto(${i})">🛒 Adicionar</button>
         </div>
       </div>
-    </article>`}).join('') || '<div class="empty-menu">Nenhum produto cadastrado nessa categoria.</div>';
+    </article>`;
+}
+
+function render(){
+  renderCategorias();
+  const visiveis = categoriaSelecionada==='todos' ? produtos : produtos.filter(p=>String(p.categoria_id||'')===String(categoriaSelecionada));
+  if(typeof menuTitle !== 'undefined' && menuTitle){
+    const cat = categoriaSelecionada==='todos' ? null : categorias.find(c=>String(c.id)===String(categoriaSelecionada));
+    menuTitle.textContent = cat ? cat.nome.replace(/^[^A-Za-zÀ-ÿ0-9]+\s*/, '') : 'Os mais pedidos da Big Burger';
+  }
+  menu.innerHTML=visiveis.map(produtoCardHtml).join('') || '<div class="empty-menu">Nenhum produto cadastrado nessa categoria.</div>';
+  const promos = produtos.filter(p=>p.promocao_ativa);
+  if(typeof promosGrid !== 'undefined' && promosGrid){
+    promosGrid.innerHTML = promos.length ? promos.map(produtoCardHtml).join('') : '<div class="empty-menu">Nenhuma promoção cadastrada ainda. Cadastre pelo Admin → Promoções.</div>';
+  }
   const valor=carrinho.reduce((s,p)=>s+p.preco,0);
   cartCount.textContent=carrinho.length;
   topTotal.textContent=fmt(valor);

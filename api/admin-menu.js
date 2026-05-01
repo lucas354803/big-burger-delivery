@@ -11,6 +11,7 @@ function limparPayload(tabela, body) {
   if ('desconto_percentual' in body) base.desconto_percentual = Number(body.desconto_percentual || 0);
   if ('preco_promocional' in body) base.preco_promocional = body.preco_promocional === '' || body.preco_promocional == null ? null : Number(body.preco_promocional || 0);
   if ('badge' in body) base.badge = String(body.badge || '').trim();
+  if ('promocao_ativa' in body) base.promocao_ativa = Boolean(body.promocao_ativa);
   if ('imagem_url' in body) base.imagem_url = String(body.imagem_url || '').trim();
   if ('categoria_id' in body) base.categoria_id = body.categoria_id || null;
   if ('categoria_complemento_id' in body) base.categoria_complemento_id = body.categoria_complemento_id || null;
@@ -33,7 +34,8 @@ function limparPayload(tabela, body) {
     badge: base.badge || '',
     imagem_url: base.imagem_url || '',
     ordem: base.ordem || 0,
-    ativo: 'ativo' in body ? base.ativo : true
+    ativo: 'ativo' in body ? base.ativo : true,
+    promocao_ativa: 'promocao_ativa' in body ? base.promocao_ativa : false
   };
   if (tabela === 'complementos') return { categoria_complemento_id: base.categoria_complemento_id, nome: base.nome, preco: base.preco, ordem: base.ordem || 0, ativo: 'ativo' in body ? base.ativo : true };
   if (tabela === 'produto_complemento_categorias') return { produto_id: base.produto_id, categoria_complemento_id: base.categoria_complemento_id };
