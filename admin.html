@@ -14,21 +14,33 @@
 
   <main class="admin-layout">
     <section class="admin-panel">
-      <div class="admin-tabs">
-        <button class="tab active" onclick="abrirTab('pedidos')">📋 Pedidos</button>
-        <button class="tab" onclick="abrirTab('categorias')">🏷️ Categorias</button>
-        <button class="tab" onclick="abrirTab('produtos')">🍔 Produtos</button>
-        <button class="tab" onclick="abrirTab('promocoes')">⭐ Promoções</button>
-        <button class="tab" onclick="abrirTab('catcomp')">🧩 Categorias dos complementos</button>
-        <button class="tab" onclick="abrirTab('complementos')">➕ Complementos</button>
+      <div class="admin-main-tabs">
+        <button class="main-tab active" onclick="abrirMain('pedidos')">📋 Pedidos</button>
+        <button class="main-tab" onclick="abrirMain('editor')">🧾 Editor de Cardápio</button>
       </div>
 
-      <div id="pedidos" class="tab-content active">
+      <div id="main-pedidos" class="main-content active">
+        <div id="pedidos" class="tab-content active">
         <div class="admin-head"><h1>Pedidos recebidos</h1><button class="btn red" onclick="loadPedidos()">Atualizar pedidos</button></div>
         <div id="pedidosOut" class="admin-card">Carregando...</div>
       </div>
 
-      <div id="categorias" class="tab-content">
+      </div>
+
+      <div id="main-editor" class="main-content">
+        <div class="editor-title">
+          <h1>🧾 Editor de Cardápio</h1>
+          <p>Cadastre e organize tudo que aparece no cardápio da Big Burger.</p>
+        </div>
+        <div class="admin-tabs editor-tabs">
+          <button class="tab active" onclick="abrirTab('categorias')">🏷️ Categorias</button>
+          <button class="tab" onclick="abrirTab('produtos')">🍔 Produtos</button>
+          <button class="tab" onclick="abrirTab('promocoes')">⭐ Promoções</button>
+          <button class="tab" onclick="abrirTab('catcomp')">🧩 Categorias dos complementos</button>
+          <button class="tab" onclick="abrirTab('complementos')">➕ Complementos</button>
+        </div>
+
+      <div id="categorias" class="tab-content active">
         <div class="admin-head"><h1>Categorias do cardápio</h1><button class="btn green" onclick="novo('categorias')">Nova categoria</button></div>
         <div class="admin-grid">
           <form class="admin-form" onsubmit="salvar(event,'categorias')">
@@ -143,13 +155,24 @@
           <div id="complementosOut" class="admin-card"></div>
         </div>
       </div>
+      </div>
     </section>
   </main>
 
 <script>
 const state={categorias:[],produtos:[],categorias_complementos:[],complementos:[],produto_complemento_categorias:[]};
 const brl=v=>Number(v||0).toLocaleString('pt-BR',{style:'currency',currency:'BRL'});
-function abrirTab(id){document.querySelectorAll('.tab,.tab-content').forEach(x=>x.classList.remove('active'));document.querySelector(`.tab[onclick="abrirTab('${id}')"]`).classList.add('active');document.getElementById(id).classList.add('active');}
+function abrirMain(id){
+  document.querySelectorAll('.main-tab,.main-content').forEach(x=>x.classList.remove('active'));
+  document.querySelector(`.main-tab[onclick="abrirMain('${id}')"]`).classList.add('active');
+  document.getElementById('main-'+id).classList.add('active');
+}
+function abrirTab(id){
+  abrirMain('editor');
+  document.querySelectorAll('#main-editor .tab,#main-editor .tab-content').forEach(x=>x.classList.remove('active'));
+  document.querySelector(`#main-editor .tab[onclick="abrirTab('${id}')"]`).classList.add('active');
+  document.getElementById(id).classList.add('active');
+}
 async function api(tabela,method='GET',body=null,id=null){const url='/api/admin-menu?tabela='+tabela+(id?'&id='+id:'');const r=await fetch(url,{method,headers:{'Content-Type':'application/json'},body:body?JSON.stringify({...body,tabela}):null});const d=await r.json();if(!r.ok||!d.ok)throw new Error(d.error||JSON.stringify(d));return d.data;}
 async function loadPedidos(){pedidosOut.innerHTML='Carregando...';try{const r=await fetch('/api/admin');const d=await r.json();pedidosOut.innerHTML=d.ok?`<table class="table"><tr><th>Cliente</th><th>Total</th><th>Status</th><th>Endereço</th></tr>${d.pedidos.map(p=>`<tr><td>${p.cliente_nome}<br><small>${p.cliente_telefone||''}</small></td><td>${brl(p.valor_total)}</td><td>${p.status}</td><td>${p.endereco}</td></tr>`).join('')}</table>`:JSON.stringify(d)}catch(e){pedidosOut.innerHTML='<div class="err">'+e.message+'</div>'}}
 async function loadTudo(){try{state.categorias=await api('categorias');state.produtos=await api('produtos');state.categorias_complementos=await api('categorias_complementos');state.complementos=await api('complementos');state.produto_complemento_categorias=await api('produto_complemento_categorias');renderAdmin();}catch(e){document.querySelector('.admin-panel').insertAdjacentHTML('afterbegin','<div class="err">Erro: '+e.message+'</div>')}}

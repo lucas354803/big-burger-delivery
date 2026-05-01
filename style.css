@@ -15,3 +15,13 @@
 .cat-btn.active,.cat-btn:hover{background:#e21b1b;border-color:#ff3333;color:#fff}
 .empty-menu{grid-column:1/-1;background:#151515;border:1px dashed #444;border-radius:16px;padding:22px;text-align:center;color:#bbb;font-weight:800}
 @media(max-width:700px){.category-bar{flex-wrap:nowrap;overflow:auto;top:128px}.cat-btn{white-space:nowrap}}
+
+/* Admin agrupado: Pedidos + Editor de Cardápio */
+.admin-main-tabs{display:flex;gap:12px;flex-wrap:wrap;margin-bottom:20px;padding:12px;background:#0f0f0f;border:1px solid rgba(255,255,255,.1);border-radius:18px}
+.main-tab{background:#1b1b1b;color:#fff;border:1px solid rgba(255,255,255,.14);border-radius:14px;padding:14px 20px;font-weight:1000;cursor:pointer;font-size:15px;box-shadow:0 8px 18px rgba(0,0,0,.2)}
+.main-tab.active,.main-tab:hover{background:linear-gradient(180deg,#f02626,#bd1010);border-color:#ff3737;color:#fff}
+.main-content{display:none}.main-content.active{display:block}
+.editor-title{margin:8px 0 18px;padding:18px;border-radius:18px;background:linear-gradient(90deg,rgba(217,21,21,.22),rgba(255,255,255,.03));border:1px solid rgba(255,255,255,.1)}
+.editor-title h1{margin:0 0 6px;font-size:28px}.editor-title p{margin:0;color:#bbb}
+.editor-tabs{background:#101010;border:1px solid rgba(255,255,255,.1);border-radius:18px;padding:12px;margin-bottom:20px}
+@media(max-width:700px){.main-tab,.tab{width:100%;text-align:left}.admin-main-tabs,.editor-tabs{display:grid}}
