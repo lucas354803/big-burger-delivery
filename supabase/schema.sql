@@ -69,6 +69,7 @@ CREATE TABLE produto_complemento_categorias (
 
 CREATE TABLE pedidos (
   id uuid PRIMARY KEY DEFAULT uuid_generate_v4(),
+  numero_pedido bigserial UNIQUE,
   cliente_nome text NOT NULL,
   cliente_telefone text NOT NULL,
   endereco text NOT NULL,
@@ -82,6 +83,7 @@ CREATE TABLE pedidos (
   itens jsonb NOT NULL DEFAULT '[]'::jsonb,
   valor_total numeric(10,2) NOT NULL DEFAULT 0,
   status text NOT NULL DEFAULT 'aguardando_pagamento',
+  tempo_estimado_minutos integer,
   created_at timestamptz NOT NULL DEFAULT now()
 );
 

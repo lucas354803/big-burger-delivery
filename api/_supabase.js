@@ -27,7 +27,9 @@ export function safeEnvStatus() {
     supabase_url_base: SUPABASE_URL ? SUPABASE_URL.replace(/https:\/\/([^\.]+)\./, 'https://***.') : null,
     service_role_key_ok: Boolean(process.env.SUPABASE_SERVICE_ROLE_KEY),
     anon_key_ok: Boolean(process.env.SUPABASE_ANON_KEY),
-    mp_token_ok: Boolean(process.env.MP_TOKEN)
+    mp_token_ok: Boolean(process.env.MP_TOKEN),
+    whatsapp_token_ok: Boolean(process.env.WHATSAPP_TOKEN),
+    whatsapp_phone_number_id_ok: Boolean(process.env.WHATSAPP_PHONE_NUMBER_ID)
   };
 }
 

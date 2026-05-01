@@ -15,3 +15,11 @@ SQL Editor > rode `supabase/schema.sql`.
 
 
 Atualização: Aba 👥 Clientes no admin com registro automático por WhatsApp, quantidade de pedidos, total gasto e último endereço.
+
+## WhatsApp automático
+Configure na Vercel:
+
+- WHATSAPP_TOKEN = token da Meta
+- WHATSAPP_PHONE_NUMBER_ID = ID do número da Meta
+
+Depois faça Redeploy. O envio automático acontece quando o status do pedido muda no admin.

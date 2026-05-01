@@ -29,6 +29,7 @@ function normalizarStatusPedido(status){
   if(['entregue'].includes(status)) return 'finalizado';
   return status || 'em_analise';
 }
+function numeroPedido(p){ if(p && p.numero_pedido) return String(p.numero_pedido).padStart(2, '0'); return String(p?.id||'').split('-')[0].toUpperCase(); }
 function shortId(id){return String(id||'').split('-')[0].toUpperCase()}
 function itensTexto(itens){
   try{ if(typeof itens==='string') itens=JSON.parse(itens); }catch(e){}
@@ -48,11 +49,15 @@ function abrirWhats(p,tipo){
 }
 async function atualizarStatusPedido(id,status,whatsTipo){
   const pedido=pedidosCache.find(p=>p.id===id);
+  let tempo = pedido?.tempo_estimado_minutos || '';
+  if(status==='em_preparo') tempo = prompt('Tempo estimado para preparo e entrega (minutos):', tempo || 40) || tempo;
+  if(status==='em_entrega') tempo = prompt('Tempo estimado até chegar no cliente (minutos):', 15) || 15;
   try{
-    const r=await fetch('/api/order-status',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({id,status})});
+    const r=await fetch('/api/order-status',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({id,status,tempo_estimado_minutos:tempo,enviar_whatsapp:true})});
     const d=await r.json();
     if(!r.ok||!d.ok) throw new Error(d.error||JSON.stringify(d));
-    if(pedido && whatsTipo) abrirWhats({...pedido,status},whatsTipo);
+    if(d.whatsapp && d.whatsapp.ok){ alert('Status atualizado e WhatsApp enviado automaticamente!'); }
+    else if(d.whatsapp && !d.whatsapp.ok){ alert('Status atualizado, mas WhatsApp não enviou: '+(d.whatsapp.error||'verifique WHATSAPP_TOKEN na Vercel')); }
     await loadPedidos();
   }catch(e){alert('Erro ao atualizar pedido: '+e.message)}
 }
@@ -65,7 +70,7 @@ function cardPedido(p){
   if(st==='pronto') acoes=`<button class="order-action delivery" onclick="atualizarStatusPedido('${p.id}','em_entrega','entrega')">🛵 Saiu para entrega</button>`;
   if(st==='em_entrega') acoes=`<button class="order-action done" onclick="atualizarStatusPedido('${p.id}','finalizado','')">✅ Finalizar</button>`;
   if(st==='finalizado') acoes=`<span class="order-done">Pedido finalizado</span>`;
-  return `<div class="order-card"><div class="order-title"><b>#${shortId(p.id)}</b><span>${brl(p.valor_total)}</span></div><div class="order-customer">👤 ${p.cliente_nome||''}<br>📞 ${p.cliente_telefone||''}</div><div class="order-items">${itens}</div><div class="order-address">📍 ${enderecoPedido(p)}<br>💳 ${p.forma_pagamento||'pix'} • 🚚 ${brl(p.taxa_entrega||0)}</div><div class="order-actions">${acoes}<button class="order-action whats" onclick='abrirWhats(${JSON.stringify(p).replaceAll("'","&#39;")},"aceito")'>💬 WhatsApp</button></div></div>`;
+  return `<div class="order-card"><div class="order-title"><b>#${numeroPedido(p)}</b><span>${brl(p.valor_total)}</span></div><div class="order-customer">👤 ${p.cliente_nome||''}<br>📞 ${p.cliente_telefone||''}</div><div class="order-items">${itens}</div><div class="order-address">📍 ${enderecoPedido(p)}<br>💳 ${p.forma_pagamento||'pix'} • 🚚 ${brl(p.taxa_entrega||0)}</div><div class="order-actions">${acoes}<button class="order-action whats" onclick='abrirWhats(${JSON.stringify(p).replaceAll("'","&#39;")},"aceito")'>💬 WhatsApp</button></div></div>`;
 }
 function tocarSomPedido(){try{const ctx=new (window.AudioContext||window.webkitAudioContext)();const osc=ctx.createOscillator();const gain=ctx.createGain();osc.type='sine';osc.frequency.value=880;gain.gain.value=.12;osc.connect(gain);gain.connect(ctx.destination);osc.start();setTimeout(()=>{osc.frequency.value=660},120);setTimeout(()=>{osc.stop();ctx.close()},360)}catch(e){}}
 function toggleSomPedidos(){somPedidosLigado=!somPedidosLigado;localStorage.setItem('somPedidosLigado',somPedidosLigado?'1':'0');const b=document.getElementById('btnSomPedidos');if(b)b.textContent=somPedidosLigado?'🔔 Som ligado':'🔕 Som desligado'}
