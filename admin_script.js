@@ -13,7 +13,83 @@ function abrirTab(id){
   document.getElementById(id).classList.add('active');
 }
 async function api(tabela,method='GET',body=null,id=null){const url='/api/admin-menu?tabela='+tabela+(id?'&id='+id:'');const r=await fetch(url,{method,headers:{'Content-Type':'application/json'},body:body?JSON.stringify({...body,tabela}):null});const d=await r.json();if(!r.ok||!d.ok)throw new Error(d.error||JSON.stringify(d));return d.data;}
-async function loadPedidos(){pedidosOut.innerHTML='Carregando...';try{const r=await fetch('/api/admin');const d=await r.json();pedidosOut.innerHTML=d.ok?`<table class="table"><tr><th>Cliente</th><th>Total</th><th>Status</th><th>Endereço</th></tr>${d.pedidos.map(p=>`<tr><td>${p.cliente_nome}<br><small>${p.cliente_telefone||''}</small></td><td>${brl(p.valor_total)}</td><td>${p.status}</td><td>${p.endereco}</td></tr>`).join('')}</table>`:JSON.stringify(d)}catch(e){pedidosOut.innerHTML='<div class="err">'+e.message+'</div>'}}
+let pedidosCache=[];
+let somPedidosLigado=localStorage.getItem('somPedidosLigado')!=='0';
+let ultimoTotalPedidos=0;
+const orderStatuses=[
+  {id:'em_analise',titulo:'Em análise',emoji:'🔴',cls:'analise'},
+  {id:'em_preparo',titulo:'Em preparo',emoji:'🟡',cls:'preparo'},
+  {id:'pronto',titulo:'Pronto',emoji:'🔵',cls:'pronto'},
+  {id:'em_entrega',titulo:'Em entrega',emoji:'🟢',cls:'entrega'},
+  {id:'finalizado',titulo:'Finalizados',emoji:'⚫',cls:'finalizado'}
+];
+function normalizarStatusPedido(status){
+  if(['aguardando_pagamento','pedido_recebido','pago','aprovado','pendente'].includes(status)) return 'em_analise';
+  if(['preparo'].includes(status)) return 'em_preparo';
+  if(['entregue'].includes(status)) return 'finalizado';
+  return status || 'em_analise';
+}
+function shortId(id){return String(id||'').split('-')[0].toUpperCase()}
+function itensTexto(itens){
+  try{ if(typeof itens==='string') itens=JSON.parse(itens); }catch(e){}
+  if(!Array.isArray(itens)||!itens.length) return 'Itens não informados';
+  return itens.map(i=>`${i.qtd||i.quantidade||1}x ${i.nome||i.name||'Produto'}${i.preco?` - ${brl(i.preco)}`:''}`).join('\\n');
+}
+function enderecoPedido(p){return [p.cidade,p.bairro,p.rua].filter(Boolean).join(' • ') || p.endereco || ''}
+function limparTel(t){return String(t||'').replace(/\D/g,'').replace(/^55/,'')}
+function abrirWhats(p,tipo){
+  const tel=limparTel(p.cliente_telefone);
+  if(!tel){alert('Cliente sem WhatsApp cadastrado.');return;}
+  let msg='';
+  if(tipo==='aceito') msg=`🍔 Big Burger\\n\\nSeu pedido #${shortId(p.id)} foi ACEITO! ✅\\n\\n📦 Pedido:\\n${itensTexto(p.itens)}\\n\\n💰 Total: ${brl(p.valor_total)}\\n👨‍🍳 Já estamos preparando seu pedido.`;
+  if(tipo==='entrega') msg=`🚀 Big Burger\\n\\nSeu pedido #${shortId(p.id)} saiu para entrega!\\n\\n📍 Endereço: ${enderecoPedido(p)}\\n💰 Total: ${brl(p.valor_total)}\\n\\n🛵 Já está a caminho. Fique atento!`;
+  if(tipo==='pronto') msg=`🍔 Big Burger\\n\\nSeu pedido #${shortId(p.id)} está PRONTO! ✅\\nLogo será enviado para entrega.`;
+  window.open(`https://wa.me/55${tel}?text=${encodeURIComponent(msg)}`,'_blank');
+}
+async function atualizarStatusPedido(id,status,whatsTipo){
+  const pedido=pedidosCache.find(p=>p.id===id);
+  try{
+    const r=await fetch('/api/order-status',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({id,status})});
+    const d=await r.json();
+    if(!r.ok||!d.ok) throw new Error(d.error||JSON.stringify(d));
+    if(pedido && whatsTipo) abrirWhats({...pedido,status},whatsTipo);
+    await loadPedidos();
+  }catch(e){alert('Erro ao atualizar pedido: '+e.message)}
+}
+function cardPedido(p){
+  const st=normalizarStatusPedido(p.status);
+  const itens=itensTexto(p.itens).replaceAll('\\n','<br>');
+  let acoes='';
+  if(st==='em_analise') acoes=`<button class="order-action accept" onclick="atualizarStatusPedido('${p.id}','em_preparo','aceito')">✅ Aceitar pedido</button>`;
+  if(st==='em_preparo') acoes=`<button class="order-action ready" onclick="atualizarStatusPedido('${p.id}','pronto','pronto')">🔵 Marcar pronto</button><button class="order-action delivery" onclick="atualizarStatusPedido('${p.id}','em_entrega','entrega')">🛵 Saiu para entrega</button>`;
+  if(st==='pronto') acoes=`<button class="order-action delivery" onclick="atualizarStatusPedido('${p.id}','em_entrega','entrega')">🛵 Saiu para entrega</button>`;
+  if(st==='em_entrega') acoes=`<button class="order-action done" onclick="atualizarStatusPedido('${p.id}','finalizado','')">✅ Finalizar</button>`;
+  if(st==='finalizado') acoes=`<span class="order-done">Pedido finalizado</span>`;
+  return `<div class="order-card"><div class="order-title"><b>#${shortId(p.id)}</b><span>${brl(p.valor_total)}</span></div><div class="order-customer">👤 ${p.cliente_nome||''}<br>📞 ${p.cliente_telefone||''}</div><div class="order-items">${itens}</div><div class="order-address">📍 ${enderecoPedido(p)}<br>💳 ${p.forma_pagamento||'pix'} • 🚚 ${brl(p.taxa_entrega||0)}</div><div class="order-actions">${acoes}<button class="order-action whats" onclick='abrirWhats(${JSON.stringify(p).replaceAll("'","&#39;")},"aceito")'>💬 WhatsApp</button></div></div>`;
+}
+function tocarSomPedido(){try{const ctx=new (window.AudioContext||window.webkitAudioContext)();const osc=ctx.createOscillator();const gain=ctx.createGain();osc.type='sine';osc.frequency.value=880;gain.gain.value=.12;osc.connect(gain);gain.connect(ctx.destination);osc.start();setTimeout(()=>{osc.frequency.value=660},120);setTimeout(()=>{osc.stop();ctx.close()},360)}catch(e){}}
+function toggleSomPedidos(){somPedidosLigado=!somPedidosLigado;localStorage.setItem('somPedidosLigado',somPedidosLigado?'1':'0');const b=document.getElementById('btnSomPedidos');if(b)b.textContent=somPedidosLigado?'🔔 Som ligado':'🔕 Som desligado'}
+function renderPedidosGestor(){
+  const out=document.getElementById('pedidosBoard'); if(!out) return;
+  const busca=(document.getElementById('pedidoBusca')?.value||'').toLowerCase().trim();
+  let lista=[...pedidosCache];
+  if(busca) lista=lista.filter(p=>[p.id,p.cliente_nome,p.cliente_telefone,enderecoPedido(p),itensTexto(p.itens)].join(' ').toLowerCase().includes(busca));
+  const totalNovos=lista.filter(p=>normalizarStatusPedido(p.status)==='em_analise').length;
+  out.innerHTML=`<div class="orders-summary"><div><b>${lista.length}</b><span>Pedidos totais</span></div><div><b>${totalNovos}</b><span>Em análise</span></div><div><b>${brl(lista.reduce((s,p)=>s+Number(p.valor_total||0),0))}</b><span>Valor dos pedidos</span></div></div><div class="kanban">${orderStatuses.map(col=>{const pedidos=lista.filter(p=>normalizarStatusPedido(p.status)===col.id);const valor=pedidos.reduce((s,p)=>s+Number(p.valor_total||0),0);return `<section class="kanban-col ${col.cls}"><h3>${col.emoji} ${col.titulo} <em>${pedidos.length}</em></h3><small>${brl(valor)}</small><div class="kanban-list">${pedidos.map(cardPedido).join('')||'<p class="empty-col">Sem pedidos</p>'}</div></section>`}).join('')}</div>`;
+  toggleSomPedidos();
+}
+async function loadPedidos(){
+  const out=document.getElementById('pedidosBoard')||document.getElementById('pedidosOut'); if(out) out.innerHTML='Carregando pedidos...';
+  try{
+    const r=await fetch('/api/admin'); const d=await r.json();
+    if(!r.ok||!d.ok) throw new Error(d.error||JSON.stringify(d));
+    pedidosCache=d.pedidos||[];
+    const novoTotal=pedidosCache.length;
+    if(ultimoTotalPedidos && novoTotal>ultimoTotalPedidos && somPedidosLigado) tocarSomPedido();
+    ultimoTotalPedidos=novoTotal;
+    renderPedidosGestor();
+  }catch(e){if(out) out.innerHTML='<div class="err">Erro ao carregar pedidos: '+e.message+'</div>'}
+}
 
 async function loadClientes(){
   if(typeof clientesOut!=='undefined') clientesOut.innerHTML='Carregando clientes...';
