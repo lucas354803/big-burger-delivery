@@ -207,12 +207,63 @@ async function salvarConfigLoja(e){
   const out=document.getElementById('configLojaStatus'); if(out) out.textContent='Salvando...';
   try{const r=await fetch('/api/store-settings',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)});const d=await r.json();if(!r.ok||!d.ok)throw new Error(d.error||JSON.stringify(d));state.loja_config=d.config;state.horarios_funcionamento=d.horarios;renderConfigLoja();if(out)out.innerHTML='✅ Configuração salva com sucesso!';somPedidosLigado=cfg_som_pedidos.checked;localStorage.setItem('somPedidosLigado',somPedidosLigado?'1':'0');atualizarBotaoSom();}catch(err){if(out)out.innerHTML='<span class="err">Erro: '+err.message+'</span>';}
 }
+function escapeHtml(v){return String(v??'').replace(/[&<>"]/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[m]));}
+function inicioDiaISO(){const d=new Date();d.setHours(0,0,0,0);return d.toISOString();}
+function getFinanceiroResetISO(){return localStorage.getItem('financeiroResetDiarioISO') || inicioDiaISO();}
+function pedidosDoRelatorioDiario(){
+  const reset=new Date(getFinanceiroResetISO()).getTime();
+  const hoje=new Date();
+  return [...pedidosCache].filter(p=>{
+    if(normalizarStatusPedido(p.status)==='cancelado') return false;
+    const dt=new Date(p.created_at||Date.now());
+    return dt.toDateString()===hoje.toDateString() && dt.getTime()>=reset;
+  });
+}
+function resumoFinanceiroLista(lista){
+  const total=lista.reduce((s,p)=>s+Number(p.valor_total||0),0);
+  const taxas=lista.reduce((s,p)=>s+Number(p.taxa_entrega||0),0);
+  return {
+    pedidos: lista.length,
+    faturamento: total,
+    taxas,
+    liquido: total-taxas,
+    ticket: lista.length?total/lista.length:0,
+    pix: lista.filter(p=>String(p.forma_pagamento||'').toLowerCase()==='pix').reduce((s,p)=>s+Number(p.valor_total||0),0),
+    dinheiro: lista.filter(p=>String(p.forma_pagamento||'').toLowerCase()==='dinheiro').reduce((s,p)=>s+Number(p.valor_total||0),0),
+    cartao: lista.filter(p=>String(p.forma_pagamento||'').toLowerCase().includes('cart')).reduce((s,p)=>s+Number(p.valor_total||0),0)
+  };
+}
+function htmlRelatorioDiario(lista=pedidosDoRelatorioDiario()){
+  const r=resumoFinanceiroLista(lista);
+  const data=new Date().toLocaleDateString('pt-BR');
+  const gerado=new Date().toLocaleString('pt-BR');
+  const linhas=lista.map(p=>`<tr><td>#${numeroPedido(p)}</td><td>${escapeHtml(p.cliente_nome||'')}</td><td>${escapeHtml(p.forma_pagamento||'')}</td><td>${escapeHtml(normalizarStatusPedido(p.status))}</td><td>${brl(p.valor_total||0)}</td><td>${brl(p.taxa_entrega||0)}</td><td>${dataBR(p.created_at)}</td></tr>`).join('') || '<tr><td colspan="7">Nenhum pedido neste relatório.</td></tr>';
+  return `<!doctype html><html lang="pt-BR"><head><meta charset="utf-8"><title>Relatório diário Big Burger</title><style>body{font-family:Arial,sans-serif;color:#111;margin:28px}h1{margin:0 0 6px}.muted{color:#555;margin-bottom:20px}.cards{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin:18px 0}.card{border:1px solid #ddd;border-radius:10px;padding:14px}.card b{font-size:22px;display:block;color:#d71919}table{width:100%;border-collapse:collapse;margin-top:16px}th{background:#111;color:#fff}td,th{border:1px solid #ddd;padding:8px;text-align:left}.total{font-weight:bold;background:#f5f5f5}@media print{button{display:none}body{margin:12px}}</style></head><body><button onclick="window.print()">Imprimir / Salvar em PDF</button><h1>Big Burger — Relatório diário</h1><div class="muted">Data: ${data} • Gerado em: ${gerado}</div><div class="cards"><div class="card"><span>Faturamento bruto</span><b>${brl(r.faturamento)}</b></div><div class="card"><span>Taxas de entrega</span><b>${brl(r.taxas)}</b></div><div class="card"><span>Faturamento líquido</span><b>${brl(r.liquido)}</b></div><div class="card"><span>Pedidos</span><b>${r.pedidos}</b></div><div class="card"><span>Ticket médio</span><b>${brl(r.ticket)}</b></div><div class="card"><span>Pix / dinheiro / cartão</span><b>${brl(r.pix)} • ${brl(r.dinheiro)} • ${brl(r.cartao)}</b></div></div><h2>Pedidos do dia</h2><table><tr><th>Pedido</th><th>Cliente</th><th>Pagamento</th><th>Status</th><th>Total</th><th>Taxa entrega</th><th>Data/Hora</th></tr>${linhas}<tr class="total"><td colspan="4">Totais</td><td>${brl(r.faturamento)}</td><td>${brl(r.taxas)}</td><td></td></tr></table><script>setTimeout(()=>window.print(),400)</script></body></html>`;
+}
+function baixarRelatorioDiario(){
+  const html=htmlRelatorioDiario();
+  const blob=new Blob([html],{type:'text/html;charset=utf-8'});
+  const a=document.createElement('a');
+  const data=new Date().toISOString().slice(0,10);
+  a.href=URL.createObjectURL(blob); a.download=`relatorio-big-burger-${data}.html`; a.click();
+  setTimeout(()=>URL.revokeObjectURL(a.href),1000);
+  const w=window.open('','_blank'); if(w){w.document.write(html);w.document.close();}
+}
+function zerarRelatorioDiario(){
+  if(!confirm('Antes de zerar, o relatório será baixado para você imprimir. Deseja continuar?')) return;
+  baixarRelatorioDiario();
+  localStorage.setItem('financeiroResetDiarioISO', new Date().toISOString());
+  renderFinanceiro();
+  alert('Relatório diário zerado com sucesso. Novos pedidos entrarão em uma nova contagem.');
+}
 function renderFinanceiro(){
-  const resumo=state.financeiro||{};
+  const lista=pedidosDoRelatorioDiario();
+  const resumo=resumoFinanceiroLista(lista);
   const box=document.getElementById('financeiroResumo');
   const out=document.getElementById('financeiroOut');
-  if(box){box.innerHTML=`<div class="stat-card"><b>${brl(resumo.faturamento_hoje||0)}</b><span>Faturamento hoje</span></div><div class="stat-card"><b>${brl(resumo.faturamento_total||0)}</b><span>Faturamento total</span></div><div class="stat-card"><b>${resumo.pedidos_hoje||0}</b><span>Pedidos hoje</span></div><div class="stat-card"><b>${brl(resumo.ticket_medio||0)}</b><span>Ticket médio</span></div><div class="stat-card"><b>${brl(resumo.pix||0)}</b><span>Pix</span></div><div class="stat-card"><b>${brl(resumo.dinheiro||0)}</b><span>Dinheiro</span></div><div class="stat-card"><b>${brl(resumo.cartao||0)}</b><span>Cartão</span></div><div class="stat-card"><b>${brl(resumo.taxa_entrega_total||0)}</b><span>Taxas de entrega</span></div>`;}
-  if(out){const lista=[...pedidosCache].filter(p=>normalizarStatusPedido(p.status)!=='cancelado');out.innerHTML=lista.length?`<table class="table"><tr><th>Pedido</th><th>Cliente</th><th>Pagamento</th><th>Status</th><th>Total</th><th>Data</th></tr>${lista.map(p=>`<tr><td>#${numeroPedido(p)}</td><td>${p.cliente_nome||''}</td><td>${p.forma_pagamento||''}</td><td>${normalizarStatusPedido(p.status)}</td><td><b>${brl(p.valor_total||0)}</b></td><td>${dataBR(p.created_at)}</td></tr>`).join('')}</table>`:'<p>Nenhum pedido no financeiro.</p>';}
+  const dataRef=document.getElementById('financeiroDataRef');
+  if(dataRef){dataRef.textContent=`Relatório referente ao dia ${new Date().toLocaleDateString('pt-BR')} • última zeragem: ${new Date(getFinanceiroResetISO()).toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'})}`;}
+  if(box){box.innerHTML=`<div class="stat-card dark-stat"><div>🛒</div><span>Faturamento bruto</span><b>${brl(resumo.faturamento)}</b></div><div class="stat-card dark-stat"><div>🧾</div><span>Taxas de entrega</span><b>${brl(resumo.taxas)}</b></div><div class="stat-card dark-stat"><div>💰</div><span>Faturamento líquido</span><b>${brl(resumo.liquido)}</b></div><div class="stat-card dark-stat"><div>📦</div><span>Pedidos</span><b>${resumo.pedidos}</b></div><div class="stat-card dark-stat"><div>🎟️</div><span>Ticket médio</span><b>${brl(resumo.ticket)}</b></div><div class="stat-card dark-stat"><div>💳</div><span>Pix / dinheiro / cartão</span><b>${brl(resumo.pix)} / ${brl(resumo.dinheiro)} / ${brl(resumo.cartao)}</b></div>`;}
+  if(out){out.innerHTML=lista.length?`<table class="table dark-table"><tr><th>Pedido</th><th>Cliente</th><th>Pagamento</th><th>Status</th><th>Entrega</th><th>Taxa entrega</th><th>Total</th><th>Data/Hora</th></tr>${lista.map(p=>`<tr><td>#${numeroPedido(p)}</td><td>${escapeHtml(p.cliente_nome||'')}</td><td>${escapeHtml(p.forma_pagamento||'')}</td><td>${escapeHtml(normalizarStatusPedido(p.status)).replaceAll('_',' ')}</td><td>${p.taxa_entrega?'Delivery':'Retirada'}</td><td>${brl(p.taxa_entrega||0)}</td><td><b>${brl(p.valor_total||0)}</b></td><td>${dataBR(p.created_at)}</td></tr>`).join('')}<tr class="finance-total"><td colspan="5"><b>Totais do dia</b></td><td><b>${brl(resumo.taxas)}</b></td><td><b>${brl(resumo.faturamento)}</b></td><td></td></tr></table>`:'<div class="empty-finance">Relatório diário zerado. Os próximos pedidos aparecerão aqui.</div>';}
 }
-
 loadPedidos();loadClientes();loadTudo();loadConfigLoja();

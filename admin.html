@@ -62,14 +62,27 @@
       </div>
 
       <div id="main-financeiro" class="main-content">
-        <div class="editor-title">
-          <h1>💸 Relatório financeiro completo</h1>
-          <p>Resumo automático com faturamento, pedidos, formas de pagamento, taxa de entrega e ticket médio.</p>
-        </div>
-        <div id="financeiroResumo" class="stats-grid"></div>
-        <div class="admin-card">
-          <h2>Pedidos no financeiro</h2>
-          <div id="financeiroOut">Carregando financeiro...</div>
+        <div class="financeiro-shell">
+          <div class="financeiro-header">
+            <div>
+              <h1>📅 Relatório diário</h1>
+              <p>Resumo das movimentações do dia. Você pode baixar para imprimir e depois zerar o relatório.</p>
+              <small id="financeiroDataRef">Relatório referente ao dia de hoje</small>
+            </div>
+            <div class="financeiro-actions">
+              <button class="btn report-download" onclick="baixarRelatorioDiario()">⬇️ Baixar relatório</button>
+              <button class="btn report-reset" onclick="zerarRelatorioDiario()">🔄 Zerar relatório diário</button>
+            </div>
+          </div>
+          <div id="financeiroResumo" class="stats-grid financeiro-stats"></div>
+          <div class="admin-card financeiro-card">
+            <h2>Pedidos do dia</h2>
+            <div id="financeiroOut">Carregando financeiro...</div>
+          </div>
+          <div class="financeiro-note">
+            <b>ℹ️ Sobre o relatório diário</b><br>
+            Ao clicar em zerar, o sistema baixa uma cópia do relatório para impressão e começa uma nova contagem do dia neste painel.
+          </div>
         </div>
       </div>
 
