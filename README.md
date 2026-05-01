@@ -12,3 +12,6 @@ SQL Editor > rode `supabase/schema.sql`.
 ## Passo 3 - Teste
 - /api/debug
 - /api/create-pix pelo botão do site
+
+
+Atualização: Aba 👥 Clientes no admin com registro automático por WhatsApp, quantidade de pedidos, total gasto e último endereço.

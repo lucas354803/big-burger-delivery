@@ -18,6 +18,7 @@
         <button class="main-tab active" onclick="abrirMain('pedidos')">📋 Pedidos</button>
         <button class="main-tab" onclick="abrirMain('editor')">🧾 Editor de Cardápio</button>
         <button class="main-tab" onclick="abrirMain('entrega')">📍 Entrega</button>
+        <button class="main-tab" onclick="abrirMain('clientes')">👥 Clientes</button>
       </div>
 
       <div id="main-pedidos" class="main-content active">
@@ -65,6 +66,31 @@
         <div class="admin-card">
           <div class="admin-head"><h2>Bairros cadastrados</h2><button class="btn red" onclick="loadTudo()">Atualizar entrega</button></div>
           <div id="bairrosOut"></div>
+        </div>
+      </div>
+
+
+      <div id="main-clientes" class="main-content">
+        <div class="editor-title">
+          <h1>👥 Clientes</h1>
+          <p>Todos os clientes ficam registrados automaticamente quando fazem pedidos. Veja WhatsApp, endereço, quantidade de pedidos e quanto cada cliente gastou.</p>
+        </div>
+        <div class="admin-head">
+          <h2>Clientes registrados</h2>
+          <button class="btn red" onclick="loadClientes()">Atualizar clientes</button>
+        </div>
+        <div id="clientesResumo" class="stats-grid"></div>
+        <div class="admin-card">
+          <div class="client-toolbar">
+            <input id="clienteBusca" placeholder="Buscar por nome, WhatsApp, cidade, bairro ou endereço" oninput="renderClientes()">
+            <select id="clienteOrdem" onchange="renderClientes()">
+              <option value="gasto">Ordenar por quem mais gastou</option>
+              <option value="pedidos">Ordenar por mais pedidos</option>
+              <option value="recente">Ordenar por pedido mais recente</option>
+              <option value="nome">Ordenar por nome</option>
+            </select>
+          </div>
+          <div id="clientesOut">Carregando clientes...</div>
         </div>
       </div>
 

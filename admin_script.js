@@ -1,5 +1,5 @@
 
-const state={categorias:[],produtos:[],categorias_complementos:[],complementos:[],produto_complemento_categorias:[],cidades_entrega:[],bairros_entrega:[]};
+const state={categorias:[],produtos:[],categorias_complementos:[],complementos:[],produto_complemento_categorias:[],cidades_entrega:[],bairros_entrega:[],clientes:[],clientesResumo:null};
 const brl=v=>Number(v||0).toLocaleString('pt-BR',{style:'currency',currency:'BRL'});
 function abrirMain(id){
   document.querySelectorAll('.main-tab,.main-content').forEach(x=>x.classList.remove('active'));
@@ -14,6 +14,36 @@ function abrirTab(id){
 }
 async function api(tabela,method='GET',body=null,id=null){const url='/api/admin-menu?tabela='+tabela+(id?'&id='+id:'');const r=await fetch(url,{method,headers:{'Content-Type':'application/json'},body:body?JSON.stringify({...body,tabela}):null});const d=await r.json();if(!r.ok||!d.ok)throw new Error(d.error||JSON.stringify(d));return d.data;}
 async function loadPedidos(){pedidosOut.innerHTML='Carregando...';try{const r=await fetch('/api/admin');const d=await r.json();pedidosOut.innerHTML=d.ok?`<table class="table"><tr><th>Cliente</th><th>Total</th><th>Status</th><th>Endereço</th></tr>${d.pedidos.map(p=>`<tr><td>${p.cliente_nome}<br><small>${p.cliente_telefone||''}</small></td><td>${brl(p.valor_total)}</td><td>${p.status}</td><td>${p.endereco}</td></tr>`).join('')}</table>`:JSON.stringify(d)}catch(e){pedidosOut.innerHTML='<div class="err">'+e.message+'</div>'}}
+
+async function loadClientes(){
+  if(typeof clientesOut!=='undefined') clientesOut.innerHTML='Carregando clientes...';
+  try{
+    const r=await fetch('/api/clientes');
+    const d=await r.json();
+    if(!r.ok||!d.ok) throw new Error(d.error||JSON.stringify(d));
+    state.clientes=d.clientes||[];
+    state.clientesResumo=d.resumo||{};
+    renderClientes();
+  }catch(e){
+    if(typeof clientesOut!=='undefined') clientesOut.innerHTML='<div class="err">Erro ao carregar clientes: '+e.message+'</div>';
+  }
+}
+function dataBR(v){return v?new Date(v).toLocaleString('pt-BR'):''}
+function whatsLink(tel){const limpo=String(tel||'').replace(/\D/g,'');return limpo?`https://wa.me/55${limpo.replace(/^55/,'')}`:'#'}
+function renderClientes(){
+  if(typeof clientesOut==='undefined') return;
+  let lista=[...(state.clientes||[])];
+  const busca=(clienteBusca?.value||'').toLowerCase().trim();
+  const ordem=clienteOrdem?.value||'gasto';
+  if(busca){lista=lista.filter(c=>[c.cliente_nome,c.cliente_telefone,c.endereco,c.cidade,c.bairro,c.rua].join(' ').toLowerCase().includes(busca));}
+  if(ordem==='gasto') lista.sort((a,b)=>Number(b.total_gasto||0)-Number(a.total_gasto||0));
+  if(ordem==='pedidos') lista.sort((a,b)=>Number(b.total_pedidos||0)-Number(a.total_pedidos||0));
+  if(ordem==='recente') lista.sort((a,b)=>new Date(b.ultimo_pedido||0)-new Date(a.ultimo_pedido||0));
+  if(ordem==='nome') lista.sort((a,b)=>String(a.cliente_nome||'').localeCompare(String(b.cliente_nome||''),'pt-BR'));
+  const resumo=state.clientesResumo||{};
+  clientesResumo.innerHTML=`<div class="stat-card"><b>${resumo.total_clientes||0}</b><span>Clientes</span></div><div class="stat-card"><b>${resumo.total_pedidos||0}</b><span>Pedidos</span></div><div class="stat-card"><b>${brl(resumo.faturamento_total||0)}</b><span>Total gasto</span></div><div class="stat-card"><b>${brl(resumo.ticket_medio||0)}</b><span>Ticket médio</span></div>`;
+  clientesOut.innerHTML=lista.length?`<table class="table clientes-table"><tr><th>Cliente</th><th>WhatsApp</th><th>Pedidos</th><th>Total gasto</th><th>Endereço</th><th>Último pedido</th></tr>${lista.map(c=>`<tr><td><b>${c.cliente_nome||''}</b><br><small>Status último: ${c.ultimo_status||''}</small></td><td>${c.cliente_telefone||''}<br><a href="${whatsLink(c.cliente_telefone)}" target="_blank">Chamar no WhatsApp</a></td><td><b>${c.total_pedidos||0}</b></td><td><b>${brl(c.total_gasto||0)}</b></td><td>${[c.cidade,c.bairro,c.rua].filter(Boolean).join(' • ') || c.endereco || ''}</td><td>${dataBR(c.ultimo_pedido)}</td></tr>`).join('')}</table>`:'<p>Nenhum cliente registrado ainda. Quando fizerem pedidos, eles aparecerão aqui automaticamente.</p>';
+}
 async function loadTudo(){try{state.categorias=await api('categorias');state.produtos=await api('produtos');state.categorias_complementos=await api('categorias_complementos');state.complementos=await api('complementos');state.produto_complemento_categorias=await api('produto_complemento_categorias');state.cidades_entrega=await api('cidades_entrega');state.bairros_entrega=await api('bairros_entrega');renderAdmin();}catch(e){document.querySelector('.admin-panel').insertAdjacentHTML('afterbegin','<div class="err">Erro: '+e.message+'</div>')}}
 function renderAdmin(){
  prod_categoria.innerHTML=state.categorias.map(c=>`<option value="${c.id}">${c.nome}</option>`).join('');
@@ -61,4 +91,4 @@ async function salvar(e,t){e.preventDefault();try{let body={},id=''; if(t==='cat
  }
  await loadTudo(); novo(t); alert('Salvo com sucesso!');}catch(err){alert('Erro: '+err.message)}}
 async function excluir(t,id){if(!confirm('Excluir este item?'))return;try{await api(t==='promocoes'?'produtos':t,'DELETE',null,id);await loadTudo()}catch(e){alert('Erro: '+e.message)}}
-loadPedidos();loadTudo();
+loadPedidos();loadClientes();loadTudo();
