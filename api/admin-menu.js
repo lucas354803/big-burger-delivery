@@ -1,6 +1,6 @@
 import { supabaseFetch } from './_supabase.js';
 
-const tabelas = new Set(['categorias', 'produtos', 'categorias_complementos', 'complementos', 'produto_complemento_categorias']);
+const tabelas = new Set(['categorias', 'produtos', 'categorias_complementos', 'complementos', 'produto_complemento_categorias', 'cidades_entrega', 'bairros_entrega']);
 
 function limparPayload(tabela, body) {
   const base = {};
@@ -20,6 +20,8 @@ function limparPayload(tabela, body) {
   if ('ativo' in body) base.ativo = Boolean(body.ativo);
   if ('min_escolha' in body) base.min_escolha = Number(body.min_escolha || 0);
   if ('max_escolha' in body) base.max_escolha = Number(body.max_escolha || 0);
+  if ('cidade_id' in body) base.cidade_id = body.cidade_id || null;
+  if ('tempo_maximo_minutos' in body) base.tempo_maximo_minutos = Number(body.tempo_maximo_minutos || 0);
 
   if (tabela === 'categorias') return { nome: base.nome, ordem: base.ordem || 0, ativo: 'ativo' in body ? base.ativo : true };
   if (tabela === 'categorias_complementos') return { nome: base.nome, min_escolha: base.min_escolha || 0, max_escolha: base.max_escolha || 6, ordem: base.ordem || 0, ativo: 'ativo' in body ? base.ativo : true };
@@ -39,6 +41,8 @@ function limparPayload(tabela, body) {
   };
   if (tabela === 'complementos') return { categoria_complemento_id: base.categoria_complemento_id, nome: base.nome, preco: base.preco, ordem: base.ordem || 0, ativo: 'ativo' in body ? base.ativo : true };
   if (tabela === 'produto_complemento_categorias') return { produto_id: base.produto_id, categoria_complemento_id: base.categoria_complemento_id };
+  if (tabela === 'cidades_entrega') return { nome: base.nome, ordem: base.ordem || 0, ativo: 'ativo' in body ? base.ativo : true };
+  if (tabela === 'bairros_entrega') return { cidade_id: base.cidade_id, nome: base.nome, tempo_maximo_minutos: base.tempo_maximo_minutos || 40, preco: base.preco, ordem: base.ordem || 0, ativo: 'ativo' in body ? base.ativo : true };
   return base;
 }
 
@@ -65,13 +69,14 @@ export default async function handler(req, res) {
     if (req.method === 'GET') {
       let query = `${tabela}?select=*`;
       if (tabela === 'produto_complemento_categorias') query += '&order=created_at.asc';
+      else if (tabela === 'bairros_entrega') query += '&order=ordem.asc,nome.asc';
       else query += '&order=ordem.asc,nome.asc';
       const data = await supabaseFetch(query);
       return res.status(200).json({ ok:true, data });
     }
     if (req.method === 'POST') {
       const payload = limparPayload(tabela, req.body || {});
-      if (['categorias','produtos','categorias_complementos','complementos'].includes(tabela) && !payload.nome) return res.status(400).json({ ok:false, error:'Nome é obrigatório' });
+      if (['categorias','produtos','categorias_complementos','complementos','cidades_entrega','bairros_entrega'].includes(tabela) && !payload.nome) return res.status(400).json({ ok:false, error:'Nome é obrigatório' });
       const data = await supabaseFetch(tabela, { method:'POST', body: JSON.stringify(payload) });
       return res.status(200).json({ ok:true, data:data?.[0] || data });
     }

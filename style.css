@@ -25,3 +25,12 @@
 .editor-title h1{margin:0 0 6px;font-size:28px}.editor-title p{margin:0;color:#bbb}
 .editor-tabs{background:#101010;border:1px solid rgba(255,255,255,.1);border-radius:18px;padding:12px;margin-bottom:20px}
 @media(max-width:700px){.main-tab,.tab{width:100%;text-align:left}.admin-main-tabs,.editor-tabs{display:grid}}
+
+
+/* Admin entrega */
+.delivery-grid { align-items: start; }
+.delivery-list { margin-top: 16px; max-height: 260px; overflow: auto; }
+.delivery-city { margin: 18px 0 26px; }
+.delivery-city h3 { color: #ffde00; margin: 0 0 10px; }
+.btn.ghost { background: transparent; border: 1px solid #444; color: #fff; margin-top: 8px; }
+.btn.ghost:hover { border-color: #e71919; color: #fff; }

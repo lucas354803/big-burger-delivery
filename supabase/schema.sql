@@ -1,6 +1,8 @@
 -- BIG BURGER DELIVERY + ROTA EXPRESS - BANCO LIMPO COM ADMIN PROFISSIONAL
 -- ATENÇÃO: isso apaga as tabelas antigas e recria do zero.
 
+DROP TABLE IF EXISTS bairros_entrega CASCADE;
+DROP TABLE IF EXISTS cidades_entrega CASCADE;
 DROP TABLE IF EXISTS corridas CASCADE;
 DROP TABLE IF EXISTS pagamentos CASCADE;
 DROP TABLE IF EXISTS pedidos CASCADE;
@@ -97,6 +99,27 @@ CREATE TABLE corridas (
   created_at timestamptz NOT NULL DEFAULT now()
 );
 
+
+CREATE TABLE cidades_entrega (
+  id uuid PRIMARY KEY DEFAULT uuid_generate_v4(),
+  nome text NOT NULL,
+  ordem integer NOT NULL DEFAULT 0,
+  ativo boolean NOT NULL DEFAULT true,
+  created_at timestamptz NOT NULL DEFAULT now()
+);
+
+CREATE TABLE bairros_entrega (
+  id uuid PRIMARY KEY DEFAULT uuid_generate_v4(),
+  cidade_id uuid NOT NULL REFERENCES cidades_entrega(id) ON DELETE CASCADE,
+  nome text NOT NULL,
+  tempo_maximo_minutos integer NOT NULL DEFAULT 40,
+  preco numeric(10,2) NOT NULL DEFAULT 0,
+  ordem integer NOT NULL DEFAULT 0,
+  ativo boolean NOT NULL DEFAULT true,
+  created_at timestamptz NOT NULL DEFAULT now()
+);
+
+
 ALTER TABLE categorias ENABLE ROW LEVEL SECURITY;
 ALTER TABLE produtos ENABLE ROW LEVEL SECURITY;
 ALTER TABLE categorias_complementos ENABLE ROW LEVEL SECURITY;
@@ -105,6 +128,8 @@ ALTER TABLE produto_complemento_categorias ENABLE ROW LEVEL SECURITY;
 ALTER TABLE pedidos ENABLE ROW LEVEL SECURITY;
 ALTER TABLE pagamentos ENABLE ROW LEVEL SECURITY;
 ALTER TABLE corridas ENABLE ROW LEVEL SECURITY;
+ALTER TABLE cidades_entrega ENABLE ROW LEVEL SECURITY;
+ALTER TABLE bairros_entrega ENABLE ROW LEVEL SECURITY;
 
 CREATE POLICY "categorias_all" ON categorias FOR ALL USING (true) WITH CHECK (true);
 CREATE POLICY "produtos_all" ON produtos FOR ALL USING (true) WITH CHECK (true);
@@ -114,6 +139,60 @@ CREATE POLICY "produto_complemento_categorias_all" ON produto_complemento_catego
 CREATE POLICY "pedidos_all" ON pedidos FOR ALL USING (true) WITH CHECK (true);
 CREATE POLICY "pagamentos_all" ON pagamentos FOR ALL USING (true) WITH CHECK (true);
 CREATE POLICY "corridas_all" ON corridas FOR ALL USING (true) WITH CHECK (true);
+CREATE POLICY "cidades_entrega_all" ON cidades_entrega FOR ALL USING (true) WITH CHECK (true);
+CREATE POLICY "bairros_entrega_all" ON bairros_entrega FOR ALL USING (true) WITH CHECK (true);
+
+
+
+-- Cidades e bairros de entrega iniciais editáveis no Admin → Entrega
+INSERT INTO cidades_entrega (nome, ordem) VALUES
+('Criciúma - SC', 1),
+('Içara - SC', 2);
+
+INSERT INTO bairros_entrega (cidade_id, nome, tempo_maximo_minutos, preco, ordem)
+SELECT c.id, v.nome, v.tempo, v.preco, v.ordem
+FROM cidades_entrega c
+JOIN (VALUES
+('Vila Rica',40,6.00,1),
+('Argentina',40,6.00,2),
+('Imigrantes',40,9.00,3),
+('Brasília',35,6.00,4),
+('Próspera',35,5.00,5),
+('Pio Corrêa',35,5.00,6),
+('Vera Cruz',40,6.00,7),
+('Santa Catarina',40,8.00,8),
+('Operária Nova',40,8.00,9),
+('Santo Antônio',40,8.00,10),
+('São Cristóvão',35,6.00,11),
+('Comerciário',35,6.00,12),
+('Santa Bárbara',40,8.00,13),
+('Michel',35,6.00,14),
+('Pedro Zanivan',40,8.00,15),
+('Primeira Linha',40,8.00,16),
+('Milanese',40,8.00,17),
+('Recanto Verde',35,6.00,18),
+('Fábio Silva',35,6.00,19),
+('São Luiz',35,6.00,20),
+('São João',40,6.00,21),
+('Renascer',35,4.00,22),
+('Bosque do Repouso',30,3.00,23),
+('Ceará',30,3.00,24),
+('Nossa Senhora da Salete',30,4.00,25),
+('Jardim Maristela',25,0.00,26),
+('Cristo Redentor',30,0.00,27),
+('Ana Maria',25,0.00,28)
+) AS v(nome, tempo, preco, ordem) ON c.nome='Criciúma - SC';
+
+INSERT INTO bairros_entrega (cidade_id, nome, tempo_maximo_minutos, preco, ordem)
+SELECT c.id, v.nome, v.tempo, v.preco, v.ordem
+FROM cidades_entrega c
+JOIN (VALUES
+('Cristo Rei',40,8.00,1),
+('Raichaski',40,8.00,2),
+('Liri',40,8.00,3),
+('Marili',35,5.00,4),
+('Presidente Vargas',35,8.00,5)
+) AS v(nome, tempo, preco, ordem) ON c.nome='Içara - SC';
 
 INSERT INTO categorias (nome, ordem) VALUES
 ('🍔 HAMBÚRGUERES', 1),
