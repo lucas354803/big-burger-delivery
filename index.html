@@ -73,9 +73,22 @@
         <h3>📍 Dados para entrega</h3>
         <input id="nome" placeholder="Seu nome completo">
         <input id="telefone" placeholder="WhatsApp / telefone">
-        <textarea id="endereco" placeholder="Endereço de entrega"></textarea>
+        <select id="cidade" onchange="atualizarBairros()">
+          <option value="">Selecione a cidade</option>
+        </select>
+        <select id="bairro" onchange="atualizarTaxaEntrega()">
+          <option value="">Selecione o bairro</option>
+        </select>
+        <input id="rua" placeholder="Rua e número">
+        <select id="formaPagamento" onchange="atualizarBotaoPagamento()">
+          <option value="pix">Pix</option>
+          <option value="dinheiro">Dinheiro</option>
+          <option value="cartao">Cartão na entrega</option>
+        </select>
         <textarea id="obs" placeholder="Observação do pedido"></textarea>
-        <button class="btn green" onclick="finalizar()">Gerar Pix e finalizar pedido</button>
+        <div class="delivery-summary"><span>Taxa de entrega</span><b id="taxaEntrega">R$ 0,00</b></div>
+        <div class="delivery-summary strong"><span>Total com entrega</span><b id="totalComEntrega">R$ 0,00</b></div>
+        <button id="btnFinalizar" class="btn green" onclick="finalizar()">Gerar Pix e finalizar pedido</button>
         <div id="result"></div>
       </div>
     </aside>

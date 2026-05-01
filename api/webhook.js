@@ -13,7 +13,9 @@ export default async function handler(req, res) {
     await supabaseFetch(`pagamentos?id=eq.${pagamento.id}`, { method: 'PATCH', body: JSON.stringify({ status }) });
     if (status === 'aprovado') {
       await supabaseFetch(`pedidos?id=eq.${pagamento.pedido_id}`, { method: 'PATCH', body: JSON.stringify({ status: 'pago' }) });
-      await supabaseFetch('corridas', { method: 'POST', body: JSON.stringify({ pedido_id: pagamento.pedido_id, status: 'disponivel', valor_entrega: 7.00 }) });
+      const pedidos = await supabaseFetch(`pedidos?id=eq.${pagamento.pedido_id}&select=*`, { method: 'GET', headers: { Prefer: '' } });
+      const taxa = Number(pedidos?.[0]?.taxa_entrega || 0);
+      await supabaseFetch('corridas', { method: 'POST', body: JSON.stringify({ pedido_id: pagamento.pedido_id, status: 'disponivel', valor_entrega: taxa }) });
     }
     res.status(200).json({ ok: true });
   } catch (e) { res.status(200).json({ ok: false, erro: e.message }); }

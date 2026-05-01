@@ -3,6 +3,9 @@ let categorias=[];
 let adicionais=[];
 let categoriasComplementos=[];
 let produtoComplementoCategorias=[];
+let cidadesEntrega=[];
+let bairrosEntrega=[];
+let taxaEntregaSelecionada=0;
 
 const produtosFallback=[
   {id:'big-classico',categoria_id:'hamburgueres',nome:'🍔✨ Big Clássico',descricao:'Pão macio, carne suculenta, queijo derretido, cebola caramelizada, alface, tomate e maionese especial.',preco:19.90,desconto_ativo:true,preco_promocional:16.90,badge:'Mais Pedido'},
@@ -53,7 +56,10 @@ async function carregarMenu(){
     categoriasComplementos=(d.categorias_complementos&&d.categorias_complementos.length?d.categorias_complementos:categoriasComplementosFallback);
     adicionais=(d.complementos&&d.complementos.length?d.complementos:adicionaisFallback).map(a=>({...a,preco:Number(a.preco||0)}));
     produtoComplementoCategorias=Array.isArray(d.produto_complemento_categorias)?d.produto_complemento_categorias:[];
-  }catch(e){categorias=categoriasFallback.filter(c=>c.id!=='todos');produtos=produtosFallback;categoriasComplementos=categoriasComplementosFallback;adicionais=adicionaisFallback;produtoComplementoCategorias=[];}
+    cidadesEntrega=Array.isArray(d.cidades_entrega)?d.cidades_entrega:[];
+    bairrosEntrega=Array.isArray(d.bairros_entrega)?d.bairros_entrega:[];
+  }catch(e){categorias=categoriasFallback.filter(c=>c.id!=='todos');produtos=produtosFallback;categoriasComplementos=categoriasComplementosFallback;adicionais=adicionaisFallback;produtoComplementoCategorias=[];cidadesEntrega=[];bairrosEntrega=[];}
+  renderCidadesEntrega();
   render();
 }
 
@@ -88,9 +94,12 @@ function render(){
     promosGrid.innerHTML = promos.length ? promos.map(produtoCardHtml).join('') : '<div class="empty-menu">Nenhuma promoção cadastrada ainda. Cadastre pelo Admin → Promoções.</div>';
   }
   const valor=carrinho.reduce((s,p)=>s+p.preco,0);
+  const totalGeral=valor+Number(taxaEntregaSelecionada||0);
   cartCount.textContent=carrinho.length;
-  topTotal.textContent=fmt(valor);
-  total.textContent=fmt(valor);
+  topTotal.textContent=fmt(totalGeral);
+  total.textContent=fmt(totalGeral);
+  if(typeof taxaEntrega !== 'undefined' && taxaEntrega) taxaEntrega.textContent=fmt(taxaEntregaSelecionada);
+  if(typeof totalComEntrega !== 'undefined' && totalComEntrega) totalComEntrega.textContent=fmt(totalGeral);
   cart.innerHTML=carrinho.length?carrinho.map(p=>`<div class="row"><span><b>1x ${p.nome}</b><br><small class="small">${(p.addons||[]).map(a=>a.nome).join(', ')||'Sem adicionais'}</small></span><b>${fmt(p.preco)}</b></div>`).join(''):'<div class="cart-empty">🛒<br>Seu carrinho está vazio<br><small>Adicione itens deliciosos para começar!</small></div>';
 }
 function renderCategorias(){
@@ -149,17 +158,51 @@ function adicionarModal(){
   carrinho.push({nome:p.nome,descricao:p.descricao,preco:precoProduto(p)+precoAdds,preco_base:precoProduto(p),addons:adds});
   fecharModal(); render();
 }
+function renderCidadesEntrega(){
+  if(typeof cidade === 'undefined' || !cidade) return;
+  cidade.innerHTML='<option value="">Selecione a cidade</option>'+cidadesEntrega.map(c=>`<option value="${c.id}">${c.nome}</option>`).join('');
+  bairro.innerHTML='<option value="">Selecione o bairro</option>';
+  taxaEntregaSelecionada=0;
+  atualizarBotaoPagamento();
+}
+function atualizarBairros(){
+  if(typeof bairro === 'undefined' || !bairro) return;
+  const cid=cidade.value;
+  const lista=bairrosEntrega.filter(b=>String(b.cidade_id)===String(cid));
+  bairro.innerHTML='<option value="">Selecione o bairro</option>'+lista.map(b=>`<option value="${b.id}" data-preco="${Number(b.preco||0)}" data-tempo="${b.tempo_maximo_minutos||0}">${b.nome} • ${b.tempo_maximo_minutos||0} min • ${fmt(b.preco||0)}</option>`).join('');
+  taxaEntregaSelecionada=0;
+  render();
+}
+function atualizarTaxaEntrega(){
+  const opt=bairro?.selectedOptions?.[0];
+  taxaEntregaSelecionada=Number(opt?.dataset?.preco||0);
+  render();
+}
+function atualizarBotaoPagamento(){
+  if(typeof btnFinalizar === 'undefined' || !btnFinalizar) return;
+  const f=formaPagamento?.value||'pix';
+  btnFinalizar.textContent = f==='pix' ? 'Gerar Pix e finalizar pedido' : 'Finalizar pedido';
+}
+function nomeSelecionado(selectEl){return selectEl?.selectedOptions?.[0]?.textContent?.split('•')?.[0]?.trim()||'';}
 async function finalizar(){
-  const valor=carrinho.reduce((s,p)=>s+p.preco,0);
+  const subtotal=carrinho.reduce((s,p)=>s+p.preco,0);
+  const valor=subtotal+Number(taxaEntregaSelecionada||0);
+  const cidadeNome=nomeSelecionado(cidade);
+  const bairroNome=nomeSelecionado(bairro);
+  const ruaTexto=(rua?.value||'').trim();
+  const forma=(formaPagamento?.value||'pix');
   if(!carrinho.length){result.innerHTML='<div class="err"><b>Adicione pelo menos um item ao pedido.</b></div>';return}
-  if(!nome.value||!telefone.value||!endereco.value){result.innerHTML='<div class="err"><b>Preencha nome, telefone e endereço.</b></div>';return}
-  result.innerHTML='<p>Gerando Pix...</p>';
+  if(!nome.value||!telefone.value||!cidade.value||!bairro.value||!ruaTexto){result.innerHTML='<div class="err"><b>Preencha nome, WhatsApp, cidade, bairro e rua.</b></div>';return}
+  result.innerHTML= forma==='pix' ? '<p>Gerando Pix...</p>' : '<p>Finalizando pedido...</p>';
   try{
-    const r=await fetch('/api/create-pix',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({cliente_nome:nome.value,cliente_telefone:telefone.value,endereco:endereco.value,observacao:obs.value,itens:carrinho,valor_total:valor})});
+    const r=await fetch('/api/create-pix',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({
+      cliente_nome:nome.value,cliente_telefone:telefone.value,cidade_id:cidade.value,cidade:cidadeNome,bairro_id:bairro.value,bairro:bairroNome,rua:ruaTexto,
+      endereco:`${ruaTexto} - ${bairroNome} - ${cidadeNome}`,forma_pagamento:forma,taxa_entrega:Number(taxaEntregaSelecionada||0),observacao:obs.value,itens:carrinho,subtotal,valor_total:valor
+    })});
     const data=await r.json();
     if(!r.ok)throw new Error((data.error||'Erro')+' '+(data.detalhes?JSON.stringify(data.detalhes):''));
-    if(data.pix?.qr_code_base64){result.innerHTML=`<div class="ok"><h3>Pix gerado!</h3><img class="qr" src="data:image/png;base64,${data.pix.qr_code_base64}"><textarea readonly>${data.pix.pix_copia_cola}</textarea><p class="small">Após pagar, o webhook libera a entrega automaticamente.</p></div>`}
-    else{result.innerHTML=`<div class="ok"><h3>Pedido criado</h3><p>${data.mensagem||'Pedido registrado com sucesso.'}</p></div>`}
+    if(data.pix?.qr_code_base64){result.innerHTML=`<div class="ok"><h3>Pix gerado!</h3><p>Total com entrega: <b>${fmt(valor)}</b></p><img class="qr" src="data:image/png;base64,${data.pix.qr_code_base64}"><textarea readonly>${data.pix.pix_copia_cola}</textarea><p class="small">Após pagar, o webhook libera a entrega automaticamente.</p></div>`}
+    else{result.innerHTML=`<div class="ok"><h3>Pedido criado!</h3><p>Forma de pagamento: <b>${forma==='dinheiro'?'Dinheiro':'Cartão na entrega'}</b></p><p>Total com entrega: <b>${fmt(valor)}</b></p></div>`}
   }catch(e){result.innerHTML=`<div class="err"><b>Erro:</b> ${e.message}</div>`}
 }
 carregarMenu();

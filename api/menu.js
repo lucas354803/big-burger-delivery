@@ -26,14 +26,16 @@ const fallbackComplementos = [
 
 export default async function handler(req, res) {
   try {
-    const [categorias, produtos, categorias_complementos, complementos, produto_complemento_categorias] = await Promise.all([
+    const [categorias, produtos, categorias_complementos, complementos, produto_complemento_categorias, cidades_entrega, bairros_entrega] = await Promise.all([
       supabaseFetch('categorias?select=*&ativo=eq.true&order=ordem.asc,nome.asc'),
       supabaseFetch('produtos?select=*&ativo=eq.true&order=ordem.asc,nome.asc'),
       supabaseFetch('categorias_complementos?select=*&ativo=eq.true&order=ordem.asc,nome.asc'),
       supabaseFetch('complementos?select=*&ativo=eq.true&order=ordem.asc,nome.asc'),
-      supabaseFetch('produto_complemento_categorias?select=*')
+      supabaseFetch('produto_complemento_categorias?select=*'),
+      supabaseFetch('cidades_entrega?select=*&ativo=eq.true&order=ordem.asc,nome.asc'),
+      supabaseFetch('bairros_entrega?select=*&ativo=eq.true&order=ordem.asc,nome.asc')
     ]);
-    res.status(200).json({ ok:true, categorias, produtos, categorias_complementos, complementos, produto_complemento_categorias });
+    res.status(200).json({ ok:true, categorias, produtos, categorias_complementos, complementos, produto_complemento_categorias, cidades_entrega, bairros_entrega });
   } catch (e) {
     res.status(200).json({
       ok:false,
@@ -43,7 +45,9 @@ export default async function handler(req, res) {
       produtos:fallbackProdutos,
       categorias_complementos:fallbackCategoriasComplementos,
       complementos:fallbackComplementos,
-      produto_complemento_categorias:[]
+      produto_complemento_categorias:[],
+      cidades_entrega:[],
+      bairros_entrega:[]
     });
   }
 }

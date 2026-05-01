@@ -10,20 +10,27 @@ export default async function handler(req, res) {
     const cliente_telefone = String(body.cliente_telefone || '').trim();
     const endereco = String(body.endereco || '').trim();
     const observacao = String(body.observacao || '').trim();
+    const cidade = String(body.cidade || '').trim();
+    const bairro = String(body.bairro || '').trim();
+    const rua = String(body.rua || '').trim();
+    const forma_pagamento = String(body.forma_pagamento || 'pix').trim();
+    const taxa_entrega = money(body.taxa_entrega);
+    const subtotal = money(body.subtotal || (Number(body.valor_total||0)-taxa_entrega));
     const itens = Array.isArray(body.itens) ? body.itens : [];
     const valor_total = money(body.valor_total);
     if (!cliente_nome || !cliente_telefone || !endereco || !itens.length || valor_total <= 0) {
       return res.status(400).json({ error: 'Preencha nome, telefone, endereço e pedido.' });
     }
 
+    const statusInicial = forma_pagamento === 'pix' ? 'aguardando_pagamento' : 'pedido_recebido';
     const [pedido] = await supabaseFetch('pedidos', {
       method: 'POST',
-      body: JSON.stringify({ cliente_nome, cliente_telefone, endereco, observacao, itens, valor_total, status: 'aguardando_pagamento' })
+      body: JSON.stringify({ cliente_nome, cliente_telefone, endereco, cidade, bairro, rua, forma_pagamento, taxa_entrega, subtotal, observacao, itens, valor_total, status: statusInicial })
     });
 
     let pix = null;
     const token = process.env.MP_TOKEN;
-    if (token) {
+    if (forma_pagamento === 'pix' && token) {
       const mpRes = await fetch('https://api.mercadopago.com/v1/payments', {
         method: 'POST',
         headers: {
@@ -47,10 +54,13 @@ export default async function handler(req, res) {
       };
       await supabaseFetch('pagamentos', { method: 'POST', body: JSON.stringify({ pedido_id: pedido.id, status: 'pendente', valor: valor_total, ...pix }) });
     } else {
-      await supabaseFetch('pagamentos', { method: 'POST', body: JSON.stringify({ pedido_id: pedido.id, status: 'sem_mp_token', valor: valor_total }) });
+      await supabaseFetch('pagamentos', { method: 'POST', body: JSON.stringify({ pedido_id: pedido.id, status: forma_pagamento === 'pix' ? 'sem_mp_token' : 'pagamento_na_entrega', valor: valor_total }) });
+      if (forma_pagamento !== 'pix') {
+        await supabaseFetch('corridas', { method: 'POST', body: JSON.stringify({ pedido_id: pedido.id, status: 'disponivel', valor_entrega: taxa_entrega }) });
+      }
     }
 
-    res.status(200).json({ ok: true, pedido, pix, mensagem: pix ? 'Pix gerado' : 'Pedido criado. Falta MP_TOKEN para gerar Pix.' });
+    res.status(200).json({ ok: true, pedido, pix, mensagem: pix ? 'Pix gerado' : 'Pedido criado.' });
   } catch (e) {
     res.status(e.status || 500).json({ error: e.message, detalhes: e.data || null });
   }
