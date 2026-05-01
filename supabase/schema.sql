@@ -37,6 +37,29 @@ alter table pedidos enable row level security;
 alter table pagamentos enable row level security;
 alter table corridas enable row level security;
 
-create policy if not exists "Leitura pedidos" on pedidos for select using (true);
-create policy if not exists "Leitura pagamentos" on pagamentos for select using (true);
-create policy if not exists "Leitura corridas" on corridas for select using (true);
+drop policy if exists "Leitura pedidos" on pedidos;
+create policy "Leitura pedidos" on pedidos for select using (true);
+
+drop policy if exists "Inserir pedidos" on pedidos;
+create policy "Inserir pedidos" on pedidos for insert with check (true);
+
+drop policy if exists "Atualizar pedidos" on pedidos;
+create policy "Atualizar pedidos" on pedidos for update using (true);
+
+drop policy if exists "Leitura pagamentos" on pagamentos;
+create policy "Leitura pagamentos" on pagamentos for select using (true);
+
+drop policy if exists "Inserir pagamentos" on pagamentos;
+create policy "Inserir pagamentos" on pagamentos for insert with check (true);
+
+drop policy if exists "Atualizar pagamentos" on pagamentos;
+create policy "Atualizar pagamentos" on pagamentos for update using (true);
+
+drop policy if exists "Leitura corridas" on corridas;
+create policy "Leitura corridas" on corridas for select using (true);
+
+drop policy if exists "Inserir corridas" on corridas;
+create policy "Inserir corridas" on corridas for insert with check (true);
+
+drop policy if exists "Atualizar corridas" on corridas;
+create policy "Atualizar corridas" on corridas for update using (true);

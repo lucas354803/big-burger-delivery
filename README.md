@@ -1,31 +1,23 @@
 # Big Burger Delivery + Rota Express
 
-Projeto limpo para Vercel. Não renomeie a pasta `api`.
+## Importante
+A pasta precisa ser `api` minúscula.
 
 ## Variáveis obrigatórias na Vercel
 
-- `SUPABASE_URL`
-- `SUPABASE_SERVICE_ROLE_KEY`
-- `MP_TOKEN`
+- `SUPABASE_URL` = use somente o Project URL, exemplo: `https://xxxx.supabase.co`
+- `SUPABASE_SERVICE_ROLE_KEY` = chave `sb_secret_...`
+- `MP_TOKEN` = Access Token de produção do Mercado Pago
 
 Opcional:
-- `PUBLIC_BASE_URL` = https://seu-site.vercel.app
+- `PUBLIC_BASE_URL` = https://big-burger-delivery.vercel.app
 
 ## Supabase
+Copie tudo de `supabase/schema.sql` e rode no SQL Editor.
 
-Abra `supabase/schema.sql`, copie tudo e rode no SQL Editor do Supabase.
+## Teste
+Depois do deploy, abra:
 
-## Testes
+`/api/debug`
 
-Depois do deploy:
-
-- `/api/debug` deve mostrar `ok: true`
-- Página inicial: `/`
-- Admin: `/admin.html`
-- Motoboy: `/motoboy.html`
-
-## Webhook Mercado Pago
-
-Use:
-
-`https://SEU-SITE.vercel.app/api/webhook`
+Se aparecer `ok: true`, teste o pedido.
