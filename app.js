@@ -1,14 +1,24 @@
 let produtos=[];
+let categorias=[];
 let adicionais=[];
 let categoriasComplementos=[];
 let produtoComplementoCategorias=[];
+
 const produtosFallback=[
-  {id:'big-smash',nome:'Big Burger Smash',descricao:'Blend smash, queijo cheddar, bacon, cebola crispy e molho especial da casa.',preco:28.90,desconto_ativo:true,preco_promocional:25.90,badge:'MAIS PEDIDO'},
-  {id:'big-onion',nome:'Big Onion Burger',descricao:'Blend artesanal, queijo prato, onion rings, barbecue e maionese da casa.',preco:27.90},
-  {id:'big-bacon',nome:'Big Bacon Cheddar',descricao:'Blend artesanal, cheddar cremoso, bacon em tiras e molho especial.',preco:29.90},
-  {id:'big-chicken',nome:'Big Chicken Crispy',descricao:'Frango empanado crocante, queijo, alface, tomate e maionese temperada.',preco:25.90},
-  {id:'combo-duplo',nome:'Combo Duplo',descricao:'2 burgers + fritas crocantes + refrigerante 600ml.',preco:39.90,badge:'COMBO'},
-  {id:'combo-familia',nome:'Combo Família',descricao:'4 burgers + 4 fritas + refrigerante 1,5L para dividir.',preco:84.90,badge:'FAMÍLIA'}
+  {id:'big-classico',categoria_id:'hamburgueres',nome:'🍔✨ Big Clássico',descricao:'Pão macio, carne suculenta, queijo derretido, cebola caramelizada, alface, tomate e maionese especial.',preco:19.90,desconto_ativo:true,preco_promocional:16.90,badge:'Mais Pedido'},
+  {id:'big-smash',categoria_id:'hamburgueres',nome:'Big Burger Smash',descricao:'Blend smash, queijo cheddar, bacon, cebola crispy e molho especial da casa.',preco:28.90,desconto_ativo:true,preco_promocional:25.90,badge:'MAIS PEDIDO'},
+  {id:'big-onion',categoria_id:'hamburgueres',nome:'Big Onion Burger',descricao:'Blend artesanal, queijo prato, onion rings, barbecue e maionese da casa.',preco:27.90},
+  {id:'big-bacon',categoria_id:'hamburgueres',nome:'Big Bacon Cheddar',descricao:'Blend artesanal, cheddar cremoso, bacon em tiras e molho especial.',preco:29.90},
+  {id:'combo-duplo',categoria_id:'combos',nome:'Combo Duplo',descricao:'2 burgers + fritas crocantes + refrigerante 600ml.',preco:39.90,badge:'COMBO'},
+  {id:'combo-familia',categoria_id:'combos',nome:'Combo Família',descricao:'4 burgers + 4 fritas + refrigerante 1,5L para dividir.',preco:84.90,badge:'FAMÍLIA'}
+];
+const categoriasFallback=[
+  {id:'todos',nome:'🔥 Todos',ordem:0},
+  {id:'destaques',nome:'🔥 Destaques da casa',ordem:1},
+  {id:'hamburgueres',nome:'🍔 Hambúrgueres',ordem:2},
+  {id:'combos',nome:'🍟 Combos',ordem:3},
+  {id:'porcoes',nome:'🍗 Porções',ordem:4},
+  {id:'bebidas',nome:'🥤 Bebidas',ordem:5}
 ];
 const categoriasComplementosFallback=[
   {id:'combo',nome:'🍔 Transforme em combo',min_escolha:0,max_escolha:3,ordem:1},
@@ -29,6 +39,7 @@ const adicionaisFallback=[
 let carrinho=[];
 let produtoAberto=null;
 let addonsSelecionados=[];
+let categoriaSelecionada='todos';
 const fmt=v=>Number(v||0).toLocaleString('pt-BR',{style:'currency',currency:'BRL'});
 function precoProduto(p){return p.desconto_ativo && Number(p.preco_promocional||0)>0 ? Number(p.preco_promocional) : Number(p.preco||0)}
 function descontoHtml(p){return p.desconto_ativo && Number(p.preco_promocional||0)>0 ? `<div class="price promo"><span>${fmt(p.preco_promocional)}</span><small>${fmt(p.preco)}</small></div>` : `<div class="price">${fmt(p.preco)}</div>`}
@@ -37,16 +48,23 @@ async function carregarMenu(){
   try{
     const r=await fetch('/api/menu');
     const d=await r.json();
+    categorias=(d.categorias&&d.categorias.length?d.categorias:categoriasFallback.filter(c=>c.id!=='todos'));
     produtos=(d.produtos&&d.produtos.length?d.produtos:produtosFallback).map(p=>({...p,preco:Number(p.preco||0),preco_promocional:p.preco_promocional==null?null:Number(p.preco_promocional)}));
     categoriasComplementos=(d.categorias_complementos&&d.categorias_complementos.length?d.categorias_complementos:categoriasComplementosFallback);
     adicionais=(d.complementos&&d.complementos.length?d.complementos:adicionaisFallback).map(a=>({...a,preco:Number(a.preco||0)}));
     produtoComplementoCategorias=Array.isArray(d.produto_complemento_categorias)?d.produto_complemento_categorias:[];
-  }catch(e){produtos=produtosFallback;categoriasComplementos=categoriasComplementosFallback;adicionais=adicionaisFallback;produtoComplementoCategorias=[];}
+  }catch(e){categorias=categoriasFallback.filter(c=>c.id!=='todos');produtos=produtosFallback;categoriasComplementos=categoriasComplementosFallback;adicionais=adicionaisFallback;produtoComplementoCategorias=[];}
   render();
 }
 
 function render(){
-  menu.innerHTML=produtos.map((p,i)=>`
+  renderCategorias();
+  const visiveis = categoriaSelecionada==='todos' ? produtos : produtos.filter(p=>String(p.categoria_id||'')===String(categoriaSelecionada));
+  if(typeof menuTitle !== 'undefined' && menuTitle){
+    const cat = categoriaSelecionada==='todos' ? null : categorias.find(c=>String(c.id)===String(categoriaSelecionada));
+    menuTitle.textContent = cat ? cat.nome.replace(/^[^A-Za-zÀ-ÿ0-9]+\s*/, '') : 'Os mais pedidos da Big Burger';
+  }
+  menu.innerHTML=visiveis.map((p)=>{ const i=produtos.findIndex(x=>String(x.id)===String(p.id)); return `
     <article class="card" onclick="abrirProduto(${i})">
       ${p.badge?`<div class="badge">${p.badge}</div>`:''}
       ${p.desconto_ativo&&p.preco_promocional?`<div class="badge discount">OFERTA</div>`:''}
@@ -59,12 +77,22 @@ function render(){
           <button class="mini-btn" onclick="event.stopPropagation(); abrirProduto(${i})">🛒 Adicionar</button>
         </div>
       </div>
-    </article>`).join('');
+    </article>`}).join('') || '<div class="empty-menu">Nenhum produto cadastrado nessa categoria.</div>';
   const valor=carrinho.reduce((s,p)=>s+p.preco,0);
   cartCount.textContent=carrinho.length;
   topTotal.textContent=fmt(valor);
   total.textContent=fmt(valor);
   cart.innerHTML=carrinho.length?carrinho.map(p=>`<div class="row"><span><b>1x ${p.nome}</b><br><small class="small">${(p.addons||[]).map(a=>a.nome).join(', ')||'Sem adicionais'}</small></span><b>${fmt(p.preco)}</b></div>`).join(''):'<div class="cart-empty">🛒<br>Seu carrinho está vazio<br><small>Adicione itens deliciosos para começar!</small></div>';
+}
+function renderCategorias(){
+  if(typeof categoryBar === 'undefined' || !categoryBar) return;
+  const catsBase=[{id:'todos',nome:'🔥 Todos'},...categorias].filter((c,idx,arr)=>arr.findIndex(x=>String(x.id)===String(c.id))===idx);
+  categoryBar.innerHTML=catsBase.map(c=>`<button class="cat-btn ${String(categoriaSelecionada)===String(c.id)?'active':''}" onclick="selecionarCategoria('${String(c.id).replace(/'/g,"\\'")}')">${c.nome}</button>`).join('');
+}
+function selecionarCategoria(id){
+  categoriaSelecionada=id;
+  render();
+  document.querySelector('#cardapio')?.scrollIntoView({behavior:'smooth',block:'start'});
 }
 function abrirProduto(i){
   produtoAberto=i; addonsSelecionados=[];

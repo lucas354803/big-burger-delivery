@@ -8,3 +8,10 @@
 /* Atualização admin: desconto e vínculo de complementos por produto */
 .admin-grid.wide{grid-template-columns:460px 1fr}.mini-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px}.produto-form h2{font-size:18px;margin:4px 0;color:#ffcf33}.produto-form hr{border:0;border-top:1px solid rgba(255,255,255,.12);width:100%;margin:6px 0}.checks-box{display:grid;gap:10px}.card-check{background:#191919;border:1px solid rgba(255,255,255,.12);border-radius:12px;padding:12px!important;display:grid!important;grid-template-columns:auto 1fr;align-items:center}.card-check small{grid-column:2;color:#aaa;font-weight:500}.switch-line{background:#191919;border-radius:12px;padding:12px!important;justify-content:center}.price.promo{display:flex;flex-direction:column;gap:2px}.price.promo span{color:#ff2222}.price.promo small,.old-price{text-decoration:line-through;color:#aaa;font-size:13px;font-weight:700}.badge.discount{left:auto;right:12px;background:#ffc400;color:#111}.modalPreco small,.old-price{margin-left:8px}.admin-item .small{display:block;margin-top:6px;color:#aaa}
 @media(max-width:900px){.admin-grid.wide,.mini-grid{grid-template-columns:1fr}}
+
+/* Categorias no cardápio */
+.category-bar{display:flex;gap:10px;flex-wrap:wrap;margin:0 0 18px;position:sticky;top:84px;z-index:10;background:rgba(7,7,7,.82);backdrop-filter:blur(8px);padding:10px 0}
+.cat-btn{border:1px solid rgba(255,255,255,.16);background:#151515;color:#fff;border-radius:999px;padding:12px 16px;font-weight:900;cursor:pointer;box-shadow:0 8px 20px rgba(0,0,0,.22)}
+.cat-btn.active,.cat-btn:hover{background:#e21b1b;border-color:#ff3333;color:#fff}
+.empty-menu{grid-column:1/-1;background:#151515;border:1px dashed #444;border-radius:16px;padding:22px;text-align:center;color:#bbb;font-weight:800}
+@media(max-width:700px){.category-bar{flex-wrap:nowrap;overflow:auto;top:128px}.cat-btn{white-space:nowrap}}
