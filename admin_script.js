@@ -16,6 +16,9 @@ async function api(tabela,method='GET',body=null,id=null){const url='/api/admin-
 let pedidosCache=[];
 let somPedidosLigado=localStorage.getItem('somPedidosLigado')!=='0';
 let ultimoTotalPedidos=0;
+let pedidosAutoRefreshTimer=null;
+let ultimoIdsEmPreparoImpresso=new Set(JSON.parse(localStorage.getItem('pedidosImpressosAuto')||'[]'));
+let loadPedidosEmAndamento=false;
 const orderStatuses=[
   {id:'em_analise',titulo:'Em análise',emoji:'🔴',cls:'analise'},
   {id:'em_preparo',titulo:'Em preparo',emoji:'🟡',cls:'preparo'},
@@ -47,6 +50,31 @@ function abrirWhats(p,tipo){
   if(tipo==='pronto') msg=`🍔 Big Burger\\n\\nSeu pedido #${shortId(p.id)} está PRONTO! ✅\\nLogo será enviado para entrega.`;
   window.open(`https://wa.me/55${tel}?text=${encodeURIComponent(msg)}`,'_blank');
 }
+
+function htmlComandaPedido(p){
+  const itens=itensTexto(p.itens).replaceAll('\n','<br>');
+  const data=new Date().toLocaleString('pt-BR');
+  return `<!doctype html><html><head><meta charset="utf-8"><title>Comanda #${numeroPedido(p)}</title><style>
+  *{box-sizing:border-box}body{font-family:Arial,Helvetica,sans-serif;margin:0;padding:12px;color:#000;background:#fff;font-size:13px}.ticket{max-width:320px;margin:0 auto}h1{font-size:22px;text-align:center;margin:0 0 4px}.sub{text-align:center;border-bottom:1px dashed #000;padding-bottom:8px;margin-bottom:8px}.row{display:flex;justify-content:space-between;gap:8px;margin:4px 0}.big{font-size:18px;font-weight:800}.sec{border-top:1px dashed #000;margin-top:8px;padding-top:8px}.items{font-size:15px;line-height:1.35}.total{font-size:20px;font-weight:900;text-align:right;margin-top:8px}.obs{font-size:14px;white-space:pre-wrap}@media print{body{padding:0}.ticket{width:80mm;max-width:80mm}button{display:none}}
+  </style></head><body><div class="ticket"><h1>BIG BURGER</h1><div class="sub">COMANDA DE PEDIDO<br>${data}</div><div class="row big"><span>Pedido</span><span>#${numeroPedido(p)}</span></div><div class="row"><span>Cliente</span><b>${escapeHtml(p.cliente_nome||'')}</b></div><div class="row"><span>Telefone</span><b>${escapeHtml(p.cliente_telefone||'')}</b></div><div class="sec"><b>ITENS</b><div class="items">${itens}</div></div><div class="sec"><b>ENDEREÇO</b><div>${escapeHtml(enderecoPedido(p)||'Retirada/sem endereço')}</div></div><div class="sec"><div class="row"><span>Pagamento</span><b>${escapeHtml(p.forma_pagamento||'pix')}</b></div><div class="row"><span>Taxa entrega</span><b>${brl(p.taxa_entrega||0)}</b></div><div class="total">TOTAL: ${brl(p.valor_total||0)}</div></div>${p.observacao?`<div class="sec obs"><b>OBS:</b><br>${escapeHtml(p.observacao)}</div>`:''}</div><script>window.onload=function(){setTimeout(function(){window.print();},300)}<\/script></body></html>`;
+}
+function imprimirPedido(p){
+  if(!p){alert('Pedido não encontrado para imprimir.');return;}
+  const w=window.open('','_blank','width=420,height=720');
+  if(!w){alert('O navegador bloqueou a impressão. Libere pop-ups para este site.');return;}
+  w.document.open(); w.document.write(htmlComandaPedido(p)); w.document.close();
+}
+function registrarPedidoImpresso(id){
+  if(!id) return;
+  ultimoIdsEmPreparoImpresso.add(String(id));
+  localStorage.setItem('pedidosImpressosAuto', JSON.stringify([...ultimoIdsEmPreparoImpresso].slice(-300)));
+}
+function imprimirPedidoAoAceitar(p){
+  if(!p || ultimoIdsEmPreparoImpresso.has(String(p.id))) return;
+  imprimirPedido(p);
+  registrarPedidoImpresso(p.id);
+}
+
 async function atualizarStatusPedido(id,status,whatsTipo){
   const pedido=pedidosCache.find(p=>p.id===id);
   let tempo = pedido?.tempo_estimado_minutos || '';
@@ -56,8 +84,10 @@ async function atualizarStatusPedido(id,status,whatsTipo){
     const r=await fetch('/api/order-status',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({id,status,tempo_estimado_minutos:tempo,enviar_whatsapp:true})});
     const d=await r.json();
     if(!r.ok||!d.ok) throw new Error(d.error||JSON.stringify(d));
-    if(d.whatsapp && d.whatsapp.ok){ alert('Status atualizado e WhatsApp enviado automaticamente!'); }
-    else if(d.whatsapp && !d.whatsapp.ok){ alert('Status atualizado, mas WhatsApp não enviou: '+(d.whatsapp.error||'verifique WHATSAPP_TOKEN na Vercel')); }
+    if(status==='em_preparo') imprimirPedidoAoAceitar(pedido);
+    if(d.whatsapp && d.whatsapp.ok){ alert('Status atualizado, WhatsApp enviado e comanda enviada para impressão!'); }
+    else if(d.whatsapp && !d.whatsapp.ok){ alert('Status atualizado e comanda enviada para impressão. WhatsApp não enviou: '+(d.whatsapp.error||'verifique WHATSAPP_TOKEN na Vercel')); }
+    else if(status==='em_preparo'){ alert('Pedido aceito e comanda enviada para impressão!'); }
     await loadPedidos();
   }catch(e){alert('Erro ao atualizar pedido: '+e.message)}
 }
@@ -70,7 +100,7 @@ function cardPedido(p){
   if(st==='pronto') acoes=`<button class="order-action delivery" onclick="atualizarStatusPedido('${p.id}','em_entrega','entrega')">🛵 Saiu para entrega</button>`;
   if(st==='em_entrega') acoes=`<button class="order-action done" onclick="atualizarStatusPedido('${p.id}','finalizado','')">✅ Finalizar</button>`;
   if(st==='finalizado') acoes=`<span class="order-done">Pedido finalizado</span>`;
-  return `<div class="order-card"><div class="order-title"><b>#${numeroPedido(p)}</b><span>${brl(p.valor_total)}</span></div><div class="order-customer">👤 ${p.cliente_nome||''}<br>📞 ${p.cliente_telefone||''}</div><div class="order-items">${itens}</div><div class="order-address">📍 ${enderecoPedido(p)}<br>💳 ${p.forma_pagamento||'pix'} • 🚚 ${brl(p.taxa_entrega||0)}</div><div class="order-actions">${acoes}<button class="order-action whats" onclick='abrirWhats(${JSON.stringify(p).replaceAll("'","&#39;")},"aceito")'>💬 WhatsApp</button></div></div>`;
+  return `<div class="order-card"><div class="order-title"><b>#${numeroPedido(p)}</b><span>${brl(p.valor_total)}</span></div><div class="order-customer">👤 ${p.cliente_nome||''}<br>📞 ${p.cliente_telefone||''}</div><div class="order-items">${itens}</div><div class="order-address">📍 ${enderecoPedido(p)}<br>💳 ${p.forma_pagamento||'pix'} • 🚚 ${brl(p.taxa_entrega||0)}</div><div class="order-actions">${acoes}<button class="order-action print" onclick='imprimirPedido(${JSON.stringify(p).replaceAll("'","&#39;")})'>🖨️ Imprimir</button><button class="order-action whats" onclick='abrirWhats(${JSON.stringify(p).replaceAll("'","&#39;")},"aceito")'>💬 WhatsApp</button></div></div>`;
 }
 function tocarSomPedido(){try{const ctx=new (window.AudioContext||window.webkitAudioContext)();const osc=ctx.createOscillator();const gain=ctx.createGain();osc.type='sine';osc.frequency.value=880;gain.gain.value=.12;osc.connect(gain);gain.connect(ctx.destination);osc.start();setTimeout(()=>{osc.frequency.value=660},120);setTimeout(()=>{osc.stop();ctx.close()},360)}catch(e){}}
 function atualizarBotaoSom(){const b=document.getElementById('btnSomPedidos');if(b)b.textContent=somPedidosLigado?'🔔 Som ligado':'🔕 Som desligado'}
@@ -85,18 +115,28 @@ function renderPedidosGestor(){
   atualizarBotaoSom();
   renderFinanceiro();
 }
-async function loadPedidos(){
-  const out=document.getElementById('pedidosBoard')||document.getElementById('pedidosOut'); if(out) out.innerHTML='Carregando pedidos...';
+async function loadPedidos(silencioso=false){
+  if(loadPedidosEmAndamento) return;
+  loadPedidosEmAndamento=true;
+  const out=document.getElementById('pedidosBoard')||document.getElementById('pedidosOut'); if(out && !silencioso) out.innerHTML='Carregando pedidos...';
   try{
-    const r=await fetch('/api/admin'); const d=await r.json();
+    const anteriores=[...pedidosCache];
+    const r=await fetch('/api/admin?ts='+Date.now(), {cache:'no-store'}); const d=await r.json();
     if(!r.ok||!d.ok) throw new Error(d.error||JSON.stringify(d));
     pedidosCache=d.pedidos||[];
     state.financeiro=d.resumo||null;
     const novoTotal=pedidosCache.length;
     if(ultimoTotalPedidos && novoTotal>ultimoTotalPedidos && somPedidosLigado) tocarSomPedido();
+    pedidosCache.forEach(p=>{
+      const antes=anteriores.find(a=>String(a.id)===String(p.id));
+      const agora=normalizarStatusPedido(p.status);
+      const statusAntes=antes?normalizarStatusPedido(antes.status):null;
+      if(agora==='em_preparo' && statusAntes && statusAntes!=='em_preparo') imprimirPedidoAoAceitar(p);
+    });
     ultimoTotalPedidos=novoTotal;
     renderPedidosGestor();
-  }catch(e){if(out) out.innerHTML='<div class="err">Erro ao carregar pedidos: '+e.message+'</div>'}
+  }catch(e){if(out && !silencioso) out.innerHTML='<div class="err">Erro ao carregar pedidos: '+e.message+'</div>'}
+  finally{loadPedidosEmAndamento=false;}
 }
 
 async function loadClientes(){
@@ -320,3 +360,5 @@ function renderFinanceiro(){
   if(out){out.innerHTML=lista.length?`<table class="table dark-table"><tr><th>Pedido</th><th>Cliente</th><th>Pagamento</th><th>Status</th><th>Entrega</th><th>Taxa entrega</th><th>Total</th><th>Data/Hora</th></tr>${lista.map(p=>`<tr><td>#${numeroPedido(p)}</td><td>${escapeHtml(p.cliente_nome||'')}</td><td>${escapeHtml(p.forma_pagamento||'')}</td><td>${escapeHtml(normalizarStatusPedido(p.status)).replaceAll('_',' ')}</td><td>${p.taxa_entrega?'Delivery':'Retirada'}</td><td>${brl(p.taxa_entrega||0)}</td><td><b>${brl(p.valor_total||0)}</b></td><td>${dataBR(p.created_at)}</td></tr>`).join('')}<tr class="finance-total"><td colspan="5"><b>Totais do dia</b></td><td><b>${brl(resumo.taxas)}</b></td><td><b>${brl(resumo.faturamento)}</b></td><td></td></tr></table>`:'<div class="empty-finance">Relatório diário zerado. Os próximos pedidos aparecerão aqui.</div>';}
 }
 loadPedidos();loadClientes();loadTudo();loadConfigLoja();
+if(pedidosAutoRefreshTimer) clearInterval(pedidosAutoRefreshTimer);
+pedidosAutoRefreshTimer=setInterval(()=>loadPedidos(true),5000);
