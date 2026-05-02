@@ -20,6 +20,7 @@
         <button class="main-tab" onclick="abrirMain('entrega')">📍 Entrega</button>
         <button class="main-tab" onclick="abrirMain('loja')">🏪 Loja aberta/horários</button>
         <button class="main-tab" onclick="abrirMain('financeiro')">💸 Financeiro</button>
+        <button class="main-tab" onclick="abrirMain('impressora')">🖨️ Impressora</button>
         <button class="main-tab" onclick="abrirMain('clientes')">👥 Clientes</button>
       </div>
 
@@ -121,6 +122,56 @@
         <div class="admin-card">
           <div class="admin-head"><h2>Bairros cadastrados</h2><button class="btn red" onclick="loadTudo()">Atualizar entrega</button></div>
           <div id="bairrosOut"></div>
+        </div>
+      </div>
+
+
+      <div id="main-impressora" class="main-content">
+        <div class="editor-title">
+          <h1>🖨️ Configuração da impressora</h1>
+          <p>Configure o tamanho da comanda, fonte, negrito, margens e impressão automática dos pedidos aceitos.</p>
+        </div>
+        <form class="admin-form admin-card printer-settings" onsubmit="salvarConfigImpressora(event)">
+          <div class="mini-grid">
+            <label>Tamanho do papel
+              <select id="imp_papel">
+                <option value="80">Bobina 80mm</option>
+                <option value="58">Bobina 58mm</option>
+              </select>
+            </label>
+            <label>Tamanho da letra
+              <input id="imp_fonte" type="number" min="10" max="22" value="13">
+            </label>
+          </div>
+          <div class="mini-grid">
+            <label>Tamanho do título
+              <input id="imp_titulo" type="number" min="14" max="34" value="22">
+            </label>
+            <label>Margem da impressão
+              <input id="imp_margem" type="number" min="0" max="20" value="6">
+            </label>
+          </div>
+          <div class="mini-grid">
+            <label>Nome que aparece na comanda
+              <input id="imp_nome" value="BIG BURGER">
+            </label>
+            <label>Texto abaixo do nome
+              <input id="imp_subtitulo" value="COMANDA DE PEDIDO">
+            </label>
+          </div>
+          <div class="mini-grid">
+            <label class="check switch-line"><input id="imp_negrito" type="checkbox" checked> Deixar letras em negrito</label>
+            <label class="check switch-line"><input id="imp_auto" type="checkbox" checked> Imprimir automaticamente ao aceitar pedido</label>
+          </div>
+          <div class="mini-grid">
+            <button class="btn red">Salvar configuração</button>
+            <button type="button" class="btn ghost" onclick="testarImpressora()">🖨️ Testar impressão</button>
+          </div>
+          <div id="impressoraStatus" class="small"></div>
+        </form>
+        <div class="admin-card printer-preview-card">
+          <h2>Prévia da comanda</h2>
+          <div id="previewComanda" class="printer-preview"></div>
         </div>
       </div>
 

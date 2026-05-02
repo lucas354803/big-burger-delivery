@@ -26,6 +26,43 @@ const orderStatuses=[
   {id:'em_entrega',titulo:'Em entrega',emoji:'🟢',cls:'entrega'},
   {id:'finalizado',titulo:'Finalizados',emoji:'⚫',cls:'finalizado'}
 ];
+
+const impressoraPadrao={papel:80,fonte:13,titulo:22,margem:6,nome:'BIG BURGER',subtitulo:'COMANDA DE PEDIDO',negrito:true,auto:true};
+function getConfigImpressora(){
+  try{return {...impressoraPadrao,...JSON.parse(localStorage.getItem('configImpressoraBigBurger')||'{}')}}catch(e){return {...impressoraPadrao}}
+}
+function setConfigImpressora(cfg){localStorage.setItem('configImpressoraBigBurger',JSON.stringify({...getConfigImpressora(),...cfg}));}
+function carregarConfigImpressora(){
+  const c=getConfigImpressora();
+  if(typeof imp_papel!=='undefined') imp_papel.value=String(c.papel||80);
+  if(typeof imp_fonte!=='undefined') imp_fonte.value=c.fonte||13;
+  if(typeof imp_titulo!=='undefined') imp_titulo.value=c.titulo||22;
+  if(typeof imp_margem!=='undefined') imp_margem.value=c.margem||6;
+  if(typeof imp_nome!=='undefined') imp_nome.value=c.nome||'BIG BURGER';
+  if(typeof imp_subtitulo!=='undefined') imp_subtitulo.value=c.subtitulo||'COMANDA DE PEDIDO';
+  if(typeof imp_negrito!=='undefined') imp_negrito.checked=c.negrito!==false;
+  if(typeof imp_auto!=='undefined') imp_auto.checked=c.auto!==false;
+  renderPreviewComanda();
+}
+function lerConfigImpressoraTela(){return {papel:Number(imp_papel?.value||80),fonte:Number(imp_fonte?.value||13),titulo:Number(imp_titulo?.value||22),margem:Number(imp_margem?.value||6),nome:(imp_nome?.value||'BIG BURGER').trim(),subtitulo:(imp_subtitulo?.value||'COMANDA DE PEDIDO').trim(),negrito:!!imp_negrito?.checked,auto:!!imp_auto?.checked};}
+function salvarConfigImpressora(e){
+  if(e) e.preventDefault();
+  setConfigImpressora(lerConfigImpressoraTela());
+  renderPreviewComanda();
+  const out=document.getElementById('impressoraStatus'); if(out) out.innerHTML='✅ Configuração da impressora salva com sucesso!';
+}
+function renderPreviewComanda(){
+  const box=document.getElementById('previewComanda'); if(!box) return;
+  const c=(typeof imp_papel!=='undefined')?lerConfigImpressoraTela():getConfigImpressora();
+  box.style.maxWidth=(c.papel||80)+'mm';
+  box.style.fontSize=(c.fonte||13)+'px';
+  box.style.fontWeight=c.negrito!==false?'800':'400';
+  box.innerHTML=`<h3 style="font-size:${c.titulo||22}px">${escapeHtml(c.nome||'BIG BURGER')}</h3><p>${escapeHtml(c.subtitulo||'COMANDA DE PEDIDO')}</p><hr><div><b>Pedido #01</b></div><div>Cliente: Lucas</div><div>1x Big Burger</div><div>1x Fritas</div><hr><div><b>TOTAL: R$ 39,90</b></div>`;
+}
+function testarImpressora(){
+  salvarConfigImpressora();
+  imprimirPedido({id:'TESTE',numero_pedido:'01',cliente_nome:'Cliente Teste',cliente_telefone:'(48) 99999-9999',itens:[{qtd:1,nome:'Big Burger',preco:29.9},{qtd:1,nome:'Fritas',preco:10}],cidade:'Criciúma',bairro:'Centro',rua:'Rua Teste, 123',forma_pagamento:'pix',taxa_entrega:5,valor_total:44.9,observacao:'Teste de impressão da comanda.'});
+}
 function normalizarStatusPedido(status){
   if(['aguardando_pagamento','pedido_recebido','pago','aprovado','pendente'].includes(status)) return 'em_analise';
   if(['preparo'].includes(status)) return 'em_preparo';
@@ -52,11 +89,17 @@ function abrirWhats(p,tipo){
 }
 
 function htmlComandaPedido(p){
+  const cfg=getConfigImpressora();
+  const papel=Number(cfg.papel||80);
+  const fonte=Number(cfg.fonte||13);
+  const titulo=Number(cfg.titulo||22);
+  const margem=Number(cfg.margem||6);
+  const peso=cfg.negrito!==false?'800':'400';
   const itens=itensTexto(p.itens).replaceAll('\n','<br>');
   const data=new Date().toLocaleString('pt-BR');
   return `<!doctype html><html><head><meta charset="utf-8"><title>Comanda #${numeroPedido(p)}</title><style>
-  *{box-sizing:border-box}body{font-family:Arial,Helvetica,sans-serif;margin:0;padding:12px;color:#000;background:#fff;font-size:13px}.ticket{max-width:320px;margin:0 auto}h1{font-size:22px;text-align:center;margin:0 0 4px}.sub{text-align:center;border-bottom:1px dashed #000;padding-bottom:8px;margin-bottom:8px}.row{display:flex;justify-content:space-between;gap:8px;margin:4px 0}.big{font-size:18px;font-weight:800}.sec{border-top:1px dashed #000;margin-top:8px;padding-top:8px}.items{font-size:15px;line-height:1.35}.total{font-size:20px;font-weight:900;text-align:right;margin-top:8px}.obs{font-size:14px;white-space:pre-wrap}@media print{body{padding:0}.ticket{width:80mm;max-width:80mm}button{display:none}}
-  </style></head><body><div class="ticket"><h1>BIG BURGER</h1><div class="sub">COMANDA DE PEDIDO<br>${data}</div><div class="row big"><span>Pedido</span><span>#${numeroPedido(p)}</span></div><div class="row"><span>Cliente</span><b>${escapeHtml(p.cliente_nome||'')}</b></div><div class="row"><span>Telefone</span><b>${escapeHtml(p.cliente_telefone||'')}</b></div><div class="sec"><b>ITENS</b><div class="items">${itens}</div></div><div class="sec"><b>ENDEREÇO</b><div>${escapeHtml(enderecoPedido(p)||'Retirada/sem endereço')}</div></div><div class="sec"><div class="row"><span>Pagamento</span><b>${escapeHtml(p.forma_pagamento||'pix')}</b></div><div class="row"><span>Taxa entrega</span><b>${brl(p.taxa_entrega||0)}</b></div><div class="total">TOTAL: ${brl(p.valor_total||0)}</div></div>${p.observacao?`<div class="sec obs"><b>OBS:</b><br>${escapeHtml(p.observacao)}</div>`:''}</div><script>window.onload=function(){setTimeout(function(){window.print();},300)}<\/script></body></html>`;
+  *{box-sizing:border-box}body{font-family:Arial,Helvetica,sans-serif;margin:0;padding:${margem}px;color:#000;background:#fff;font-size:${fonte}px;font-weight:${peso}}.ticket{width:${papel}mm;max-width:${papel}mm;margin:0 auto}h1{font-size:${titulo}px;text-align:center;margin:0 0 4px;font-weight:900}.sub{text-align:center;border-bottom:1px dashed #000;padding-bottom:8px;margin-bottom:8px;font-weight:${peso}}.row{display:flex;justify-content:space-between;gap:8px;margin:4px 0}.big{font-size:${Math.max(fonte+5,18)}px;font-weight:900}.sec{border-top:1px dashed #000;margin-top:8px;padding-top:8px}.items{font-size:${Math.max(fonte+2,15)}px;line-height:1.35}.total{font-size:${Math.max(fonte+7,20)}px;font-weight:900;text-align:right;margin-top:8px}.obs{font-size:${Math.max(fonte+1,14)}px;white-space:pre-wrap}@media print{body{padding:${margem}px}.ticket{width:${papel}mm;max-width:${papel}mm}button{display:none}}
+  </style></head><body><div class="ticket"><h1>${escapeHtml(cfg.nome||'BIG BURGER')}</h1><div class="sub">${escapeHtml(cfg.subtitulo||'COMANDA DE PEDIDO')}<br>${data}</div><div class="row big"><span>Pedido</span><span>#${numeroPedido(p)}</span></div><div class="row"><span>Cliente</span><b>${escapeHtml(p.cliente_nome||'')}</b></div><div class="row"><span>Telefone</span><b>${escapeHtml(p.cliente_telefone||'')}</b></div><div class="sec"><b>ITENS</b><div class="items">${itens}</div></div><div class="sec"><b>ENDEREÇO</b><div>${escapeHtml(enderecoPedido(p)||'Retirada/sem endereço')}</div></div><div class="sec"><div class="row"><span>Pagamento</span><b>${escapeHtml(p.forma_pagamento||'pix')}</b></div><div class="row"><span>Taxa entrega</span><b>${brl(p.taxa_entrega||0)}</b></div><div class="total">TOTAL: ${brl(p.valor_total||0)}</div></div>${p.observacao?`<div class="sec obs"><b>OBS:</b><br>${escapeHtml(p.observacao)}</div>`:''}</div><script>window.onload=function(){setTimeout(function(){window.print();},300)}<\/script></body></html>`;
 }
 function imprimirPedido(p){
   if(!p){alert('Pedido não encontrado para imprimir.');return;}
@@ -70,7 +113,7 @@ function registrarPedidoImpresso(id){
   localStorage.setItem('pedidosImpressosAuto', JSON.stringify([...ultimoIdsEmPreparoImpresso].slice(-300)));
 }
 function imprimirPedidoAoAceitar(p){
-  if(!p || ultimoIdsEmPreparoImpresso.has(String(p.id))) return;
+  if(!p || getConfigImpressora().auto===false || ultimoIdsEmPreparoImpresso.has(String(p.id))) return;
   imprimirPedido(p);
   registrarPedidoImpresso(p.id);
 }
@@ -359,6 +402,6 @@ function renderFinanceiro(){
   if(box){box.innerHTML=`<div class="stat-card dark-stat"><div>🛒</div><span>Faturamento bruto</span><b>${brl(resumo.faturamento)}</b></div><div class="stat-card dark-stat"><div>🧾</div><span>Taxas de entrega</span><b>${brl(resumo.taxas)}</b></div><div class="stat-card dark-stat"><div>💰</div><span>Faturamento líquido</span><b>${brl(resumo.liquido)}</b></div><div class="stat-card dark-stat"><div>📦</div><span>Pedidos</span><b>${resumo.pedidos}</b></div><div class="stat-card dark-stat"><div>🎟️</div><span>Ticket médio</span><b>${brl(resumo.ticket)}</b></div><div class="stat-card dark-stat"><div>💳</div><span>Pix / dinheiro / cartão</span><b>${brl(resumo.pix)} / ${brl(resumo.dinheiro)} / ${brl(resumo.cartao)}</b></div>`;}
   if(out){out.innerHTML=lista.length?`<table class="table dark-table"><tr><th>Pedido</th><th>Cliente</th><th>Pagamento</th><th>Status</th><th>Entrega</th><th>Taxa entrega</th><th>Total</th><th>Data/Hora</th></tr>${lista.map(p=>`<tr><td>#${numeroPedido(p)}</td><td>${escapeHtml(p.cliente_nome||'')}</td><td>${escapeHtml(p.forma_pagamento||'')}</td><td>${escapeHtml(normalizarStatusPedido(p.status)).replaceAll('_',' ')}</td><td>${p.taxa_entrega?'Delivery':'Retirada'}</td><td>${brl(p.taxa_entrega||0)}</td><td><b>${brl(p.valor_total||0)}</b></td><td>${dataBR(p.created_at)}</td></tr>`).join('')}<tr class="finance-total"><td colspan="5"><b>Totais do dia</b></td><td><b>${brl(resumo.taxas)}</b></td><td><b>${brl(resumo.faturamento)}</b></td><td></td></tr></table>`:'<div class="empty-finance">Relatório diário zerado. Os próximos pedidos aparecerão aqui.</div>';}
 }
-loadPedidos();loadClientes();loadTudo();loadConfigLoja();
+loadPedidos();loadClientes();loadTudo();loadConfigLoja();carregarConfigImpressora();
 if(pedidosAutoRefreshTimer) clearInterval(pedidosAutoRefreshTimer);
 pedidosAutoRefreshTimer=setInterval(()=>loadPedidos(true),5000);

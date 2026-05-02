@@ -117,3 +117,11 @@
   margin:7px 0;
 }
 .order-action.print{border-color:#e11d2e;background:rgba(225,29,46,.12);color:#fff;}
+
+/* Aba de configuração da impressora */
+.printer-settings{background:linear-gradient(180deg,#141414,#0b0b0b)!important;border:1px solid rgba(255,255,255,.12)!important;color:#fff!important}
+.printer-settings label{color:#f1f1f1;font-weight:900}
+.printer-settings input,.printer-settings select{background:#070707!important;color:#fff!important;border:1px solid rgba(255,255,255,.18)!important;border-radius:12px!important;padding:13px!important;margin-top:7px!important}
+.printer-preview-card{margin-top:16px;background:linear-gradient(180deg,#151515,#0b0b0b)!important;border:1px solid rgba(255,255,255,.12)!important;color:#fff!important}
+.printer-preview{background:#fff;color:#000;border-radius:4px;padding:10px;margin:12px auto 0;font-family:Arial,Helvetica,sans-serif;box-shadow:0 18px 50px rgba(0,0,0,.35)}
+.printer-preview h3{margin:0 0 4px;text-align:center;color:#000}.printer-preview p{text-align:center;margin:0 0 6px;color:#000}.printer-preview hr{border:0;border-top:1px dashed #000;margin:8px 0}
