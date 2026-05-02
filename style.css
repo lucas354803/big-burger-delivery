@@ -125,3 +125,5 @@
 .printer-preview-card{margin-top:16px;background:linear-gradient(180deg,#151515,#0b0b0b)!important;border:1px solid rgba(255,255,255,.12)!important;color:#fff!important}
 .printer-preview{background:#fff;color:#000;border-radius:4px;padding:10px;margin:12px auto 0;font-family:Arial,Helvetica,sans-serif;box-shadow:0 18px 50px rgba(0,0,0,.35)}
 .printer-preview h3{margin:0 0 4px;text-align:center;color:#000}.printer-preview p{text-align:center;margin:0 0 6px;color:#000}.printer-preview hr{border:0;border-top:1px dashed #000;margin:8px 0}
+
+.printer-note{border:1px solid rgba(255,196,0,.35);background:rgba(255,196,0,.08);color:#ffe9a6;border-radius:12px;padding:12px;margin:6px 0 12px;font-size:13px;line-height:1.4}.preview-logo-wrap{text-align:center;margin-bottom:6px}.preview-logo{width:42mm;max-height:28mm;object-fit:contain;display:inline-block}

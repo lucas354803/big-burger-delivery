@@ -27,7 +27,7 @@ const orderStatuses=[
   {id:'finalizado',titulo:'Finalizados',emoji:'⚫',cls:'finalizado'}
 ];
 
-const impressoraPadrao={papel:80,fonte:13,titulo:22,margem:6,nome:'BIG BURGER',subtitulo:'COMANDA DE PEDIDO',negrito:true,auto:true};
+const impressoraPadrao={papel:80,fonte:13,titulo:22,margem:6,nome:'BIG BURGER',subtitulo:'COMANDA DE PEDIDO',negrito:true,auto:true,logo:true,fecharJanela:true};
 function getConfigImpressora(){
   try{return {...impressoraPadrao,...JSON.parse(localStorage.getItem('configImpressoraBigBurger')||'{}')}}catch(e){return {...impressoraPadrao}}
 }
@@ -42,9 +42,11 @@ function carregarConfigImpressora(){
   if(typeof imp_subtitulo!=='undefined') imp_subtitulo.value=c.subtitulo||'COMANDA DE PEDIDO';
   if(typeof imp_negrito!=='undefined') imp_negrito.checked=c.negrito!==false;
   if(typeof imp_auto!=='undefined') imp_auto.checked=c.auto!==false;
+  if(typeof imp_logo!=='undefined') imp_logo.checked=c.logo!==false;
+  if(typeof imp_fechar!=='undefined') imp_fechar.checked=c.fecharJanela!==false;
   renderPreviewComanda();
 }
-function lerConfigImpressoraTela(){return {papel:Number(imp_papel?.value||80),fonte:Number(imp_fonte?.value||13),titulo:Number(imp_titulo?.value||22),margem:Number(imp_margem?.value||6),nome:(imp_nome?.value||'BIG BURGER').trim(),subtitulo:(imp_subtitulo?.value||'COMANDA DE PEDIDO').trim(),negrito:!!imp_negrito?.checked,auto:!!imp_auto?.checked};}
+function lerConfigImpressoraTela(){return {papel:Number(imp_papel?.value||80),fonte:Number(imp_fonte?.value||13),titulo:Number(imp_titulo?.value||22),margem:Number(imp_margem?.value||6),nome:(imp_nome?.value||'BIG BURGER').trim(),subtitulo:(imp_subtitulo?.value||'COMANDA DE PEDIDO').trim(),negrito:!!imp_negrito?.checked,auto:!!imp_auto?.checked,logo:!!imp_logo?.checked,fecharJanela:!!imp_fechar?.checked};}
 function salvarConfigImpressora(e){
   if(e) e.preventDefault();
   setConfigImpressora(lerConfigImpressoraTela());
@@ -57,7 +59,7 @@ function renderPreviewComanda(){
   box.style.maxWidth=(c.papel||80)+'mm';
   box.style.fontSize=(c.fonte||13)+'px';
   box.style.fontWeight=c.negrito!==false?'800':'400';
-  box.innerHTML=`<h3 style="font-size:${c.titulo||22}px">${escapeHtml(c.nome||'BIG BURGER')}</h3><p>${escapeHtml(c.subtitulo||'COMANDA DE PEDIDO')}</p><hr><div><b>Pedido #01</b></div><div>Cliente: Lucas</div><div>1x Big Burger</div><div>1x Fritas</div><hr><div><b>TOTAL: R$ 39,90</b></div>`;
+  box.innerHTML=`${c.logo!==false?'<div class="preview-logo-wrap"><img src="/logo.png" class="preview-logo" alt="Big Burger"></div>':''}<h3 style="font-size:${c.titulo||22}px">${escapeHtml(c.nome||'BIG BURGER')}</h3><p>${escapeHtml(c.subtitulo||'COMANDA DE PEDIDO')}</p><hr><div><b>Pedido #01</b></div><div>Cliente: Lucas</div><div>1x Big Burger</div><div>1x Fritas</div><hr><div><b>TOTAL: R$ 39,90</b></div>`;
 }
 function testarImpressora(){
   salvarConfigImpressora();
@@ -98,8 +100,8 @@ function htmlComandaPedido(p){
   const itens=itensTexto(p.itens).replaceAll('\n','<br>');
   const data=new Date().toLocaleString('pt-BR');
   return `<!doctype html><html><head><meta charset="utf-8"><title>Comanda #${numeroPedido(p)}</title><style>
-  *{box-sizing:border-box}body{font-family:Arial,Helvetica,sans-serif;margin:0;padding:${margem}px;color:#000;background:#fff;font-size:${fonte}px;font-weight:${peso}}.ticket{width:${papel}mm;max-width:${papel}mm;margin:0 auto}h1{font-size:${titulo}px;text-align:center;margin:0 0 4px;font-weight:900}.sub{text-align:center;border-bottom:1px dashed #000;padding-bottom:8px;margin-bottom:8px;font-weight:${peso}}.row{display:flex;justify-content:space-between;gap:8px;margin:4px 0}.big{font-size:${Math.max(fonte+5,18)}px;font-weight:900}.sec{border-top:1px dashed #000;margin-top:8px;padding-top:8px}.items{font-size:${Math.max(fonte+2,15)}px;line-height:1.35}.total{font-size:${Math.max(fonte+7,20)}px;font-weight:900;text-align:right;margin-top:8px}.obs{font-size:${Math.max(fonte+1,14)}px;white-space:pre-wrap}@media print{body{padding:${margem}px}.ticket{width:${papel}mm;max-width:${papel}mm}button{display:none}}
-  </style></head><body><div class="ticket"><h1>${escapeHtml(cfg.nome||'BIG BURGER')}</h1><div class="sub">${escapeHtml(cfg.subtitulo||'COMANDA DE PEDIDO')}<br>${data}</div><div class="row big"><span>Pedido</span><span>#${numeroPedido(p)}</span></div><div class="row"><span>Cliente</span><b>${escapeHtml(p.cliente_nome||'')}</b></div><div class="row"><span>Telefone</span><b>${escapeHtml(p.cliente_telefone||'')}</b></div><div class="sec"><b>ITENS</b><div class="items">${itens}</div></div><div class="sec"><b>ENDEREÇO</b><div>${escapeHtml(enderecoPedido(p)||'Retirada/sem endereço')}</div></div><div class="sec"><div class="row"><span>Pagamento</span><b>${escapeHtml(p.forma_pagamento||'pix')}</b></div><div class="row"><span>Taxa entrega</span><b>${brl(p.taxa_entrega||0)}</b></div><div class="total">TOTAL: ${brl(p.valor_total||0)}</div></div>${p.observacao?`<div class="sec obs"><b>OBS:</b><br>${escapeHtml(p.observacao)}</div>`:''}</div><script>window.onload=function(){setTimeout(function(){window.print();},300)}<\/script></body></html>`;
+  *{box-sizing:border-box}body{font-family:Arial,Helvetica,sans-serif;margin:0;padding:${margem}px;color:#000;background:#fff;font-size:${fonte}px;font-weight:${peso}}.ticket{width:${papel}mm;max-width:${papel}mm;margin:0 auto}.logo{display:block;width:${papel==58?'34':'42'}mm;max-height:28mm;object-fit:contain;margin:0 auto 6px}h1{font-size:${titulo}px;text-align:center;margin:0 0 4px;font-weight:900}.sub{text-align:center;border-bottom:1px dashed #000;padding-bottom:8px;margin-bottom:8px;font-weight:${peso}}.row{display:flex;justify-content:space-between;gap:8px;margin:4px 0}.big{font-size:${Math.max(fonte+5,18)}px;font-weight:900}.sec{border-top:1px dashed #000;margin-top:8px;padding-top:8px}.items{font-size:${Math.max(fonte+2,15)}px;line-height:1.35}.total{font-size:${Math.max(fonte+7,20)}px;font-weight:900;text-align:right;margin-top:8px}.obs{font-size:${Math.max(fonte+1,14)}px;white-space:pre-wrap}@media print{body{padding:${margem}px}.ticket{width:${papel}mm;max-width:${papel}mm}button{display:none}}
+  </style></head><body><div class="ticket">${cfg.logo!==false?'<img src="/logo.png" class="logo" alt="Big Burger">':''}<h1>${escapeHtml(cfg.nome||'BIG BURGER')}</h1><div class="sub">${escapeHtml(cfg.subtitulo||'COMANDA DE PEDIDO')}<br>${data}</div><div class="row big"><span>Pedido</span><span>#${numeroPedido(p)}</span></div><div class="row"><span>Cliente</span><b>${escapeHtml(p.cliente_nome||'')}</b></div><div class="row"><span>Telefone</span><b>${escapeHtml(p.cliente_telefone||'')}</b></div><div class="sec"><b>ITENS</b><div class="items">${itens}</div></div><div class="sec"><b>ENDEREÇO</b><div>${escapeHtml(enderecoPedido(p)||'Retirada/sem endereço')}</div></div><div class="sec"><div class="row"><span>Pagamento</span><b>${escapeHtml(p.forma_pagamento||'pix')}</b></div><div class="row"><span>Taxa entrega</span><b>${brl(p.taxa_entrega||0)}</b></div><div class="total">TOTAL: ${brl(p.valor_total||0)}</div></div>${p.observacao?`<div class="sec obs"><b>OBS:</b><br>${escapeHtml(p.observacao)}</div>`:''}</div><script>window.onload=function(){setTimeout(function(){window.print();},450); if(${cfg.fecharJanela!==false?'true':'false'}){window.onafterprint=function(){setTimeout(function(){window.close();},300)}}}<\/script></body></html>`;
 }
 function imprimirPedido(p){
   if(!p){alert('Pedido não encontrado para imprimir.');return;}
