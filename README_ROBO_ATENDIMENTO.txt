@@ -1,20 +1,26 @@
-BIG BURGER - ROBÔ COM ATENDIMENTO AUTOMÁTICO
+ROBÔ WHATSAPP BIG BURGER - VERSÃO CORRIGIDA HTTP 404
 
-Agora o robô faz duas coisas:
+O erro HTTP 404 acontecia porque o robô chamava rotas da Vercel que não estavam no deploy atual.
 
-1) Envia status de pedidos automaticamente quando o admin muda o status.
-2) Responde clientes no WhatsApp com mensagem bonita de boas-vindas e menu.
+ARQUIVOS CORRIGIDOS/ADICIONADOS:
+- api/bot-health.js
+- api/bot-whatsapp-pending.js
+- api/bot-whatsapp-mark.js
+- api/pedidos.js
+- package.json com type=module para as APIs funcionarem corretamente na Vercel
+- robo-whatsapp-local/bot.js com teste de API e mensagem clara de erro
 
-Menu:
-1 - Cardápio
-2 - Horário
-3 - Taxa de entrega
-4 - Pagamento
-5 - Atendente
+PASSO CERTO:
+1. Suba TODO este projeto novamente na Vercel.
+2. Na Vercel, confirme as variáveis:
+   SUPABASE_URL
+   SUPABASE_SERVICE_ROLE_KEY
+   BOT_SECRET=bigburger_robo_2026
+3. Abra no navegador:
+   https://big-burger-delivery.vercel.app/api/bot-health
+4. Se aparecer {"ok":true}, pode abrir o robô.
+5. Dentro da pasta robo-whatsapp-local, rode:
+   npm install
+   npm start
 
-Para usar:
-- Suba o projeto na Vercel.
-- Entre em robo-whatsapp-local.
-- Rode 1 - INSTALAR DEPENDENCIAS.bat
-- Rode 2 - LIGAR ROBO.bat
-- Escaneie o QR Code.
+Se /api/bot-health ainda der 404, a Vercel ainda está com o projeto antigo. Refaça o deploy com este ZIP inteiro.

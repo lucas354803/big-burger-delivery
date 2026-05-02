@@ -6,6 +6,8 @@ const qrcode = require('qrcode-terminal');
 const SITE_URL = String(process.env.SITE_URL || '').replace(/\/+$/, '');
 const BOT_SECRET = process.env.BOT_SECRET || 'bigburger_robo_2026';
 const POLL_INTERVAL_SECONDS = Number(process.env.POLL_INTERVAL_SECONDS || 5);
+let ultimoErroApi = '';
+let apiOnline = false;
 
 if (!SITE_URL) {
   console.error('❌ Configure SITE_URL no arquivo .env');
@@ -75,11 +77,38 @@ function mensagemPedido(p) {
   return `🍔 *Big Burger*\n\nOlá, ${nome}!\nSeu pedido ${numeroPedido(p)} foi atualizado.\n\n📦 Status: *${status}*`;
 }
 
+async function testarApi() {
+  const url = `${SITE_URL}/api/bot-health`;
+  try {
+    const r = await fetch(url);
+    const data = await r.json().catch(() => ({}));
+    if (!r.ok || !data.ok) {
+      throw new Error(`HTTP ${r.status}`);
+    }
+    apiOnline = true;
+    console.log('✅ API do site online para o robô.');
+    if (data.env) {
+      console.log(`🔎 Supabase na Vercel: URL=${data.env.supabase_url_ok ? 'OK' : 'FALTANDO'} | SERVICE_ROLE=${data.env.service_role_key_ok ? 'OK' : 'FALTANDO'} | ANON=${data.env.anon_key_ok ? 'OK' : 'FALTANDO'}`);
+    }
+  } catch (e) {
+    apiOnline = false;
+    console.error('❌ A API do robô não respondeu.');
+    console.error(`➡️ Teste no navegador: ${url}`);
+    console.error('➡️ Se aparecer 404, você precisa reenviar/deployar este ZIP atualizado na Vercel.');
+    console.error(`Detalhe: ${e.message}`);
+  }
+}
+
 async function buscarPendentes() {
   const url = `${SITE_URL}/api/bot-whatsapp-pending?key=${encodeURIComponent(BOT_SECRET)}`;
   const r = await fetch(url);
   const data = await r.json().catch(() => ({}));
-  if (!r.ok || !data.ok) throw new Error(data.error || `HTTP ${r.status}`);
+  if (!r.ok || !data.ok) {
+    if (r.status === 404) {
+      throw new Error(`HTTP 404 - rota não existe na Vercel. Faça deploy deste ZIP atualizado e teste: ${SITE_URL}/api/bot-health`);
+    }
+    throw new Error(data.error || `HTTP ${r.status}`);
+  }
   return data.pedidos || [];
 }
 
@@ -109,7 +138,11 @@ async function verificar() {
       console.log('✅ Enviado com sucesso');
     }
   } catch (e) {
-    console.error('❌ Erro no robô:', e.message);
+    const msg = String(e.message || e);
+    if (msg !== ultimoErroApi) {
+      console.error('❌ Erro no robô:', msg);
+      ultimoErroApi = msg;
+    }
   }
 }
 
@@ -123,7 +156,7 @@ client.on('ready', () => {
   console.log(`🌐 Site conectado: ${SITE_URL}`);
   console.log(`🔁 Verificando pedidos a cada ${POLL_INTERVAL_SECONDS} segundos.`);
   console.log('⚠️ Não feche este CMD.\n');
-  verificar();
+  testarApi().then(verificar);
   setInterval(verificar, POLL_INTERVAL_SECONDS * 1000);
 });
 
