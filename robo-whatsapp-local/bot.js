@@ -1,5 +1,7 @@
 require('dotenv').config();
 
+const fs = require('fs');
+const path = require('path');
 const { Client, LocalAuth } = require('whatsapp-web.js');
 const qrcode = require('qrcode-terminal');
 
@@ -8,6 +10,10 @@ const BOT_SECRET = process.env.BOT_SECRET || 'bigburger_robo_2026';
 const POLL_INTERVAL_SECONDS = Number(process.env.POLL_INTERVAL_SECONDS || 5);
 let ultimoErroApi = '';
 let apiOnline = false;
+
+const STATUS_ENVIAR = new Set(['em_preparo', 'pronto', 'em_entrega', 'finalizado']);
+const CACHE_FILE = path.join(__dirname, 'status-enviados.json');
+let statusEnviados = carregarCacheStatus();
 
 if (!SITE_URL) {
   console.error('❌ Configure SITE_URL no arquivo .env');
@@ -21,6 +27,43 @@ const client = new Client({
     args: ['--no-sandbox', '--disable-setuid-sandbox']
   }
 });
+
+
+function carregarCacheStatus() {
+  try {
+    if (fs.existsSync(CACHE_FILE)) {
+      const data = JSON.parse(fs.readFileSync(CACHE_FILE, 'utf8'));
+      return data && typeof data === 'object' ? data : {};
+    }
+  } catch (e) {
+    console.log('⚠️ Não consegui ler status-enviados.json. Vou criar outro.');
+  }
+  return {};
+}
+
+function salvarCacheStatus() {
+  try {
+    fs.writeFileSync(CACHE_FILE, JSON.stringify(statusEnviados, null, 2));
+  } catch (e) {
+    console.log('⚠️ Não consegui salvar status-enviados.json:', e.message);
+  }
+}
+
+function normalizarStatusBanco(status) {
+  const s = String(status || '').toLowerCase().trim();
+  const mapa = {
+    aguardando_pagamento: 'em_analise',
+    pedido_recebido: 'em_analise',
+    pago: 'em_analise',
+    aprovado: 'em_analise',
+    pendente: 'em_analise',
+    preparo: 'em_preparo',
+    saiu_entrega: 'em_entrega',
+    entrega: 'em_entrega',
+    entregue: 'finalizado'
+  };
+  return mapa[s] || s;
+}
 
 function limparTelefone(valor) {
   let n = String(valor || '').replace(/\D/g, '');
@@ -46,7 +89,8 @@ function statusBonito(status) {
     em_entrega: 'saiu para entrega',
     finalizado: 'finalizado'
   };
-  return mapa[String(status || '').toLowerCase()] || String(status || 'atualizado').replaceAll('_',' ');
+  const s = normalizarStatusBanco(status);
+  return mapa[s] || String(s || 'atualizado').replaceAll('_',' ');
 }
 
 function itensTexto(itens) {
@@ -56,22 +100,23 @@ function itensTexto(itens) {
 }
 
 function mensagemPedido(p) {
-  const status = statusBonito(p.status);
+  const statusNormalizado = normalizarStatusBanco(p.status);
+  const status = statusBonito(statusNormalizado);
   const nome = p.cliente_nome || p.nome_cliente || p.nome || 'cliente';
   const itens = itensTexto(p.itens);
   const total = brl(p.valor_total || p.total || 0);
   const tempo = p.tempo_estimado_minutos ? `${p.tempo_estimado_minutos} min` : '';
 
-  if (p.status === 'em_preparo') {
+  if (statusNormalizado === 'em_preparo') {
     return `🍔 *Big Burger*\n\n✅ Pedido ${numeroPedido(p)} aceito!\n\nOlá, ${nome}! Já estamos preparando seu pedido.\n\n${itens ? `📦 *Itens:*\n${itens}\n\n` : ''}💰 *Total:* ${total}${tempo ? `\n⏱️ *Previsão:* ${tempo}` : ''}\n\nObrigado pela preferência! ❤️`;
   }
-  if (p.status === 'pronto') {
+  if (statusNormalizado === 'pronto') {
     return `🍔 *Big Burger*\n\n📦 Pedido ${numeroPedido(p)} está pronto!\n\nLogo ele será enviado para entrega.`;
   }
-  if (p.status === 'em_entrega') {
+  if (statusNormalizado === 'em_entrega') {
     return `🚀 *Big Burger*\n\n🛵 Pedido ${numeroPedido(p)} saiu para entrega!${tempo ? `\n⏱️ Chegada prevista: ${tempo}` : ''}\n\nFique atento, estamos chegando! 🍔`;
   }
-  if (p.status === 'finalizado') {
+  if (statusNormalizado === 'finalizado') {
     return `🎉 *Big Burger*\n\n✅ Pedido ${numeroPedido(p)} finalizado!\n\nObrigado pela preferência. Até o próximo pedido! 🍔🔥`;
   }
   return `🍔 *Big Burger*\n\nOlá, ${nome}!\nSeu pedido ${numeroPedido(p)} foi atualizado.\n\n📦 Status: *${status}*`;
@@ -112,6 +157,76 @@ async function buscarPendentes() {
   return data.pedidos || [];
 }
 
+
+async function buscarRecentesFallback() {
+  // Plano B: busca pedidos recentes direto na API normal.
+  // Assim funciona mesmo se você não rodou o SQL do gatilho whatsapp_status_enviado.
+  const url = `${SITE_URL}/api/pedidos?limit=80`;
+  const r = await fetch(url);
+  const data = await r.json().catch(() => ({}));
+  if (!r.ok || !data.ok) throw new Error(data.error || `HTTP ${r.status}`);
+  const agora = Date.now();
+  const limiteHoras = Number(process.env.FALLBACK_HORAS || 72);
+  return (data.pedidos || []).filter(p => {
+    const st = normalizarStatusBanco(p.status);
+    if (!STATUS_ENVIAR.has(st)) return false;
+    const criado = p.created_at ? new Date(p.created_at).getTime() : agora;
+    if (Number.isFinite(criado) && agora - criado > limiteHoras * 60 * 60 * 1000) return false;
+    const chave = String(p.id || '') + ':' + st;
+    return !statusEnviados[chave];
+  }).map(p => ({ ...p, _fallback_local: true }));
+}
+
+async function enviarMensagemPedido(p) {
+  const telefoneLimpo = limparTelefone(p.cliente_telefone || p.telefone_cliente || p.telefone || p.whatsapp || p.celular);
+  if (!telefoneLimpo) {
+    console.log(`⚠️ Pedido ${p.id} sem telefone. Marcando como enviado para não repetir.`);
+    if (!p._fallback_local) await marcar(p.id, true);
+    return;
+  }
+
+  const candidatos = gerarCandidatosTelefone(telefoneLimpo);
+  let ultimoErro = null;
+
+  for (const numero of candidatos) {
+    try {
+      const numberId = await client.getNumberId(numero);
+      if (!numberId) {
+        ultimoErro = new Error(`Número ${numero} não encontrado no WhatsApp`);
+        continue;
+      }
+      console.log(`📲 Enviando WhatsApp para ${numberId._serialized} | Pedido ${numeroPedido(p)} | ${statusBonito(p.status)}`);
+      await client.sendMessage(numberId._serialized, mensagemPedido(p));
+      const st = normalizarStatusBanco(p.status);
+      statusEnviados[String(p.id || '') + ':' + st] = new Date().toISOString();
+      salvarCacheStatus();
+      if (!p._fallback_local) await marcar(p.id, true);
+      console.log('✅ Enviado com sucesso');
+      return;
+    } catch (e) {
+      ultimoErro = e;
+    }
+  }
+
+  const erroMsg = ultimoErro?.message || 'Não consegui enviar para este telefone';
+  console.log(`❌ Falha ao enviar pedido ${numeroPedido(p)}: ${erroMsg}`);
+  if (!p._fallback_local) await marcar(p.id, false, erroMsg).catch(() => null);
+}
+
+function gerarCandidatosTelefone(numero) {
+  const n = limparTelefone(numero);
+  const set = new Set([n]);
+  // Brasil: às vezes o WhatsApp está cadastrado sem o 9 depois do DDD.
+  if (n.startsWith('55') && n.length === 13 && n[4] === '9') {
+    set.add(n.slice(0, 4) + n.slice(5));
+  }
+  // E às vezes vem sem o 9, mas o WhatsApp está com o 9.
+  if (n.startsWith('55') && n.length === 12) {
+    set.add(n.slice(0, 4) + '9' + n.slice(4));
+  }
+  return [...set];
+}
+
 async function marcar(id, enviado, erro=null) {
   const r = await fetch(`${SITE_URL}/api/bot-whatsapp-mark?key=${encodeURIComponent(BOT_SECRET)}`, {
     method:'POST',
@@ -124,18 +239,38 @@ async function marcar(id, enviado, erro=null) {
 
 async function verificar() {
   try {
-    const pedidos = await buscarPendentes();
-    for (const p of pedidos) {
-      const telefone = limparTelefone(p.cliente_telefone || p.telefone_cliente || p.telefone || p.whatsapp || p.celular);
-      if (!telefone) {
-        console.log(`⚠️ Pedido ${p.id} sem telefone. Marcando como enviado para não repetir.`);
-        await marcar(p.id, true);
-        continue;
+    let pedidos = [];
+
+    try {
+      pedidos = await buscarPendentes();
+    } catch (e) {
+      // Se a fila por SQL falhar, usa o plano B local.
+      const msg = String(e.message || e);
+      if (msg !== ultimoErroApi) {
+        console.error('⚠️ Fila do WhatsApp não respondeu, usando plano B:', msg);
+        ultimoErroApi = msg;
       }
-      console.log(`📲 Enviando WhatsApp para ${telefone} | Pedido ${numeroPedido(p)} | ${statusBonito(p.status)}`);
-      await client.sendMessage(`${telefone}@c.us`, mensagemPedido(p));
-      await marcar(p.id, true);
-      console.log('✅ Enviado com sucesso');
+    }
+
+    const fallback = await buscarRecentesFallback().catch(e => {
+      throw new Error(`Plano B também falhou: ${e.message}`);
+    });
+
+    const porChave = new Map();
+    for (const p of [...pedidos, ...fallback]) {
+      const st = normalizarStatusBanco(p.status);
+      if (!STATUS_ENVIAR.has(st)) continue;
+      const chave = String(p.id || '') + ':' + st;
+      if (statusEnviados[chave]) continue;
+      porChave.set(chave, { ...p, status: st });
+    }
+
+    const lista = [...porChave.values()];
+    if (!lista.length) return;
+
+    console.log(`🔔 ${lista.length} mensagem(ns) de status para enviar.`);
+    for (const p of lista) {
+      await enviarMensagemPedido(p);
     }
   } catch (e) {
     const msg = String(e.message || e);
