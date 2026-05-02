@@ -9,11 +9,12 @@
 <body>
   <header class="topbar">
     <div class="brand brand-logo"><img src="/logo.png" alt="Big Burger" class="logo-img"><div><strong>BIG<span>BURGER</span></strong><small>DELIVERY</small></div></div>
+    <div id="lojaStatus" class="store-status header-status open">🟢 Loja aberta <small>Tempo de entrega: 40 min</small></div>
     <nav>
       <a class="active" href="#inicio">🏠 Início</a>
       <a href="#cardapio">🍟 Cardápio</a>
       <a href="#promos">🎁 Promoções</a>
-      <a href="/admin">📋 Pedidos</a>
+      <a href="/admin">🔐 ADMIN</a>
     </nav>
     <div class="cart-pill">🛒 Meu pedido <b id="topTotal">R$ 0,00</b></div>
   </header>
@@ -23,22 +24,21 @@
       <section class="hero-pro">
         <div class="hero-copy">
           <p class="tag">🔥 Feito na hora • entrega rápida</p>
-          <div id="lojaStatus" class="store-status open">🟢 Loja aberta <small>Carregando horário...</small></div>
           <h1>O MELHOR <span>BURGER</span> DA CIDADE!</h1>
           <p>Ingredientes selecionados, sabor irresistível e Pix direto no pedido.</p>
           <button class="cta" onclick="document.querySelector('#cardapio').scrollIntoView({behavior:'smooth'})">PEÇA AGORA ›</button>
         </div>
-        <div class="burger-art" aria-label="hambúrguer Big Burger">
-          <div class="bun top"></div><div class="lettuce"></div><div class="cheese"></div><div class="meat"></div><div class="sauce"></div><div class="bun bottom"></div>
-          <div class="seal">❤<br><small>com amor</small></div>
+        <div class="hero-video-card" aria-label="vídeo do hambúrguer Big Burger">
+          <video class="hero-video" src="/bigburger-video.mp4" autoplay muted loop playsinline></video>
+          <div class="video-badge">🔥 BIG BURGER</div>
         </div>
       </section>
 
-      <section class="benefits">
-        <div>🏍️ <b>Entrega rápida</b><small id="tempoEntregaInfo">Tempo médio: 40 min</small></div>
-        <div>⭐ <b>Qualidade garantida</b><small>Ingredientes frescos</small></div>
-        <div>🔐 <b>Pagamento seguro</b><small>Pix Mercado Pago</small></div>
-        <div>🎁 <b>Fidelidade</b><small>Promoções exclusivas</small></div>
+      <section class="benefits benefits-pro">
+        <div><span class="benefit-icon">🏍️</span><b>Entrega rápida</b><small id="tempoEntregaInfo">Tempo médio: 40 min</small></div>
+        <div><span class="benefit-icon">⭐</span><b>Qualidade garantida</b><small>Ingredientes frescos e selecionados</small></div>
+        <div><span class="benefit-icon">🔐</span><b>Pagamento seguro</b><small>Pix Mercado Pago</small></div>
+        <div><span class="benefit-icon">🎁</span><b>Promoções</b><small>Ofertas exclusivas da Big Burger</small></div>
       </section>
 
       <section id="cardapio" class="section-head">
@@ -65,10 +65,6 @@
         <a class="btn red" href="#checkout">Finalizar pedido</a>
       </div>
 
-      <div class="side-card">
-        <h3>🎁 Programa de fidelidade</h3>
-        <p>A cada <b>R$ 1,00</b> em compras você ganha <b>1 ponto</b>.</p>
-      </div>
 
       <div class="side-card" id="checkout">
         <h3>📍 Dados para entrega</h3>

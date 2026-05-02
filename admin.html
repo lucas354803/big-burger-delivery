@@ -6,7 +6,17 @@
   <title>Admin Big Burger</title>
   <link rel="stylesheet" href="/style.css">
 </head>
-<body class="admin-page">
+<body class="admin-page admin-locked">
+  <div id="adminLogin" class="admin-login-overlay">
+    <div class="admin-login-card">
+      <img src="/logo.png" alt="Big Burger">
+      <h1>🔐 Acesso ADMIN</h1>
+      <p>Digite a senha para abrir o painel.</p>
+      <input id="adminSenha" type="password" placeholder="Senha do admin" autocomplete="current-password">
+      <button class="btn red" onclick="entrarAdmin()">Entrar</button>
+      <div id="adminLoginErro" class="small"></div>
+    </div>
+  </div>
   <header class="topbar admin-top">
     <div class="brand brand-logo"><img src="/logo.png" alt="Big Burger" class="logo-img"><div><strong>ADMIN <span>BIG BURGER</span></strong><small>Editor de cardápio profissional</small></div></div>
     <nav><a href="/">🏠 Cardápio</a><a href="/motoboy">🏍️ Motoboy</a></nav>
@@ -373,6 +383,12 @@
     </section>
   </main>
 
+<script>
+const ADMIN_PASSWORD='P@loma3548';
+function liberarAdmin(){document.body.classList.remove('admin-locked');const l=document.getElementById('adminLogin');if(l)l.style.display='none'}
+function entrarAdmin(){const v=document.getElementById('adminSenha')?.value||'';const e=document.getElementById('adminLoginErro');if(v===ADMIN_PASSWORD){sessionStorage.setItem('big_admin_ok','1');liberarAdmin()}else if(e){e.innerHTML='<span class="err-inline">Senha incorreta.</span>'}}
+document.addEventListener('DOMContentLoaded',()=>{if(sessionStorage.getItem('big_admin_ok')==='1') liberarAdmin(); const i=document.getElementById('adminSenha'); if(i)i.addEventListener('keydown',ev=>{if(ev.key==='Enter')entrarAdmin()})});
+</script>
 <script src="/admin_script.js"></script>
 
 
