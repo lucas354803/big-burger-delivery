@@ -2,12 +2,14 @@ require('dotenv').config();
 
 const fs = require('fs');
 const path = require('path');
+const http = require('http');
 const { Client, LocalAuth } = require('whatsapp-web.js');
 const qrcode = require('qrcode-terminal');
 
 const SITE_URL = String(process.env.SITE_URL || '').replace(/\/+$/, '');
 const BOT_SECRET = process.env.BOT_SECRET || 'bigburger_robo_2026';
 const POLL_INTERVAL_SECONDS = Number(process.env.POLL_INTERVAL_SECONDS || 5);
+const ROBO_PORT = Number(process.env.ROBO_PORT || 3001);
 let ultimoErroApi = '';
 let apiOnline = false;
 
@@ -281,6 +283,89 @@ async function verificar() {
   }
 }
 
+
+
+// ===== SERVIDOR LOCAL PARA O ADMIN CHAMAR VIA NGROK =====
+// O painel Admin na Vercel chama: https://SEU-NGROK.ngrok-free.dev/enviar-status
+// Este servidor precisa ficar ligado junto com o robô. Porta padrão: 3001.
+function responderJson(res, statusCode, obj) {
+  res.writeHead(statusCode, {
+    'Content-Type': 'application/json; charset=utf-8',
+    'Access-Control-Allow-Origin': '*',
+    'Access-Control-Allow-Methods': 'GET,POST,OPTIONS',
+    'Access-Control-Allow-Headers': 'Content-Type, Authorization'
+  });
+  res.end(JSON.stringify(obj));
+}
+
+function lerBodyJson(req) {
+  return new Promise((resolve, reject) => {
+    let body = '';
+    req.on('data', chunk => {
+      body += chunk;
+      if (body.length > 1024 * 1024) reject(new Error('Body muito grande'));
+    });
+    req.on('end', () => {
+      try { resolve(body ? JSON.parse(body) : {}); }
+      catch (e) { reject(new Error('JSON inválido')); }
+    });
+    req.on('error', reject);
+  });
+}
+
+function iniciarServidorLocal() {
+  const server = http.createServer(async (req, res) => {
+    try {
+      if (req.method === 'OPTIONS') return responderJson(res, 200, { ok: true });
+
+      if (req.method === 'GET' && (req.url === '/' || req.url === '/health')) {
+        return responderJson(res, 200, {
+          ok: true,
+          nome: 'Robô WhatsApp Big Burger',
+          porta: ROBO_PORT,
+          whatsapp: client.info ? 'conectado' : 'aguardando_qrcode'
+        });
+      }
+
+      if (req.method === 'POST' && req.url === '/enviar-status') {
+        const body = await lerBodyJson(req);
+        const pedido = body.pedido || {};
+        const status = normalizarStatusBanco(body.status || pedido.status);
+        const telefone = body.telefone || pedido.cliente_telefone || pedido.telefone_cliente || pedido.telefone || pedido.whatsapp || pedido.celular;
+        const id = body.numeroPedido || body.id || pedido.numero_pedido || pedido.id;
+
+        if (!telefone) return responderJson(res, 400, { ok: false, error: 'Telefone do cliente não veio do Admin' });
+        if (!status) return responderJson(res, 400, { ok: false, error: 'Status não veio do Admin' });
+
+        const pedidoCompleto = {
+          ...pedido,
+          id: pedido.id || id,
+          numero_pedido: pedido.numero_pedido || body.numeroPedido,
+          status,
+          cliente_telefone: telefone,
+          tempo_estimado_minutos: body.tempo_estimado_minutos || pedido.tempo_estimado_minutos,
+          _fallback_local: true
+        };
+
+        console.log(`📩 Admin chamou /enviar-status | Pedido ${numeroPedido(pedidoCompleto)} | ${statusBonito(status)}`);
+        await enviarMensagemPedido(pedidoCompleto);
+        return responderJson(res, 200, { ok: true, enviado: true });
+      }
+
+      return responderJson(res, 404, { ok: false, error: 'Rota não encontrada. Use POST /enviar-status ou GET /health' });
+    } catch (e) {
+      console.error('❌ Erro no servidor local:', e.message);
+      return responderJson(res, 500, { ok: false, error: e.message });
+    }
+  });
+
+  server.listen(ROBO_PORT, () => {
+    console.log(`🌐 Servidor local do robô ligado na porta ${ROBO_PORT}`);
+    console.log(`🔗 Para o ngrok use: ngrok http ${ROBO_PORT}`);
+    console.log(`🧪 Teste local: http://localhost:${ROBO_PORT}/health\n`);
+  });
+}
+
 client.on('qr', qr => {
   console.log('\n📲 ESCANEIE O QR CODE COM O WHATSAPP DA BIG BURGER:\n');
   qrcode.generate(qr, { small:true });
@@ -431,4 +516,5 @@ client.on('message', async (msg) => {
   }
 });
 
+iniciarServidorLocal();
 client.initialize();

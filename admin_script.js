@@ -120,6 +120,42 @@ function imprimirPedidoAoAceitar(p){
   registrarPedidoImpresso(p.id);
 }
 
+
+async function enviarStatusPeloRoboNgrok(pedido, status, tempo){
+  if(status === 'cancelado') return { ok:false, pulado:true };
+
+  let roboUrl = localStorage.getItem('BIGBURGER_ROBO_URL') || '';
+  if(!roboUrl){
+    roboUrl = prompt('Cole aqui o link do ngrok do robô. Exemplo: https://xxxx.ngrok-free.dev');
+    if(roboUrl) localStorage.setItem('BIGBURGER_ROBO_URL', roboUrl.trim().replace(/\/+$/,''));
+  }
+  roboUrl = (localStorage.getItem('BIGBURGER_ROBO_URL') || roboUrl || '').trim().replace(/\/+$/,'');
+  if(!roboUrl) return { ok:false, error:'URL do robô não configurada' };
+
+  const payload = {
+    id: pedido?.id,
+    numeroPedido: pedido?.numero_pedido || pedido?.id,
+    telefone: pedido?.cliente_telefone || pedido?.telefone_cliente || pedido?.telefone || pedido?.whatsapp || pedido?.celular,
+    status,
+    tempo_estimado_minutos: tempo,
+    pedido: {...(pedido||{}), status, tempo_estimado_minutos: tempo}
+  };
+
+  const r = await fetch(`${roboUrl}/enviar-status`, {
+    method:'POST',
+    headers:{'Content-Type':'application/json'},
+    body: JSON.stringify(payload)
+  });
+  const d = await r.json().catch(()=>({}));
+  if(!r.ok || !d.ok) throw new Error(d.error || `Erro HTTP ${r.status} no robô`);
+  return d;
+}
+function trocarUrlRoboNgrok(){
+  const atual=localStorage.getItem('BIGBURGER_ROBO_URL')||'';
+  const nova=prompt('Cole a nova URL do ngrok do robô:', atual);
+  if(nova){localStorage.setItem('BIGBURGER_ROBO_URL', nova.trim().replace(/\/+$/,'')); alert('URL do robô salva!');}
+}
+
 async function atualizarStatusPedido(id,status,whatsTipo){
   const pedido=pedidosCache.find(p=>p.id===id);
   let tempo = pedido?.tempo_estimado_minutos || '';
@@ -130,9 +166,18 @@ async function atualizarStatusPedido(id,status,whatsTipo){
     const d=await r.json();
     if(!r.ok||!d.ok) throw new Error(d.error||JSON.stringify(d));
     if(status==='em_preparo') imprimirPedidoAoAceitar(pedido);
-    if(d.whatsapp && d.whatsapp.ok){ alert('Status atualizado, WhatsApp enviado e comanda enviada para impressão!'); }
-    else if(d.whatsapp && !d.whatsapp.ok){ alert('Status atualizado e comanda enviada para impressão. WhatsApp não enviou: '+(d.whatsapp.error||'verifique WHATSAPP_TOKEN na Vercel')); }
-    else if(status==='em_preparo'){ alert('Pedido aceito e comanda enviada para impressão!'); }
+
+    let roboResultado=null;
+    try{
+      roboResultado = await enviarStatusPeloRoboNgrok(pedido,status,tempo);
+    }catch(erroRobo){
+      alert('Status atualizado, mas o WhatsApp NÃO enviou. Verifique se o robô e o ngrok estão abertos. Erro: '+erroRobo.message);
+      await loadPedidos();
+      return;
+    }
+
+    if(status==='em_preparo'){ alert('Pedido aceito, comanda enviada para impressão e WhatsApp enviado!'); }
+    else { alert('Status atualizado e WhatsApp enviado!'); }
     await loadPedidos();
   }catch(e){alert('Erro ao atualizar pedido: '+e.message)}
 }
