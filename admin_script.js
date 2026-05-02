@@ -316,15 +316,39 @@ async function salvar(e,t){e.preventDefault();try{let body={},id=''; if(t==='cat
 async function excluir(t,id){if(!confirm('Excluir este item?'))return;try{await api(t==='promocoes'?'produtos':t,'DELETE',null,id);await loadTudo()}catch(e){alert('Erro: '+e.message)}}
 
 
+function getConfigLojaLocal(){
+  try{return JSON.parse(localStorage.getItem('bigburger_config_loja_salva')||'null')}catch(e){return null}
+}
+function setConfigLojaLocal(payload){
+  try{localStorage.setItem('bigburger_config_loja_salva', JSON.stringify(payload));}catch(e){}
+}
 async function loadConfigLoja(){
   const out=document.getElementById('configLojaStatus'); if(out) out.textContent='Carregando configuração...';
+
+  // Mostra imediatamente o último valor salvo neste navegador, sem voltar para o padrão.
+  const local=getConfigLojaLocal();
+  if(local?.config){
+    state.loja_config=local.config||{};
+    state.horarios_funcionamento=local.horarios||[];
+    renderConfigLoja();
+  }
+
   try{
-    const r=await fetch('/api/store-settings?_=' + Date.now(), { cache: 'no-store' }); const d=await r.json();
+    const r=await fetch('/api/store-settings?_=' + Date.now(), { cache: 'no-store', headers:{'Cache-Control':'no-cache'} });
+    const d=await r.json();
     if(!r.ok||!d.ok) throw new Error(d.error||JSON.stringify(d));
-    state.loja_config=d.config||{}; state.horarios_funcionamento=d.horarios||[];
+    state.loja_config=d.config||local?.config||{};
+    state.horarios_funcionamento=(d.horarios&&d.horarios.length?d.horarios:local?.horarios)||[];
+    setConfigLojaLocal({config:state.loja_config, horarios:state.horarios_funcionamento});
     renderConfigLoja();
     if(out) out.innerHTML=`✅ Configuração carregada. Status do cardápio: <b>${d.status?.aberto?'ABERTO':'FECHADO'}</b>`;
-  }catch(e){ if(out) out.innerHTML='<span class="err">Erro ao carregar: '+e.message+'</span>'; }
+  }catch(e){
+    if(local?.config){
+      if(out) out.innerHTML='✅ Configuração carregada do navegador. ⚠️ Banco não respondeu: '+e.message;
+    }else{
+      if(out) out.innerHTML='<span class="err">Erro ao carregar: '+e.message+'</span>';
+    }
+  }
 }
 function renderConfigLoja(){
   const c=state.loja_config||{};
@@ -343,7 +367,27 @@ async function salvarConfigLoja(e){
   const horarios=[...document.querySelectorAll('.hour-row')].map(row=>({dia_semana:Number(row.dataset.dia),nome_dia:row.querySelector('label')?.textContent.trim()||'',ativo:row.querySelector('.h-ativo').checked,abre:row.querySelector('.h-abre').value,fecha:row.querySelector('.h-fecha').value}));
   const payload={config:{loja_aberta:cfg_loja_aberta.checked,pedido_automatico:cfg_pedido_automatico.checked,som_pedidos:cfg_som_pedidos.checked,tempo_entrega_padrao:cfg_tempo_entrega.value,mensagem_fechado:cfg_mensagem_fechado.value},horarios};
   const out=document.getElementById('configLojaStatus'); if(out) out.textContent='Salvando...';
-  try{const r=await fetch('/api/store-settings',{method:'POST',headers:{'Content-Type':'application/json'},cache:'no-store',body:JSON.stringify(payload)});const d=await r.json();if(!r.ok||!d.ok)throw new Error(d.error||JSON.stringify(d));state.loja_config=d.config||payload.config;state.horarios_funcionamento=d.horarios||payload.horarios;renderConfigLoja();if(out)out.innerHTML='✅ Configuração salva de verdade no banco! Atualize a página para conferir.';somPedidosLigado=cfg_som_pedidos.checked;localStorage.setItem('somPedidosLigado',somPedidosLigado?'1':'0');atualizarBotaoSom();}catch(err){if(out)out.innerHTML='<span class="err">Erro: '+err.message+'</span>';}
+  try{
+    // Salva primeiro no navegador para não voltar ao padrão mesmo se o PWA estiver com cache antigo.
+    state.loja_config=payload.config;
+    state.horarios_funcionamento=payload.horarios;
+    setConfigLojaLocal(payload);
+    somPedidosLigado=cfg_som_pedidos.checked;
+    localStorage.setItem('somPedidosLigado',somPedidosLigado?'1':'0');
+
+    const r=await fetch('/api/store-settings?_=' + Date.now(),{method:'POST',headers:{'Content-Type':'application/json','Cache-Control':'no-cache'},cache:'no-store',body:JSON.stringify(payload)});
+    const d=await r.json();
+    if(!r.ok||!d.ok)throw new Error(d.error||JSON.stringify(d));
+    state.loja_config=d.config||payload.config;
+    state.horarios_funcionamento=d.horarios||payload.horarios;
+    setConfigLojaLocal({config:state.loja_config,horarios:state.horarios_funcionamento});
+    renderConfigLoja();
+    if(out)out.innerHTML='✅ Salvo! Agora pode atualizar a página que não volta mais para o padrão.';
+    atualizarBotaoSom();
+  }catch(err){
+    renderConfigLoja();
+    if(out)out.innerHTML='⚠️ Salvei neste navegador, mas o banco não confirmou. Erro: '+err.message+'<br>Confira SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY e execute o SQL corrigir_config_loja.sql.';
+  }
 }
 function escapeHtml(v){return String(v??'').replace(/[&<>"]/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[m]));}
 function inicioDiaISO(){const d=new Date();d.setHours(0,0,0,0);return d.toISOString();}

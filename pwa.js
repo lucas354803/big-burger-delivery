@@ -30,6 +30,7 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   if ('serviceWorker' in navigator) {
-    navigator.serviceWorker.register('/sw.js').catch(console.error);
+    navigator.serviceWorker.register('/sw.js', { updateViaCache: 'none' }).then(reg => { reg.update && reg.update(); }).catch(console.error);
+    caches?.keys?.().then(keys => Promise.all(keys.filter(k => k.includes('bigburger-pwa')).map(k => caches.delete(k)))).catch(() => null);
   }
 });
