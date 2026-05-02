@@ -128,7 +128,7 @@ function render(){
   total.textContent=fmt(totalGeral);
   if(typeof taxaEntrega !== 'undefined' && taxaEntrega) taxaEntrega.textContent=fmt(taxaEntregaSelecionada);
   if(typeof totalComEntrega !== 'undefined' && totalComEntrega) totalComEntrega.textContent=fmt(totalGeral);
-  cart.innerHTML=carrinho.length?carrinho.map(p=>`<div class="row"><span><b>1x ${p.nome}</b><br><small class="small">${(p.addons||[]).map(a=>a.nome).join(', ')||'Sem adicionais'}</small></span><b>${fmt(p.preco)}</b></div>`).join(''):'<div class="cart-empty">🛒<br>Seu carrinho está vazio<br><small>Adicione itens deliciosos para começar!</small></div>';
+  cart.innerHTML=carrinho.length?carrinho.map(p=>`<div class="row"><span><b>1x ${p.nome}</b><br><small class="small">${(p.addons||[]).map(a=>a.nome).join(', ')||'Sem adicionais'}${p.observacao?`<br>📝 Obs: ${p.observacao}`:''}</small></span><b>${fmt(p.preco)}</b></div>`).join(''):'<div class="cart-empty">🛒<br>Seu carrinho está vazio<br><small>Adicione itens deliciosos para começar!</small></div>';
 }
 function renderCategorias(){
   if(typeof categoryBar === 'undefined' || !categoryBar) return;
@@ -148,6 +148,7 @@ function abrirProduto(i){
   modalPreco.innerHTML=p.desconto_ativo&&p.preco_promocional?`${fmt(p.preco_promocional)} <small class="old-price">${fmt(p.preco)}</small>`:fmt(p.preco);
   if(p.imagem_url){modalImg.style.backgroundImage=`url('${p.imagem_url}')`;modalImg.classList.add('tem-imagem')}else{modalImg.style.backgroundImage='';modalImg.classList.remove('tem-imagem')}
   addons.innerHTML=renderAddonsAgrupados(p);
+  if(typeof obsItem !== 'undefined' && obsItem) obsItem.value='';
   modal.hidden=false;
 }
 function categoriasPermitidasProduto(produto){
@@ -183,7 +184,8 @@ function adicionarModal(){
   const p=produtos[produtoAberto];
   const adds=addonsSelecionados.map(i=>adicionais[i]);
   const precoAdds=adds.reduce((s,a)=>s+a.preco,0);
-  carrinho.push({nome:p.nome,descricao:p.descricao,preco:precoProduto(p)+precoAdds,preco_base:precoProduto(p),addons:adds});
+  const observacaoItem=(typeof obsItem !== 'undefined' && obsItem ? obsItem.value.trim() : '');
+  carrinho.push({nome:p.nome,descricao:p.descricao,preco:precoProduto(p)+precoAdds,preco_base:precoProduto(p),addons:adds,observacao:observacaoItem});
   fecharModal(); render();
 }
 function renderCidadesEntrega(){

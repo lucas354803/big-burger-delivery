@@ -17,7 +17,7 @@ function brl(v) {
 function itensTexto(itens) {
   try { if (typeof itens === 'string') itens = JSON.parse(itens); } catch {}
   if (!Array.isArray(itens) || !itens.length) return 'Itens não informados';
-  return itens.map(i => `• ${i.qtd || i.quantidade || 1}x ${i.nome || i.name || 'Produto'}`).join('\n');
+  return itens.map(i => `• ${i.qtd || i.quantidade || 1}x ${i.nome || i.name || 'Produto'}${i.observacao ? `\n  Obs: ${i.observacao}` : ''}`).join('\n');
 }
 
 function enderecoTexto(p) {
