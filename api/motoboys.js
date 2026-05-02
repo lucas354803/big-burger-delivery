@@ -2,6 +2,34 @@ import { supabaseFetch } from './_supabase.js';
 
 function cleanPhone(v){return String(v||'').replace(/\D/g,'').replace(/^55/,'');}
 function token(){return Math.random().toString(36).slice(2,10)+Date.now().toString(36).slice(-6);}
+function uniq(arr){return [...new Set((arr||[]).filter(Boolean))];}
+
+async function enrichEntregas(entregas){
+  const lista=Array.isArray(entregas)?entregas:[];
+  if(!lista.length) return [];
+
+  const pedidoIds=uniq(lista.map(e=>e.pedido_id));
+  const motoboyIds=uniq(lista.map(e=>e.motoboy_id));
+
+  let pedidos=[];
+  let motoboys=[];
+
+  if(pedidoIds.length){
+    pedidos=await supabaseFetch(`pedidos?id=in.(${pedidoIds.map(encodeURIComponent).join(',')})&select=*`,{method:'GET',headers:{Prefer:''}}).catch(()=>[]);
+  }
+  if(motoboyIds.length){
+    motoboys=await supabaseFetch(`motoboys?id=in.(${motoboyIds.map(encodeURIComponent).join(',')})&select=*`,{method:'GET',headers:{Prefer:''}}).catch(()=>[]);
+  }
+
+  const pedidosMap=new Map((pedidos||[]).map(p=>[p.id,p]));
+  const motoboysMap=new Map((motoboys||[]).map(m=>[m.id,m]));
+
+  return lista.map(e=>({
+    ...e,
+    pedidos: pedidosMap.get(e.pedido_id) || null,
+    motoboys: motoboysMap.get(e.motoboy_id) || null
+  }));
+}
 
 export default async function handler(req,res){
   try{
@@ -15,11 +43,27 @@ export default async function handler(req,res){
         const motoboys=await supabaseFetch(`motoboys?token=eq.${encodeURIComponent(tokenParam)}&limit=1`);
         const motoboy=motoboys?.[0]||null;
         if(!motoboy) return res.status(404).json({ok:false,error:'Motoboy não encontrado'});
-        const entregas=await supabaseFetch(`motoboy_entregas?motoboy_id=eq.${motoboy.id}&select=*,pedidos(*)&order=created_at.desc`);
+
+        // Busca sem join automático do Supabase para não depender do cache de relacionamento.
+        const entregasBase=await supabaseFetch(`motoboy_entregas?motoboy_id=eq.${motoboy.id}&select=*&order=created_at.desc`,{method:'GET',headers:{Prefer:''}}).catch(async(err)=>{
+          if(String(err.message||'').includes('does not exist') || String(err.message||'').includes('motoboy_entregas')) return [];
+          throw err;
+        });
+        const entregas=await enrichEntregas(entregasBase);
         return res.status(200).json({ok:true,motoboy,entregas});
       }
-      const motoboys=await supabaseFetch('motoboys?order=created_at.desc');
-      const entregas=await supabaseFetch('motoboy_entregas?select=*,motoboys(*),pedidos(*)&order=created_at.desc');
+
+      const motoboys=await supabaseFetch('motoboys?order=created_at.desc').catch(async(err)=>{
+        if(String(err.message||'').includes('does not exist') || String(err.message||'').includes('motoboys')) return [];
+        throw err;
+      });
+      // Busca sem select=*,motoboys(*),pedidos(*) para corrigir o erro:
+      // "Could not find a relationship between 'motoboy_entregas' and 'pedidos'".
+      const entregasBase=await supabaseFetch('motoboy_entregas?select=*&order=created_at.desc',{method:'GET',headers:{Prefer:''}}).catch(async(err)=>{
+        if(String(err.message||'').includes('does not exist') || String(err.message||'').includes('motoboy_entregas')) return [];
+        throw err;
+      });
+      const entregas=await enrichEntregas(entregasBase);
       return res.status(200).json({ok:true,motoboys,entregas});
     }
 
@@ -40,7 +84,7 @@ export default async function handler(req,res){
         entrega=ins?.[0];
       }
       await supabaseFetch(`corridas?pedido_id=eq.${pedido.id}`,{method:'PATCH',body:JSON.stringify({motoboy_nome:motoboy.nome,status:'aceita'})}).catch(()=>null);
-      return res.status(200).json({ok:true,motoboy,pedido,entrega});
+      return res.status(200).json({ok:true,motoboy,pedido,entrega:{...entrega,pedidos:pedido,motoboys:motoboy}});
     }
 
     if(method==='POST' && action==='reset'){
