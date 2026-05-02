@@ -58,7 +58,7 @@ CREATE POLICY "horarios_funcionamento_all" ON horarios_funcionamento FOR ALL USI
 
 INSERT INTO loja_config (id, loja_aberta, pedido_automatico, som_pedidos, tempo_entrega_padrao, pontos_por_real, mensagem_fechado, updated_at)
 VALUES (1, true, true, true, 40, 1, 'Estamos fechados no momento. Volte no nosso horário de atendimento.', now())
-ON CONFLICT (id) DO NOTHING;
+ON CONFLICT (id) DO UPDATE SET updated_at = now();
 
 INSERT INTO horarios_funcionamento (dia_semana, nome_dia, abre, fecha, ativo, updated_at) VALUES
 (0,'Domingo','18:30','00:00',true,now()),
@@ -68,4 +68,4 @@ INSERT INTO horarios_funcionamento (dia_semana, nome_dia, abre, fecha, ativo, up
 (4,'Quinta','18:30','00:00',true,now()),
 (5,'Sexta','18:30','01:00',true,now()),
 (6,'Sábado','18:30','01:00',true,now())
-ON CONFLICT (dia_semana) DO NOTHING;
+ON CONFLICT (dia_semana) DO UPDATE SET updated_at = now();

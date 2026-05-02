@@ -95,6 +95,7 @@ export default async function handler(req, res) {
 
     const body = parseBody(req);
     const config = body.config || {};
+    const now = new Date().toISOString();
 
     const cleanConfig = {
       id: 1,
@@ -103,16 +104,33 @@ export default async function handler(req, res) {
       som_pedidos: config.som_pedidos === true,
       tempo_entrega_padrao: Number(config.tempo_entrega_padrao || 40),
       mensagem_fechado: String(config.mensagem_fechado || defaultConfig.mensagem_fechado),
-      updated_at: new Date().toISOString()
+      updated_at: now
     };
 
-    // Upsert real: cria se não existir e atualiza se já existir.
-    await supabaseFetch('loja_config?on_conflict=id', {
-      method: 'POST',
-      headers: { Prefer: 'resolution=merge-duplicates,return=representation' },
-      body: JSON.stringify(cleanConfig)
-    });
+    // Salva de forma reforçada: tenta UPDATE primeiro e, se a linha ainda não existir, faz INSERT/UPSERT.
+    // Isso evita o problema de "salvar e voltar tudo ao padrão".
+    let savedConfig = null;
+    try {
+      const patched = await supabaseFetch('loja_config?id=eq.1', {
+        method: 'PATCH',
+        headers: { Prefer: 'return=representation' },
+        body: JSON.stringify(cleanConfig)
+      });
+      if (Array.isArray(patched) && patched.length) savedConfig = patched[0];
+    } catch (e) {
+      // Continua para o upsert abaixo.
+    }
 
+    if (!savedConfig) {
+      const upserted = await supabaseFetch('loja_config?on_conflict=id', {
+        method: 'POST',
+        headers: { Prefer: 'resolution=merge-duplicates,return=representation' },
+        body: JSON.stringify(cleanConfig)
+      });
+      savedConfig = Array.isArray(upserted) ? upserted[0] : upserted;
+    }
+
+    let savedHorarios = [];
     if (Array.isArray(body.horarios)) {
       const horariosPayload = body.horarios.map(h => ({
         dia_semana: Number(h.dia_semana),
@@ -120,25 +138,47 @@ export default async function handler(req, res) {
         abre: String(h.abre || '18:30'),
         fecha: String(h.fecha || '00:00'),
         ativo: h.ativo === true,
-        updated_at: new Date().toISOString()
+        updated_at: now
       }));
 
-      if (horariosPayload.length) {
-        await supabaseFetch('horarios_funcionamento?on_conflict=dia_semana', {
-          method: 'POST',
-          headers: { Prefer: 'resolution=merge-duplicates,return=representation' },
-          body: JSON.stringify(horariosPayload)
-        });
+      for (const h of horariosPayload) {
+        let saved = null;
+        try {
+          const patched = await supabaseFetch(`horarios_funcionamento?dia_semana=eq.${h.dia_semana}`, {
+            method: 'PATCH',
+            headers: { Prefer: 'return=representation' },
+            body: JSON.stringify(h)
+          });
+          if (Array.isArray(patched) && patched.length) saved = patched[0];
+        } catch (e) {
+          // Continua para upsert.
+        }
+        if (!saved) {
+          const upserted = await supabaseFetch('horarios_funcionamento?on_conflict=dia_semana', {
+            method: 'POST',
+            headers: { Prefer: 'resolution=merge-duplicates,return=representation' },
+            body: JSON.stringify(h)
+          });
+          saved = Array.isArray(upserted) ? upserted[0] : upserted;
+        }
+        if (saved) savedHorarios.push(saved);
       }
     }
 
-    return res.status(200).json({ ok: true, ...(await getSettings()) });
+    const fresh = await getSettings();
+    return res.status(200).json({
+      ok: true,
+      saved: true,
+      config: fresh.config || savedConfig || cleanConfig,
+      horarios: fresh.horarios?.length ? fresh.horarios : savedHorarios,
+      status: fresh.status || calcularAberto(savedConfig || cleanConfig, savedHorarios)
+    });
   } catch (e) {
     return res.status(e.status || 500).json({
       ok: false,
       error: e.message,
       detalhes: e.data || null,
-      dica: 'Se aparecer erro de tabela/coluna, execute o arquivo supabase/corrigir_config_loja.sql no SQL Editor do Supabase.'
+      dica: 'Execute o arquivo supabase/corrigir_config_loja.sql no SQL Editor do Supabase e confira as variáveis SUPABASE_URL e SUPABASE_SERVICE_ROLE_KEY na Vercel.'
     });
   }
 }

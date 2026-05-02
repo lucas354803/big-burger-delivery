@@ -319,7 +319,7 @@ async function excluir(t,id){if(!confirm('Excluir este item?'))return;try{await 
 async function loadConfigLoja(){
   const out=document.getElementById('configLojaStatus'); if(out) out.textContent='Carregando configuração...';
   try{
-    const r=await fetch('/api/store-settings'); const d=await r.json();
+    const r=await fetch('/api/store-settings?_=' + Date.now(), { cache: 'no-store' }); const d=await r.json();
     if(!r.ok||!d.ok) throw new Error(d.error||JSON.stringify(d));
     state.loja_config=d.config||{}; state.horarios_funcionamento=d.horarios||[];
     renderConfigLoja();
@@ -343,7 +343,7 @@ async function salvarConfigLoja(e){
   const horarios=[...document.querySelectorAll('.hour-row')].map(row=>({dia_semana:Number(row.dataset.dia),nome_dia:row.querySelector('label')?.textContent.trim()||'',ativo:row.querySelector('.h-ativo').checked,abre:row.querySelector('.h-abre').value,fecha:row.querySelector('.h-fecha').value}));
   const payload={config:{loja_aberta:cfg_loja_aberta.checked,pedido_automatico:cfg_pedido_automatico.checked,som_pedidos:cfg_som_pedidos.checked,tempo_entrega_padrao:cfg_tempo_entrega.value,mensagem_fechado:cfg_mensagem_fechado.value},horarios};
   const out=document.getElementById('configLojaStatus'); if(out) out.textContent='Salvando...';
-  try{const r=await fetch('/api/store-settings',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)});const d=await r.json();if(!r.ok||!d.ok)throw new Error(d.error||JSON.stringify(d));state.loja_config=d.config;state.horarios_funcionamento=d.horarios;renderConfigLoja();if(out)out.innerHTML='✅ Configuração salva com sucesso!';somPedidosLigado=cfg_som_pedidos.checked;localStorage.setItem('somPedidosLigado',somPedidosLigado?'1':'0');atualizarBotaoSom();}catch(err){if(out)out.innerHTML='<span class="err">Erro: '+err.message+'</span>';}
+  try{const r=await fetch('/api/store-settings',{method:'POST',headers:{'Content-Type':'application/json'},cache:'no-store',body:JSON.stringify(payload)});const d=await r.json();if(!r.ok||!d.ok)throw new Error(d.error||JSON.stringify(d));state.loja_config=d.config||payload.config;state.horarios_funcionamento=d.horarios||payload.horarios;renderConfigLoja();if(out)out.innerHTML='✅ Configuração salva de verdade no banco! Atualize a página para conferir.';somPedidosLigado=cfg_som_pedidos.checked;localStorage.setItem('somPedidosLigado',somPedidosLigado?'1':'0');atualizarBotaoSom();}catch(err){if(out)out.innerHTML='<span class="err">Erro: '+err.message+'</span>';}
 }
 function escapeHtml(v){return String(v??'').replace(/[&<>"]/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[m]));}
 function inicioDiaISO(){const d=new Date();d.setHours(0,0,0,0);return d.toISOString();}
