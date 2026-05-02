@@ -22,6 +22,7 @@
         <button class="main-tab" onclick="abrirMain('financeiro')">💸 Financeiro</button>
         <button class="main-tab" onclick="abrirMain('impressora')">🖨️ Impressora</button>
         <button class="main-tab" onclick="abrirMain('clientes')">👥 Clientes</button>
+        <button class="main-tab" onclick="abrirMain('motoboys')">🏍️ Motoboys</button>
       </div>
 
       <div id="main-pedidos" class="main-content active">
@@ -203,6 +204,40 @@
             </select>
           </div>
           <div id="clientesOut">Carregando clientes...</div>
+        </div>
+      </div>
+
+
+      <div id="main-motoboys" class="main-content">
+        <div class="editor-title">
+          <h1>🏍️ Motoboys</h1>
+          <p>Cadastre motoboys, envie o link individual pelo WhatsApp e acompanhe os pedidos lidos pelo QR Code da comanda.</p>
+        </div>
+        <div class="admin-grid wide delivery-grid">
+          <form class="admin-form" onsubmit="salvarMotoboy(event)">
+            <input type="hidden" id="motoboyId">
+            <h2>Cadastrar motoboy</h2>
+            <label>Nome do motoboy<input id="motoboyNome" placeholder="Ex: João Motoboy"></label>
+            <label>WhatsApp<input id="motoboyTelefone" placeholder="48999999999"></label>
+            <label class="check"><input id="motoboyAtivo" type="checkbox" checked> Motoboy ativo</label>
+            <button class="btn red">Salvar motoboy</button>
+            <button type="button" class="btn ghost" onclick="limparMotoboyForm()">Novo motoboy</button>
+            <div id="motoboyStatus" class="small"></div>
+          </form>
+          <div class="admin-card">
+            <div class="admin-head"><h2>Controle diário</h2></div>
+            <p>Use esse botão no fim do dia para limpar os registros lidos pelos motoboys e começar o próximo dia do zero.</p>
+            <button class="btn report-reset" onclick="zerarMotoboysDia()">🔄 Zerar motoboys do dia</button>
+            <button class="btn ghost" onclick="loadMotoboys()">Atualizar</button>
+          </div>
+        </div>
+        <div class="admin-card">
+          <div class="admin-head"><h2>Motoboys cadastrados</h2><button class="btn red" onclick="loadMotoboys()">Atualizar motoboys</button></div>
+          <div id="motoboysOut">Carregando motoboys...</div>
+        </div>
+        <div class="admin-card">
+          <h2>Pedidos registrados por QR Code</h2>
+          <div id="motoboyEntregasOut">Carregando entregas...</div>
         </div>
       </div>
 

@@ -1,5 +1,5 @@
 
-const state={categorias:[],produtos:[],categorias_complementos:[],complementos:[],produto_complemento_categorias:[],cidades_entrega:[],bairros_entrega:[],clientes:[],clientesResumo:null,financeiro:null,loja_config:null,horarios_funcionamento:[],clientesPagina:1,clientesPorPagina:20,clienteEditando:null};
+const state={categorias:[],produtos:[],categorias_complementos:[],complementos:[],produto_complemento_categorias:[],cidades_entrega:[],bairros_entrega:[],clientes:[],clientesResumo:null,financeiro:null,loja_config:null,horarios_funcionamento:[],clientesPagina:1,clientesPorPagina:20,clienteEditando:null,motoboys:[],motoboyEntregas:[]};
 const brl=v=>Number(v||0).toLocaleString('pt-BR',{style:'currency',currency:'BRL'});
 function abrirMain(id){
   document.querySelectorAll('.main-tab,.main-content').forEach(x=>x.classList.remove('active'));
@@ -59,7 +59,7 @@ function renderPreviewComanda(){
   box.style.maxWidth=(c.papel||80)+'mm';
   box.style.fontSize=(c.fonte||13)+'px';
   box.style.fontWeight=c.negrito!==false?'800':'400';
-  box.innerHTML=`${c.logo!==false?'<div class="preview-logo-wrap"><img src="/logo.png" class="preview-logo" alt="Big Burger"></div>':''}<h3 style="font-size:${c.titulo||22}px">${escapeHtml(c.nome||'BIG BURGER')}</h3><p class="preview-sub">${escapeHtml(c.subtitulo||'COMANDA DE PEDIDO')}</p><hr><div class="preview-order"><b>Pedido #01</b><span>01/05/2026 22:32</span></div><div><b>Cliente:</b> Lucas</div><div><b>Telefone:</b> (48) 99999-9999</div><hr><div class="preview-section-title">ITENS</div><div>1x Big Burger <b>R$ 29,90</b></div><div>1x Fritas <b>R$ 10,00</b></div><hr><div><b>Endereço:</b> Criciúma • Centro • Rua Teste, 123</div><div><b>Pagamento:</b> Pix</div><hr><div class="preview-total"><b>TOTAL: R$ 39,90</b></div><div class="preview-qr">QR DO PEDIDO</div><div class="preview-footer">Obrigado pela preferência!</div>`;
+  box.innerHTML=`${c.logo!==false?'<div class="preview-logo-wrap"><img src="/logo.png" class="preview-logo" alt="Big Burger"></div>':''}<h3 style="font-size:${c.titulo||22}px">${escapeHtml(c.nome||'BIG BURGER')}</h3><p>${escapeHtml(c.subtitulo||'COMANDA DE PEDIDO')}</p><hr><div><b>Pedido #01</b></div><div>Cliente: Lucas</div><div>1x Big Burger</div><div>1x Fritas</div><hr><div><b>TOTAL: R$ 39,90</b></div>`;
 }
 function testarImpressora(){
   salvarConfigImpressora();
@@ -96,36 +96,12 @@ function htmlComandaPedido(p){
   const fonte=Number(cfg.fonte||13);
   const titulo=Number(cfg.titulo||22);
   const margem=Number(cfg.margem||6);
-  const peso=cfg.negrito!==false?'900':'500';
+  const peso=cfg.negrito!==false?'800':'400';
+  const itens=itensTexto(p.itens).replaceAll('\n','<br>');
   const data=new Date().toLocaleString('pt-BR');
-  let itensRaw=p.itens;
-  try{ if(typeof itensRaw==='string') itensRaw=JSON.parse(itensRaw); }catch(e){}
-  if(!Array.isArray(itensRaw)) itensRaw=[];
-  const linhasItens = itensRaw.length ? itensRaw.map(i=>{
-    const qtd=i.qtd||i.quantidade||1;
-    const nome=escapeHtml(i.nome||i.name||'Produto');
-    const preco=Number(i.preco||i.valor||0);
-    return `<div class="item"><div><b>${qtd}x</b> ${nome}</div>${preco?`<b>${brl(preco)}</b>`:''}</div>`;
-  }).join('') : `<div class="item"><div>${escapeHtml(itensTexto(p.itens))}</div></div>`;
-  const endereco=escapeHtml(enderecoPedido(p)||'Retirada / sem endereço');
-  const pedidoNum=numeroPedido(p);
-  const total=brl(p.valor_total||0);
-  const taxa=brl(p.taxa_entrega||0);
-  const pagamento=escapeHtml(p.forma_pagamento||'Pix');
-  const qrTexto=[
-    `BIG BURGER`,
-    `Pedido: #${pedidoNum}`,
-    `Cliente: ${p.cliente_nome||''}`,
-    `Telefone: ${p.cliente_telefone||''}`,
-    `Endereco: ${enderecoPedido(p)||'Retirada'}`,
-    `Pagamento: ${p.forma_pagamento||'Pix'}`,
-    `Total: ${total}`,
-    `Itens: ${itensTexto(p.itens).replaceAll('\n',' | ')}`
-  ].join('\n');
-  const qrSrc='https://api.qrserver.com/v1/create-qr-code/?size=150x150&margin=8&data='+encodeURIComponent(qrTexto);
-  return `<!doctype html><html><head><meta charset="utf-8"><title>Comanda #${pedidoNum}</title><style>
-  *{box-sizing:border-box}body{font-family:Arial,Helvetica,sans-serif;margin:0;padding:${margem}px;color:#000;background:#fff;font-size:${fonte}px;font-weight:${peso}}.ticket{width:${papel}mm;max-width:${papel}mm;margin:0 auto}.logo{display:block;width:${papel==58?'38':'48'}mm;max-height:${papel==58?'34':'42'}mm;object-fit:contain;margin:0 auto 4px;filter:grayscale(1) contrast(1.25)}h1{font-size:${titulo}px;text-align:center;margin:0;font-weight:1000;letter-spacing:.5px}.sub{text-align:center;font-size:${Math.max(fonte+1,14)}px;font-weight:1000;margin:2px 0 6px}.line{border-top:1.5px dashed #000;margin:7px 0}.row{display:flex;justify-content:space-between;gap:8px;margin:4px 0}.pedido{font-size:${Math.max(fonte+7,21)}px;font-weight:1000;border:2px solid #000;text-align:center;padding:5px;margin:7px 0}.label{font-weight:1000;text-transform:uppercase}.sec-title{font-size:${Math.max(fonte+2,15)}px;font-weight:1000;text-align:center;background:#000;color:#fff;padding:4px;margin:8px 0 5px}.item{display:flex;justify-content:space-between;gap:8px;border-bottom:1px dotted #777;padding:4px 0;line-height:1.25}.total{font-size:${Math.max(fonte+8,22)}px;font-weight:1000;text-align:center;border:2px solid #000;padding:6px;margin-top:8px}.obs{font-size:${Math.max(fonte+1,14)}px;white-space:pre-wrap;border:1px solid #000;padding:6px;margin-top:7px}.qrwrap{text-align:center;margin-top:9px}.qrwrap img{width:${papel==58?'28':'34'}mm;height:${papel==58?'28':'34'}mm;image-rendering:pixelated}.footer{text-align:center;font-weight:1000;margin-top:8px;font-size:${Math.max(fonte,13)}px}.small{text-align:center;font-size:${Math.max(fonte-1,11)}px}@media print{body{padding:${margem}px}.ticket{width:${papel}mm;max-width:${papel}mm}button{display:none}.logo{-webkit-print-color-adjust:exact;print-color-adjust:exact}}
-  </style></head><body><div class="ticket">${cfg.logo!==false?'<img src="/logo.png" class="logo" alt="Big Burger">':''}<h1>${escapeHtml(cfg.nome||'BIG BURGER')}</h1><div class="sub">${escapeHtml(cfg.subtitulo||'COMANDA DE PEDIDO')}</div><div class="small">${data}</div><div class="pedido">PEDIDO #${pedidoNum}</div><div class="row"><span class="label">Cliente</span><b>${escapeHtml(p.cliente_nome||'')}</b></div><div class="row"><span class="label">Telefone</span><b>${escapeHtml(p.cliente_telefone||'')}</b></div><div class="sec-title">ITENS DO PEDIDO</div>${linhasItens}<div class="sec-title">ENTREGA</div><div>${endereco}</div><div class="line"></div><div class="row"><span class="label">Pagamento</span><b>${pagamento}</b></div><div class="row"><span class="label">Taxa entrega</span><b>${taxa}</b></div><div class="total">TOTAL: ${total}</div>${p.observacao?`<div class="obs"><b>OBSERVAÇÃO:</b><br>${escapeHtml(p.observacao)}</div>`:''}<div class="qrwrap"><img src="${qrSrc}" alt="QR Code do pedido"><div class="small">QR CODE DO PEDIDO</div></div><div class="footer">Obrigado pela preferência!</div></div><script>window.onload=function(){setTimeout(function(){window.print();},650); if(${cfg.fecharJanela!==false?'true':'false'}){window.onafterprint=function(){setTimeout(function(){window.close();},300)}}}<[slash]script></body></html>`.replace('<[slash]script>','<\\/script>');
+  return `<!doctype html><html><head><meta charset="utf-8"><title>Comanda #${numeroPedido(p)}</title><style>
+  *{box-sizing:border-box}body{font-family:Arial,Helvetica,sans-serif;margin:0;padding:${margem}px;color:#000;background:#fff;font-size:${fonte}px;font-weight:${peso}}.ticket{width:${papel}mm;max-width:${papel}mm;margin:0 auto}.logo{display:block;width:${papel==58?'34':'42'}mm;max-height:28mm;object-fit:contain;margin:0 auto 6px}h1{font-size:${titulo}px;text-align:center;margin:0 0 4px;font-weight:900}.sub{text-align:center;border-bottom:1px dashed #000;padding-bottom:8px;margin-bottom:8px;font-weight:${peso}}.row{display:flex;justify-content:space-between;gap:8px;margin:4px 0}.big{font-size:${Math.max(fonte+5,18)}px;font-weight:900}.sec{border-top:1px dashed #000;margin-top:8px;padding-top:8px}.items{font-size:${Math.max(fonte+2,15)}px;line-height:1.35}.total{font-size:${Math.max(fonte+7,20)}px;font-weight:900;text-align:right;margin-top:8px}.obs{font-size:${Math.max(fonte+1,14)}px;white-space:pre-wrap}@media print{body{padding:${margem}px}.ticket{width:${papel}mm;max-width:${papel}mm}button{display:none}}
+  </style></head><body><div class="ticket">${cfg.logo!==false?'<img src="/logo.png" class="logo" alt="Big Burger">':''}<h1>${escapeHtml(cfg.nome||'BIG BURGER')}</h1><div class="sub">${escapeHtml(cfg.subtitulo||'COMANDA DE PEDIDO')}<br>${data}</div><div class="row big"><span>Pedido</span><span>#${numeroPedido(p)}</span></div><div class="row"><span>Cliente</span><b>${escapeHtml(p.cliente_nome||'')}</b></div><div class="row"><span>Telefone</span><b>${escapeHtml(p.cliente_telefone||'')}</b></div><div class="sec"><b>ITENS</b><div class="items">${itens}</div></div><div class="sec"><b>ENDEREÇO</b><div>${escapeHtml(enderecoPedido(p)||'Retirada/sem endereço')}</div></div><div class="sec"><div class="row"><span>Pagamento</span><b>${escapeHtml(p.forma_pagamento||'pix')}</b></div><div class="row"><span>Taxa entrega</span><b>${brl(p.taxa_entrega||0)}</b></div><div class="total">TOTAL: ${brl(p.valor_total||0)}</div></div>${p.observacao?`<div class="sec obs"><b>OBS:</b><br>${escapeHtml(p.observacao)}</div>`:''}<div class="sec" style="text-align:center"><b>QR CODE DO MOTOBOY</b><br><img style="width:${papel==58?'32':'38'}mm;height:${papel==58?'32':'38'}mm;object-fit:contain" src="https://api.qrserver.com/v1/create-qr-code/?size=180x180&data=${encodeURIComponent(location.origin+'/motoboy?pedido='+p.id)}" alt="QR Pedido"><br><small>Escanear para registrar pedido</small></div></div><script>window.onload=function(){setTimeout(function(){window.print();},450); if(${cfg.fecharJanela!==false?'true':'false'}){window.onafterprint=function(){setTimeout(function(){window.close();},300)}}}<\/script></body></html>`;
 }
 function imprimirPedido(p){
   if(!p){alert('Pedido não encontrado para imprimir.');return;}
@@ -428,6 +404,67 @@ function renderFinanceiro(){
   if(box){box.innerHTML=`<div class="stat-card dark-stat"><div>🛒</div><span>Faturamento bruto</span><b>${brl(resumo.faturamento)}</b></div><div class="stat-card dark-stat"><div>🧾</div><span>Taxas de entrega</span><b>${brl(resumo.taxas)}</b></div><div class="stat-card dark-stat"><div>💰</div><span>Faturamento líquido</span><b>${brl(resumo.liquido)}</b></div><div class="stat-card dark-stat"><div>📦</div><span>Pedidos</span><b>${resumo.pedidos}</b></div><div class="stat-card dark-stat"><div>🎟️</div><span>Ticket médio</span><b>${brl(resumo.ticket)}</b></div><div class="stat-card dark-stat"><div>💳</div><span>Pix / dinheiro / cartão</span><b>${brl(resumo.pix)} / ${brl(resumo.dinheiro)} / ${brl(resumo.cartao)}</b></div>`;}
   if(out){out.innerHTML=lista.length?`<table class="table dark-table"><tr><th>Pedido</th><th>Cliente</th><th>Pagamento</th><th>Status</th><th>Entrega</th><th>Taxa entrega</th><th>Total</th><th>Data/Hora</th></tr>${lista.map(p=>`<tr><td>#${numeroPedido(p)}</td><td>${escapeHtml(p.cliente_nome||'')}</td><td>${escapeHtml(p.forma_pagamento||'')}</td><td>${escapeHtml(normalizarStatusPedido(p.status)).replaceAll('_',' ')}</td><td>${p.taxa_entrega?'Delivery':'Retirada'}</td><td>${brl(p.taxa_entrega||0)}</td><td><b>${brl(p.valor_total||0)}</b></td><td>${dataBR(p.created_at)}</td></tr>`).join('')}<tr class="finance-total"><td colspan="5"><b>Totais do dia</b></td><td><b>${brl(resumo.taxas)}</b></td><td><b>${brl(resumo.faturamento)}</b></td><td></td></tr></table>`:'<div class="empty-finance">Relatório diário zerado. Os próximos pedidos aparecerão aqui.</div>';}
 }
-loadPedidos();loadClientes();loadTudo();loadConfigLoja();carregarConfigImpressora();
+
+
+async function loadMotoboys(){
+  const out=document.getElementById('motoboysOut');
+  const ent=document.getElementById('motoboyEntregasOut');
+  if(out) out.innerHTML='Carregando motoboys...';
+  try{
+    const r=await fetch('/api/motoboys?ts='+Date.now(),{cache:'no-store'});
+    const d=await r.json();
+    if(!r.ok||!d.ok) throw new Error(d.error||JSON.stringify(d));
+    state.motoboys=d.motoboys||[];
+    state.motoboyEntregas=d.entregas||[];
+    renderMotoboys();
+  }catch(e){ if(out) out.innerHTML='<div class="err">Erro ao carregar motoboys: '+e.message+'</div>'; if(ent) ent.innerHTML=''; }
+}
+function linkMotoboy(m){return location.origin+'/motoboy?token='+encodeURIComponent(m.token)+'&nome='+encodeURIComponent(m.nome||'Motoboy')}
+function renderMotoboys(){
+  const out=document.getElementById('motoboysOut');
+  const ent=document.getElementById('motoboyEntregasOut');
+  if(out){
+    const rows=(state.motoboys||[]).map(m=>{
+      const link=linkMotoboy(m);
+      const msg=`🏍️ Big Burger - Área do Motoboy
+
+Olá ${m.nome}, acesse seu painel pelo link abaixo e escaneie o QR Code da comanda para registrar a entrega:
+
+${link}`;
+      const wa=m.telefone?`https://wa.me/55${String(m.telefone).replace(/\D/g,'').replace(/^55/,'')}?text=${encodeURIComponent(msg)}`:'#';
+      return `<tr><td><b>${escapeHtml(m.nome)}</b><br><small>${m.ativo?'Ativo':'Inativo'}</small></td><td>${escapeHtml(m.telefone||'')}</td><td><input readonly value="${escapeHtml(link)}" onclick="this.select()"></td><td class="client-actions"><a class="btn mini" target="_blank" href="${wa}">📲 Enviar link</a><button onclick='editarMotoboy(${JSON.stringify(m).replaceAll("'","&#39;")})'>✏️</button><button onclick="excluirMotoboy('${m.id}')">🗑️</button></td></tr>`;
+    }).join('');
+    out.innerHTML=rows?`<div class="client-table-wrap"><table class="table dark-table"><tr><th>Nome</th><th>WhatsApp</th><th>Link individual</th><th>Ações</th></tr>${rows}</table></div>`:'<p class="empty-finance">Nenhum motoboy cadastrado ainda.</p>';
+  }
+  if(ent){
+    const rows=(state.motoboyEntregas||[]).map(e=>`<tr><td>${dataBR(e.created_at)}</td><td><b>${escapeHtml(e.motoboys?.nome||'')}</b></td><td>#${numeroPedido(e.pedidos||{})}</td><td>${escapeHtml(e.pedidos?.cliente_nome||'')}</td><td>${brl(e.pedidos?.valor_total||0)}</td><td>${brl(e.valor_entrega||0)}</td><td>${escapeHtml(e.status||'')}</td></tr>`).join('');
+    ent.innerHTML=rows?`<table class="table dark-table"><tr><th>Hora</th><th>Motoboy</th><th>Pedido</th><th>Cliente</th><th>Total pedido</th><th>Entrega</th><th>Status</th></tr>${rows}</table>`:'<p class="empty-finance">Nenhum QR Code registrado hoje.</p>';
+  }
+}
+async function salvarMotoboy(ev){
+  ev.preventDefault();
+  const id=motoboyId.value;
+  const payload={nome:motoboyNome.value.trim(),telefone:motoboyTelefone.value.trim(),ativo:motoboyAtivo.checked};
+  if(!payload.nome){alert('Informe o nome do motoboy.');return;}
+  const r=await fetch('/api/motoboys'+(id?'?id='+encodeURIComponent(id):''),{method:id?'PUT':'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)});
+  const d=await r.json();
+  if(!r.ok||!d.ok){alert('Erro ao salvar motoboy: '+(d.error||JSON.stringify(d)));return;}
+  limparMotoboyForm();
+  if(motoboyStatus) motoboyStatus.innerHTML='✅ Motoboy salvo. Agora clique em “Enviar link”.';
+  await loadMotoboys();
+}
+function limparMotoboyForm(){ if(typeof motoboyId==='undefined') return; motoboyId.value=''; motoboyNome.value=''; motoboyTelefone.value=''; motoboyAtivo.checked=true; }
+function editarMotoboy(m){ motoboyId.value=m.id||''; motoboyNome.value=m.nome||''; motoboyTelefone.value=m.telefone||''; motoboyAtivo.checked=m.ativo!==false; abrirMain('motoboys'); window.scrollTo({top:0,behavior:'smooth'}); }
+async function excluirMotoboy(id){ if(!confirm('Excluir este motoboy?')) return; const r=await fetch('/api/motoboys?id='+encodeURIComponent(id),{method:'DELETE'}); const d=await r.json(); if(!r.ok||!d.ok){alert('Erro: '+(d.error||JSON.stringify(d)));return;} await loadMotoboys(); }
+async function zerarMotoboysDia(){
+  if(!confirm('Zerar os registros dos motoboys do dia? Isso limpa os pedidos registrados por QR Code e reinicia as corridas para disponível.')) return;
+  const r=await fetch('/api/motoboys',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({action:'reset'})});
+  const d=await r.json();
+  if(!r.ok||!d.ok){alert('Erro ao zerar: '+(d.error||JSON.stringify(d)));return;}
+  alert('Motoboys zerados com sucesso.');
+  await loadMotoboys();
+}
+
+loadPedidos();loadClientes();loadTudo();loadConfigLoja();carregarConfigImpressora();loadMotoboys();
 if(pedidosAutoRefreshTimer) clearInterval(pedidosAutoRefreshTimer);
 pedidosAutoRefreshTimer=setInterval(()=>loadPedidos(true),5000);
