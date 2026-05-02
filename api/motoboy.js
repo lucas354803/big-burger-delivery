@@ -1,2 +1,0 @@
-import { supabaseFetch } from './_supabase.js';
-export default async function handler(req,res){try{if(req.method==='PATCH'){const {id,status,motoboy_nome}=req.body||{};const [c]=await supabaseFetch(`corridas?id=eq.${id}`,{method:'PATCH',body:JSON.stringify({status,motoboy_nome})});return res.status(200).json({ok:true,corrida:c});}const data=await supabaseFetch('corridas?select=*,pedidos(*)&order=created_at.desc',{method:'GET',headers:{Prefer:''}});res.status(200).json({ok:true,corridas:data});}catch(e){res.status(500).json({ok:false,error:e.message,detalhes:e.data||null});}}
