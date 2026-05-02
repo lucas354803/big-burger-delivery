@@ -7,7 +7,6 @@ const defaultConfig = {
   pedido_automatico: true,
   som_pedidos: true,
   tempo_entrega_padrao: 40,
-  pontos_por_real: 1,
   mensagem_fechado: 'Estamos fechados no momento. Volte no nosso horário de atendimento.'
 };
 const defaultHorarios = [
@@ -58,7 +57,6 @@ export default async function handler(req,res){
       pedido_automatico: Boolean(config.pedido_automatico),
       som_pedidos: Boolean(config.som_pedidos),
       tempo_entrega_padrao: Number(config.tempo_entrega_padrao || 40),
-      pontos_por_real: Number(config.pontos_por_real || 1),
       mensagem_fechado: String(config.mensagem_fechado || defaultConfig.mensagem_fechado)
     };
     const existsConfig = await supabaseFetch('loja_config?select=id&id=eq.1&limit=1', {headers:{Prefer:''}}).catch(()=>[]);

@@ -247,7 +247,6 @@ function renderConfigLoja(){
   if(typeof cfg_pedido_automatico!=='undefined') cfg_pedido_automatico.checked=c.pedido_automatico!==false;
   if(typeof cfg_som_pedidos!=='undefined') cfg_som_pedidos.checked=c.som_pedidos!==false;
   if(typeof cfg_tempo_entrega!=='undefined') cfg_tempo_entrega.value=c.tempo_entrega_padrao||40;
-  if(typeof cfg_pontos_real!=='undefined') cfg_pontos_real.value=c.pontos_por_real||1;
   if(typeof cfg_mensagem_fechado!=='undefined') cfg_mensagem_fechado.value=c.mensagem_fechado||'Estamos fechados no momento. Volte no nosso horário de atendimento.';
   const box=document.getElementById('horariosBox'); if(!box) return;
   const nomes=['Domingo','Segunda','Terça','Quarta','Quinta','Sexta','Sábado'];
@@ -257,7 +256,7 @@ function renderConfigLoja(){
 async function salvarConfigLoja(e){
   e.preventDefault();
   const horarios=[...document.querySelectorAll('.hour-row')].map(row=>({dia_semana:Number(row.dataset.dia),nome_dia:row.querySelector('label')?.textContent.trim()||'',ativo:row.querySelector('.h-ativo').checked,abre:row.querySelector('.h-abre').value,fecha:row.querySelector('.h-fecha').value}));
-  const payload={config:{loja_aberta:cfg_loja_aberta.checked,pedido_automatico:cfg_pedido_automatico.checked,som_pedidos:cfg_som_pedidos.checked,tempo_entrega_padrao:cfg_tempo_entrega.value,pontos_por_real:cfg_pontos_real.value,mensagem_fechado:cfg_mensagem_fechado.value},horarios};
+  const payload={config:{loja_aberta:cfg_loja_aberta.checked,pedido_automatico:cfg_pedido_automatico.checked,som_pedidos:cfg_som_pedidos.checked,tempo_entrega_padrao:cfg_tempo_entrega.value,mensagem_fechado:cfg_mensagem_fechado.value},horarios};
   const out=document.getElementById('configLojaStatus'); if(out) out.textContent='Salvando...';
   try{const r=await fetch('/api/store-settings',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)});const d=await r.json();if(!r.ok||!d.ok)throw new Error(d.error||JSON.stringify(d));state.loja_config=d.config;state.horarios_funcionamento=d.horarios;renderConfigLoja();if(out)out.innerHTML='✅ Configuração salva com sucesso!';somPedidosLigado=cfg_som_pedidos.checked;localStorage.setItem('somPedidosLigado',somPedidosLigado?'1':'0');atualizarBotaoSom();}catch(err){if(out)out.innerHTML='<span class="err">Erro: '+err.message+'</span>';}
 }

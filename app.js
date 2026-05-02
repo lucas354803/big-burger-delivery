@@ -6,7 +6,7 @@ let produtoComplementoCategorias=[];
 let cidadesEntrega=[];
 let bairrosEntrega=[];
 let taxaEntregaSelecionada=0;
-let lojaConfig={loja_aberta:true,pedido_automatico:true,som_pedidos:true,tempo_entrega_padrao:40,pontos_por_real:1,mensagem_fechado:'Estamos fechados no momento.'};
+let lojaConfig={loja_aberta:true,pedido_automatico:true,som_pedidos:true,tempo_entrega_padrao:40,mensagem_fechado:'Estamos fechados no momento.'};
 let horariosFuncionamento=[];
 let lojaStatus={aberto:true,motivo:'fallback'};
 

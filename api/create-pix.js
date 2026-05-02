@@ -29,10 +29,9 @@ export default async function handler(req, res) {
 
     const statusInicial = forma_pagamento === 'pix' ? 'aguardando_pagamento' : (settings.config.pedido_automatico ? 'em_preparo' : 'pedido_recebido');
     const tempoEstimado = Number(body.tempo_estimado_minutos || settings.config.tempo_entrega_padrao || 40);
-    const pontosFidelidade = Math.floor(valor_total * Number(settings.config.pontos_por_real || 1));
     const [pedido] = await supabaseFetch('pedidos', {
       method: 'POST',
-      body: JSON.stringify({ cliente_nome, cliente_telefone, endereco, cidade, bairro, rua, forma_pagamento, taxa_entrega, subtotal, observacao, itens, valor_total, status: statusInicial, tempo_estimado_minutos: tempoEstimado, pontos_fidelidade: pontosFidelidade })
+      body: JSON.stringify({ cliente_nome, cliente_telefone, endereco, cidade, bairro, rua, forma_pagamento, taxa_entrega, subtotal, observacao, itens, valor_total, status: statusInicial, tempo_estimado_minutos: tempoEstimado })
     });
 
     let pix = null;

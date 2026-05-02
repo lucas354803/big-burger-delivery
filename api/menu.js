@@ -51,7 +51,7 @@ export default async function handler(req, res) {
       produto_complemento_categorias:[],
       cidades_entrega:[],
       bairros_entrega:[],
-      loja_config:{loja_aberta:true,pedido_automatico:true,som_pedidos:true,tempo_entrega_padrao:40,pontos_por_real:1,mensagem_fechado:'Estamos fechados no momento.'},
+      loja_config:{loja_aberta:true,pedido_automatico:true,som_pedidos:true,tempo_entrega_padrao:40,mensagem_fechado:'Estamos fechados no momento.'},
       horarios_funcionamento:[],
       loja_status:{aberto:true,motivo:'fallback'}
     });
