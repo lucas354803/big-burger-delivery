@@ -4,6 +4,9 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1">
   <title>Admin Big Burger</title>
+  <link rel="manifest" href="/manifest.json">
+  <meta name="theme-color" content="#e21b1b">
+  <link rel="apple-touch-icon" href="/icon-192.png">
   <link rel="stylesheet" href="/style.css">
 </head>
 <body class="admin-page admin-locked">
@@ -420,5 +423,7 @@ document.addEventListener('DOMContentLoaded',()=>{if(sessionStorage.getItem('big
     </form>
   </div>
 
+  <button id="installAppBtn" class="install-app-btn">📲 Instalar App</button>
+  <script src="/pwa.js"></script>
 </body>
 </html>

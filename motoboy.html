@@ -4,6 +4,9 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1">
   <title>Motoboy Big Burger</title>
+  <link rel="manifest" href="/manifest.json">
+  <meta name="theme-color" content="#e21b1b">
+  <link rel="apple-touch-icon" href="/icon-192.png">
   <link rel="stylesheet" href="/style.css">
 </head>
 <body class="admin-page motoboy-page">
@@ -81,5 +84,7 @@ function pararScanner(){clearInterval(scanTimer); if(scanStream){scanStream.getT
 loadPerfil();
 if(qs.get('pedido')) setTimeout(()=>registrarPedidoDaUrl(),500);
 </script>
+  <button id="installAppBtn" class="install-app-btn">📲 Instalar App</button>
+  <script src="/pwa.js"></script>
 </body>
 </html>
