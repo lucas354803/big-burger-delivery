@@ -5,6 +5,10 @@ function abrirMain(id){
   document.querySelectorAll('.main-tab,.main-content').forEach(x=>x.classList.remove('active'));
   document.querySelector(`.main-tab[onclick="abrirMain('${id}')"]`).classList.add('active');
   document.getElementById('main-'+id).classList.add('active');
+
+  // Carrega o Histórico somente quando a aba for aberta.
+  // Isso evita que o auto-refresh dos pedidos fique piscando/recarregando a tela do histórico.
+  if(id==='historico') renderHistoricoPedidos();
 }
 function abrirTab(id){
   abrirMain('editor');
@@ -229,7 +233,8 @@ async function loadPedidos(silencioso=false){
     });
     ultimoTotalPedidos=novoTotal;
     renderPedidosGestor();
-    renderHistoricoPedidos();
+    // Não atualiza o histórico junto com o painel de pedidos.
+    // O histórico agora carrega só ao abrir a aba, trocar página, pesquisar ou zerar relatório.
   }catch(e){if(out && !silencioso) out.innerHTML='<div class="err">Erro ao carregar pedidos: '+e.message+'</div>'}
   finally{loadPedidosEmAndamento=false;}
 }
