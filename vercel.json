@@ -1,17 +1,13 @@
 {
   "version": 2,
+  "cleanUrls": true,
+  "trailingSlash": false,
   "rewrites": [
-    {
-      "source": "/api/:route",
-      "destination": "/api?route=:route"
-    },
-    {
-      "source": "/admin",
-      "destination": "/admin.html"
-    },
-    {
-      "source": "/motoboy",
-      "destination": "/motoboy.html"
-    }
+    { "source": "/", "destination": "/index.html" },
+    { "source": "/admin", "destination": "/admin.html" },
+    { "source": "/admin/", "destination": "/admin.html" },
+    { "source": "/motoboy", "destination": "/motoboy.html" },
+    { "source": "/motoboy/", "destination": "/motoboy.html" },
+    { "source": "/api/:route", "destination": "/api?route=:route" }
   ]
 }
