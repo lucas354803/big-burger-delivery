@@ -546,7 +546,14 @@ function renderHistoricoPedidos(){
   const inicio=(state.historicoPagina-1)*state.historicoPorPagina;
   const pagina=lista.slice(inicio,inicio+state.historicoPorPagina);
   if(resumo) resumo.innerHTML=`<div class="stat-card dark-stat"><div>📦</div><span>Pedidos no histórico</span><b>${lista.length}</b></div><div class="stat-card dark-stat"><div>💰</div><span>Valor arquivado</span><b>${brl(total)}</b></div><div class="stat-card dark-stat"><div>📄</div><span>Mostrando por página</span><b>${state.historicoPorPagina}</b></div>`;
-  if(out) out.innerHTML=lista.length?`<div class="history-list">${pagina.map(renderCardHistorico).join('')}</div>${renderPaginacaoHistorico(totalPaginas,lista.length)}`:'<div class="empty-finance">Nenhum pedido no histórico ainda. Quando você zerar o relatório diário, os finalizados vão aparecer aqui.</div>';
+  if(out){
+    if(lista.length){
+      const paginacao=renderPaginacaoHistorico(totalPaginas,lista.length);
+      out.innerHTML=`${paginacao}<div class="history-list">${pagina.map(renderCardHistorico).join('')}</div>${paginacao}`;
+    }else{
+      out.innerHTML='<div class="empty-finance">Nenhum pedido no histórico ainda. Quando você zerar o relatório diário, os finalizados vão aparecer aqui.</div>';
+    }
+  }
 }
 
 async function loadMotoboys(){
