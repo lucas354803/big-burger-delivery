@@ -31,7 +31,7 @@ const orderStatuses=[
   {id:'finalizado',titulo:'Finalizados',emoji:'⚫',cls:'finalizado'}
 ];
 
-const impressoraPadrao={papel:80,fonte:13,titulo:22,margem:6,nome:'BIG BURGER',subtitulo:'COMANDA DE PEDIDO',negrito:true,auto:true,logo:true,fecharJanela:true,direto:true};
+const impressoraPadrao={papel:80,fonte:13,titulo:22,margem:6,nome:'BIG BURGER',subtitulo:'COMANDA DE PEDIDO',negrito:true,auto:true,logo:true,fecharJanela:true,direto:true,qzAtivo:false,qzImpressora:''};
 function getConfigImpressora(){
   try{return {...impressoraPadrao,...JSON.parse(localStorage.getItem('configImpressoraBigBurger')||'{}')}}catch(e){return {...impressoraPadrao}}
 }
@@ -49,9 +49,11 @@ function carregarConfigImpressora(){
   if(typeof imp_logo!=='undefined') imp_logo.checked=c.logo!==false;
   if(typeof imp_fechar!=='undefined') imp_fechar.checked=c.fecharJanela!==false;
   if(typeof imp_direto!=='undefined') imp_direto.checked=c.direto!==false;
+  if(typeof imp_qz_ativo!=='undefined') imp_qz_ativo.checked=c.qzAtivo===true;
+  if(typeof imp_qz_nome!=='undefined') imp_qz_nome.value=c.qzImpressora||'';
   renderPreviewComanda();
 }
-function lerConfigImpressoraTela(){return {papel:Number(imp_papel?.value||80),fonte:Number(imp_fonte?.value||13),titulo:Number(imp_titulo?.value||22),margem:Number(imp_margem?.value||6),nome:(imp_nome?.value||'BIG BURGER').trim(),subtitulo:(imp_subtitulo?.value||'COMANDA DE PEDIDO').trim(),negrito:!!imp_negrito?.checked,auto:!!imp_auto?.checked,logo:!!imp_logo?.checked,fecharJanela:!!imp_fechar?.checked,direto:!!imp_direto?.checked};}
+function lerConfigImpressoraTela(){return {papel:Number(imp_papel?.value||80),fonte:Number(imp_fonte?.value||13),titulo:Number(imp_titulo?.value||22),margem:Number(imp_margem?.value||6),nome:(imp_nome?.value||'BIG BURGER').trim(),subtitulo:(imp_subtitulo?.value||'COMANDA DE PEDIDO').trim(),negrito:!!imp_negrito?.checked,auto:!!imp_auto?.checked,logo:!!imp_logo?.checked,fecharJanela:!!imp_fechar?.checked,direto:!!imp_direto?.checked,qzAtivo:!!imp_qz_ativo?.checked,qzImpressora:(imp_qz_nome?.value||'').trim()};}
 function salvarConfigImpressora(e){
   if(e) e.preventDefault();
   setConfigImpressora(lerConfigImpressoraTela());
@@ -98,6 +100,100 @@ function abrirWhats(p,tipo){
   window.open(`https://wa.me/55${tel}?text=${encodeURIComponent(msg)}`,'_blank');
 }
 
+
+
+// ===== IMPRESSÃO AUTOMÁTICA REAL COM QZ TRAY =====
+// Para funcionar 100% sem abrir a tela de impressão, instale e deixe o QZ Tray aberto no Windows.
+let qzConectando = null;
+function qzDisponivel(){ return typeof window.qz !== 'undefined' && qz.websocket; }
+function configurarSegurancaQZ(){
+  if(!qzDisponivel() || window.__bigBurgerQzSecurityOk) return;
+  try{
+    // Modo sem certificado próprio: o QZ vai pedir permissão na primeira vez.
+    // Marque "Remember this decision / Permitir sempre" no QZ Tray.
+    qz.security.setCertificatePromise((resolve)=>resolve(null));
+    qz.security.setSignaturePromise(()=> (resolve)=>resolve(null));
+    window.__bigBurgerQzSecurityOk=true;
+  }catch(e){ console.warn('QZ security config:', e); }
+}
+async function conectarQZ(){
+  if(!qzDisponivel()) throw new Error('Biblioteca QZ não carregou. Verifique sua internet e se o script qz-tray.js carregou.');
+  configurarSegurancaQZ();
+  if(qz.websocket.isActive()) return true;
+  if(!qzConectando){
+    qzConectando = qz.websocket.connect({retries:2, delay:700}).finally(()=>{qzConectando=null;});
+  }
+  await qzConectando;
+  return true;
+}
+function textoComandaQZ(p){
+  const cfg=getConfigImpressora();
+  const data=new Date().toLocaleString('pt-BR');
+  const itens=itensTexto(p.itens);
+  const endereco=enderecoPedido(p)||'Retirada/sem endereço';
+  const qr=location.origin+'/motoboy?pedido='+p.id;
+  const negritoOn='\x1B\x45\x01', negritoOff='\x1B\x45\x00';
+  const centro='\x1B\x61\x01', esquerda='\x1B\x61\x00';
+  const maior='\x1D\x21\x11', normal='\x1D\x21\x00';
+  const corte='\n\n\n\x1D\x56\x00';
+  return '\x1B\x40' + centro + negritoOn + maior + (cfg.nome||'BIG BURGER') + normal + '\n' +
+    (cfg.subtitulo||'COMANDA DE PEDIDO') + '\n' + data + '\n' +
+    '------------------------------\n' + esquerda +
+    negritoOn + 'PEDIDO #' + numeroPedido(p) + negritoOff + '\n\n' +
+    'Cliente: ' + (p.cliente_nome||'') + '\n' +
+    'Telefone: ' + (p.cliente_telefone||'') + '\n' +
+    '------------------------------\n' +
+    negritoOn + 'ITENS\n' + negritoOff + itens + '\n' +
+    '------------------------------\n' +
+    negritoOn + 'ENDERECO\n' + negritoOff + endereco + '\n' +
+    '------------------------------\n' +
+    'Pagamento: ' + (p.forma_pagamento||'pix') + '\n' +
+    'Taxa entrega: ' + brl(p.taxa_entrega||0) + '\n' +
+    negritoOn + 'TOTAL: ' + brl(p.valor_total||0) + negritoOff + '\n' +
+    (p.observacao ? '\nOBS: ' + p.observacao + '\n' : '') +
+    '------------------------------\n' +
+    'QR Motoboy:\n' + qr + '\n' +
+    corte;
+}
+async function carregarImpressorasQZ(){
+  const out=document.getElementById('impressoraStatus');
+  const select=document.getElementById('imp_qz_nome');
+  try{
+    if(out) out.innerHTML='🔌 Conectando no QZ Tray...';
+    await conectarQZ();
+    const printers=await qz.printers.find();
+    if(select){
+      const atual=getConfigImpressora().qzImpressora||'';
+      select.innerHTML='<option value="">Impressora padrão do Windows</option>' + printers.map(n=>`<option value="${escapeHtml(n)}">${escapeHtml(n)}</option>`).join('');
+      select.value=atual;
+    }
+    if(out) out.innerHTML='✅ QZ conectado. Impressoras carregadas.';
+  }catch(e){
+    if(out) out.innerHTML='<span class="err-inline">Erro no QZ: '+escapeHtml(e.message||String(e))+'</span>';
+  }
+}
+async function testarConexaoQZ(){
+  const out=document.getElementById('impressoraStatus');
+  try{
+    if(out) out.innerHTML='🔌 Testando QZ Tray...';
+    await conectarQZ();
+    if(out) out.innerHTML='✅ QZ Tray funcionando. Agora clique em "Carregar impressoras" e escolha sua térmica.';
+  }catch(e){
+    if(out) out.innerHTML='<span class="err-inline">QZ não conectado. Instale/abra o QZ Tray. Erro: '+escapeHtml(e.message||String(e))+'</span>';
+  }
+}
+async function imprimirPedidoQZ(p){
+  if(!p){alert('Pedido não encontrado para imprimir.');return;}
+  await conectarQZ();
+  const cfg=getConfigImpressora();
+  const printer = cfg.qzImpressora ? await qz.printers.find(cfg.qzImpressora) : await qz.printers.getDefault();
+  const config = qz.configs.create(printer, {encoding:'UTF-8', copies:1});
+  const data = [{type:'raw', format:'plain', data:textoComandaQZ(p)}];
+  await qz.print(config, data);
+  const out=document.getElementById('impressoraStatus');
+  if(out) out.innerHTML='✅ Comanda enviada direto para: '+escapeHtml(printer);
+}
+
 function htmlComandaPedido(p){
   const cfg=getConfigImpressora();
   const papel=Number(cfg.papel||80);
@@ -141,6 +237,14 @@ function imprimirPedidoPopup(p){
 }
 function imprimirPedido(p){
   const cfg=getConfigImpressora();
+  if(cfg.qzAtivo===true){
+    imprimirPedidoQZ(p).catch(e=>{
+      console.error(e);
+      alert('Erro na impressão automática QZ: '+(e.message||e)+'\n\nVerifique se o QZ Tray está aberto e permitido. Vou abrir a impressão normal como reserva.');
+      if(cfg.direto!==false) imprimirPedidoDireto(p); else imprimirPedidoPopup(p);
+    });
+    return;
+  }
   if(cfg.direto!==false) return imprimirPedidoDireto(p);
   return imprimirPedidoPopup(p);
 }
