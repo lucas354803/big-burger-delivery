@@ -166,3 +166,7 @@
 .page-btn:disabled{opacity:.45;cursor:not-allowed}
 .page-dots{color:#aaa;font-weight:900;padding:0 4px}
 .page-info{color:#ccc;font-size:13px;font-weight:700;margin-left:6px}
+
+/* Histórico com paginação igual à aba Clientes */
+.history-client-pagination{margin-top:16px;margin-bottom:16px}
+.history-client-pagination span{color:#e8e8e8}

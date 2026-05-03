@@ -518,41 +518,64 @@ function irPaginaHistorico(pagina){
   state.historicoPagina=Math.min(Math.max(1, Number(pagina)||1), total);
   renderHistoricoPedidos();
 }
-function renderPaginacaoHistorico(totalPaginas,totalItens){
-  if(totalPaginas<=1) return '';
+function renderPaginacaoHistorico(totalPaginas,totalItens,inicio){
   const atual=state.historicoPagina;
-  let botoes='';
-  for(let i=1;i<=totalPaginas;i++){
-    if(i===1 || i===totalPaginas || Math.abs(i-atual)<=2){
-      botoes+=`<button class="page-btn ${i===atual?'active':''}" onclick="irPaginaHistorico(${i})">${i}</button>`;
-    }else if(i===atual-3 || i===atual+3){
-      botoes+=`<span class="page-dots">...</span>`;
-    }
-  }
-  return `<div class="history-pagination"><button class="page-btn" ${atual<=1?'disabled':''} onclick="irPaginaHistorico(${atual-1})">‹ Anterior</button><div class="page-numbers">${botoes}</div><button class="page-btn" ${atual>=totalPaginas?'disabled':''} onclick="irPaginaHistorico(${atual+1})">Próxima ›</button><span class="page-info">Página ${atual} de ${totalPaginas} • ${totalItens} pedido(s)</span></div>`;
+  const porPagina=Number(state.historicoPorPagina||15);
+  const inicioMostra=totalItens?inicio+1:0;
+  const fimMostra=Math.min(inicio+porPagina,totalItens);
+  return `<div class="client-pagination history-client-pagination"><span>Mostrando ${inicioMostra} a ${fimMostra} de ${totalItens} pedidos</span><div><button onclick="irPaginaHistorico(1)" ${atual===1?'disabled':''}>Primeira</button><button onclick="irPaginaHistorico(${atual-1})" ${atual===1?'disabled':''}>Anterior</button><b>${atual}</b><button onclick="irPaginaHistorico(${atual+1})" ${atual===totalPaginas?'disabled':''}>Próxima</button><button onclick="irPaginaHistorico(${totalPaginas})" ${atual===totalPaginas?'disabled':''}>Última</button></div><label>Itens por página:<select onchange="state.historicoPorPagina=Number(this.value);state.historicoPagina=1;renderHistoricoPedidos()"><option value="15" ${porPagina===15?'selected':''}>15</option><option value="30" ${porPagina===30?'selected':''}>30</option><option value="50" ${porPagina===50?'selected':''}>50</option><option value="100" ${porPagina===100?'selected':''}>100</option></select></label></div>`;
 }
+let historicoTimer=null;
 function renderHistoricoPedidos(){
+  clearTimeout(historicoTimer);
+  historicoTimer=setTimeout(loadHistoricoPedidosServidor,120);
+}
+async function loadHistoricoPedidosServidor(){
   const out=document.getElementById('historicoPedidosOut');
   const resumo=document.getElementById('historicoPedidosResumo');
   if(!out && !resumo) return;
-  let lista=pedidosHistoricoRelatorio().sort((a,b)=>new Date(b.arquivado_em||b.created_at||0)-new Date(a.arquivado_em||a.created_at||0));
-  const busca=(document.getElementById('historicoBusca')?.value||'').toLowerCase().trim();
+  const busca=(document.getElementById('historicoBusca')?.value||'').trim();
   if(busca!==state.historicoBuscaAtual){ state.historicoBuscaAtual=busca; state.historicoPagina=1; }
-  if(busca) lista=lista.filter(p=>[p.id,p.numero_pedido,p.cliente_nome,p.cliente_telefone,enderecoPedido(p),itensTexto(p.itens)].join(' ').toLowerCase().includes(busca));
-  const total=lista.reduce((s,p)=>s+Number(p.valor_total||0),0);
-  const totalPaginas=Math.max(1, Math.ceil(lista.length/state.historicoPorPagina));
-  window.__totalPaginasHistorico=totalPaginas;
-  if(state.historicoPagina>totalPaginas) state.historicoPagina=totalPaginas;
-  const inicio=(state.historicoPagina-1)*state.historicoPorPagina;
-  const pagina=lista.slice(inicio,inicio+state.historicoPorPagina);
-  if(resumo) resumo.innerHTML=`<div class="stat-card dark-stat"><div>📦</div><span>Pedidos no histórico</span><b>${lista.length}</b></div><div class="stat-card dark-stat"><div>💰</div><span>Valor arquivado</span><b>${brl(total)}</b></div><div class="stat-card dark-stat"><div>📄</div><span>Mostrando por página</span><b>${state.historicoPorPagina}</b></div>`;
-  if(out){
-    if(lista.length){
-      const paginacao=renderPaginacaoHistorico(totalPaginas,lista.length);
-      out.innerHTML=`${paginacao}<div class="history-list">${pagina.map(renderCardHistorico).join('')}</div>${paginacao}`;
-    }else{
-      out.innerHTML='<div class="empty-finance">Nenhum pedido no histórico ainda. Quando você zerar o relatório diário, os finalizados vão aparecer aqui.</div>';
+  const page=Number(state.historicoPagina||1);
+  const perPage=Number(state.historicoPorPagina||15);
+  if(out) out.innerHTML='<div class="empty-finance">Carregando histórico paginado...</div>';
+  try{
+    const url=`/api/historico?page=${page}&perPage=${perPage}&busca=${encodeURIComponent(busca)}&ts=${Date.now()}`;
+    const r=await fetch(url,{cache:'no-store'});
+    const d=await r.json();
+    if(!r.ok||!d.ok) throw new Error(d.error||JSON.stringify(d));
+    const lista=d.pedidos||[];
+    const totalItens=Number(d.total||0);
+    const totalPaginas=Math.max(1,Number(d.totalPages||Math.ceil(totalItens/perPage)||1));
+    window.__totalPaginasHistorico=totalPaginas;
+    if(state.historicoPagina>totalPaginas){ state.historicoPagina=totalPaginas; return renderHistoricoPedidos(); }
+    const inicio=(state.historicoPagina-1)*perPage;
+    if(resumo) resumo.innerHTML=`<div class="stat-card dark-stat"><div>📦</div><span>Pedidos no histórico</span><b>${totalItens}</b></div><div class="stat-card dark-stat"><div>💰</div><span>Valor arquivado</span><b>${brl(d.resumo?.valor_total||0)}</b></div><div class="stat-card dark-stat"><div>📄</div><span>Mostrando por página</span><b>${perPage}</b></div>`;
+    if(out){
+      if(lista.length){
+        const paginacao=renderPaginacaoHistorico(totalPaginas,totalItens,inicio);
+        out.innerHTML=`${paginacao}<div class="history-list">${lista.map(renderCardHistorico).join('')}</div>${paginacao}`;
+      }else{
+        out.innerHTML='<div class="empty-finance">Nenhum pedido no histórico ainda. Quando você zerar o relatório diário, os finalizados vão aparecer aqui.</div>';
+      }
     }
+  }catch(e){
+    // Plano B: se a API nova ainda não subiu na Vercel, usa o cache local antigo para não deixar a aba quebrada.
+    try{
+      let lista=pedidosHistoricoRelatorio().sort((a,b)=>new Date(b.arquivado_em||b.created_at||0)-new Date(a.arquivado_em||a.created_at||0));
+      const buscaLocal=(busca||'').toLowerCase();
+      if(buscaLocal) lista=lista.filter(p=>[p.id,p.numero_pedido,p.cliente_nome,p.cliente_telefone,enderecoPedido(p),itensTexto(p.itens)].join(' ').toLowerCase().includes(buscaLocal));
+      const total=lista.reduce((s,p)=>s+Number(p.valor_total||0),0);
+      const totalPaginas=Math.max(1, Math.ceil(lista.length/perPage));
+      window.__totalPaginasHistorico=totalPaginas;
+      const inicio=(state.historicoPagina-1)*perPage;
+      const pagina=lista.slice(inicio,inicio+perPage);
+      if(resumo) resumo.innerHTML=`<div class="stat-card dark-stat"><div>📦</div><span>Pedidos no histórico</span><b>${lista.length}</b></div><div class="stat-card dark-stat"><div>💰</div><span>Valor arquivado</span><b>${brl(total)}</b></div><div class="stat-card dark-stat"><div>📄</div><span>Mostrando por página</span><b>${perPage}</b></div>`;
+      if(out){
+        const paginacao=renderPaginacaoHistorico(totalPaginas,lista.length,inicio);
+        out.innerHTML=pagina.length?`${paginacao}<div class="history-list">${pagina.map(renderCardHistorico).join('')}</div>${paginacao}`:`<div class="err">Erro ao carregar histórico profissional: ${escapeHtml(e.message)}</div>`;
+      }
+    }catch(_){ if(out) out.innerHTML='<div class="err">Erro ao carregar histórico: '+escapeHtml(e.message)+'</div>'; }
   }
 }
 

@@ -10,6 +10,7 @@ import storeSettings from '../lib/api/store-settings.js';
 import webhook from '../lib/api/webhook.js';
 import siteBanner from '../lib/api/site-banner.js';
 import zerarRelatorio from '../lib/api/zerar-relatorio.js';
+import historico from '../lib/api/historico.js';
 
 const routes = {
   'admin-menu': adminMenu,
@@ -24,6 +25,7 @@ const routes = {
   webhook,
   'site-banner': siteBanner,
   'zerar-relatorio': zerarRelatorio,
+  historico,
 };
 
 export default async function handler(req, res) {
