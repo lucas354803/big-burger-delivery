@@ -31,7 +31,7 @@ const orderStatuses=[
   {id:'finalizado',titulo:'Finalizados',emoji:'⚫',cls:'finalizado'}
 ];
 
-const impressoraPadrao={papel:80,fonte:13,titulo:22,margem:6,nome:'BIG BURGER',subtitulo:'COMANDA DE PEDIDO',negrito:true,auto:true,logo:true,fecharJanela:true};
+const impressoraPadrao={papel:80,fonte:13,titulo:22,margem:6,nome:'BIG BURGER',subtitulo:'COMANDA DE PEDIDO',negrito:true,auto:true,logo:true,fecharJanela:true,direto:true};
 function getConfigImpressora(){
   try{return {...impressoraPadrao,...JSON.parse(localStorage.getItem('configImpressoraBigBurger')||'{}')}}catch(e){return {...impressoraPadrao}}
 }
@@ -48,9 +48,10 @@ function carregarConfigImpressora(){
   if(typeof imp_auto!=='undefined') imp_auto.checked=c.auto!==false;
   if(typeof imp_logo!=='undefined') imp_logo.checked=c.logo!==false;
   if(typeof imp_fechar!=='undefined') imp_fechar.checked=c.fecharJanela!==false;
+  if(typeof imp_direto!=='undefined') imp_direto.checked=c.direto!==false;
   renderPreviewComanda();
 }
-function lerConfigImpressoraTela(){return {papel:Number(imp_papel?.value||80),fonte:Number(imp_fonte?.value||13),titulo:Number(imp_titulo?.value||22),margem:Number(imp_margem?.value||6),nome:(imp_nome?.value||'BIG BURGER').trim(),subtitulo:(imp_subtitulo?.value||'COMANDA DE PEDIDO').trim(),negrito:!!imp_negrito?.checked,auto:!!imp_auto?.checked,logo:!!imp_logo?.checked,fecharJanela:!!imp_fechar?.checked};}
+function lerConfigImpressoraTela(){return {papel:Number(imp_papel?.value||80),fonte:Number(imp_fonte?.value||13),titulo:Number(imp_titulo?.value||22),margem:Number(imp_margem?.value||6),nome:(imp_nome?.value||'BIG BURGER').trim(),subtitulo:(imp_subtitulo?.value||'COMANDA DE PEDIDO').trim(),negrito:!!imp_negrito?.checked,auto:!!imp_auto?.checked,logo:!!imp_logo?.checked,fecharJanela:!!imp_fechar?.checked,direto:!!imp_direto?.checked};}
 function salvarConfigImpressora(e){
   if(e) e.preventDefault();
   setConfigImpressora(lerConfigImpressoraTela());
@@ -110,11 +111,38 @@ function htmlComandaPedido(p){
   *{box-sizing:border-box}body{font-family:Arial,Helvetica,sans-serif;margin:0;padding:${margem}px;color:#000;background:#fff;font-size:${fonte}px;font-weight:${peso}}.ticket{width:${papel}mm;max-width:${papel}mm;margin:0 auto}.logo{display:block;width:${papel==58?'34':'42'}mm;max-height:28mm;object-fit:contain;margin:0 auto 6px}h1{font-size:${titulo}px;text-align:center;margin:0 0 4px;font-weight:900}.sub{text-align:center;border-bottom:1px dashed #000;padding-bottom:8px;margin-bottom:8px;font-weight:${peso}}.row{display:flex;justify-content:space-between;gap:8px;margin:4px 0}.big{font-size:${Math.max(fonte+5,18)}px;font-weight:900}.sec{border-top:1px dashed #000;margin-top:8px;padding-top:8px}.items{font-size:${Math.max(fonte+2,15)}px;line-height:1.35}.total{font-size:${Math.max(fonte+7,20)}px;font-weight:900;text-align:right;margin-top:8px}.obs{font-size:${Math.max(fonte+1,14)}px;white-space:pre-wrap}@media print{body{padding:${margem}px}.ticket{width:${papel}mm;max-width:${papel}mm}button{display:none}}
   </style></head><body><div class="ticket">${cfg.logo!==false?'<img src="/print-logo.png" class="logo" alt="Big Burger">':''}<h1>${escapeHtml(cfg.nome||'BIG BURGER')}</h1><div class="sub">${escapeHtml(cfg.subtitulo||'COMANDA DE PEDIDO')}<br>${data}</div><div class="row big"><span>Pedido</span><span>#${numeroPedido(p)}</span></div><div class="row"><span>Cliente</span><b>${escapeHtml(p.cliente_nome||'')}</b></div><div class="row"><span>Telefone</span><b>${escapeHtml(p.cliente_telefone||'')}</b></div><div class="sec"><b>ITENS</b><div class="items">${itens}</div></div><div class="sec"><b>ENDEREÇO</b><div>${escapeHtml(enderecoPedido(p)||'Retirada/sem endereço')}</div></div><div class="sec"><div class="row"><span>Pagamento</span><b>${escapeHtml(p.forma_pagamento||'pix')}</b></div><div class="row"><span>Taxa entrega</span><b>${brl(p.taxa_entrega||0)}</b></div><div class="total">TOTAL: ${brl(p.valor_total||0)}</div></div>${p.observacao?`<div class="sec obs"><b>OBS:</b><br>${escapeHtml(p.observacao)}</div>`:''}<div class="sec" style="text-align:center"><b>QR CODE DO MOTOBOY</b><br><img style="width:${papel==58?'32':'38'}mm;height:${papel==58?'32':'38'}mm;object-fit:contain" src="https://api.qrserver.com/v1/create-qr-code/?size=180x180&data=${encodeURIComponent(location.origin+'/motoboy?pedido='+p.id)}" alt="QR Pedido"><br><small>Escanear para registrar pedido</small></div></div><script>window.onload=function(){setTimeout(function(){window.print();},450); if(${cfg.fecharJanela!==false?'true':'false'}){window.onafterprint=function(){setTimeout(function(){window.close();},300)}}}<\/script></body></html>`;
 }
-function imprimirPedido(p){
+function imprimirPedidoDireto(p){
+  if(!p){alert('Pedido não encontrado para imprimir.');return;}
+  // Impressão sem abrir nova janela: usa iframe oculto. Em navegador normal ainda pode aparecer a tela de impressão.
+  // Para imprimir 100% direto, abra o painel pelo arquivo BAT em modo kiosk printing.
+  const antigo=document.getElementById('iframeImpressaoBigBurger');
+  if(antigo) antigo.remove();
+  const iframe=document.createElement('iframe');
+  iframe.id='iframeImpressaoBigBurger';
+  iframe.style.position='fixed';
+  iframe.style.right='0';
+  iframe.style.bottom='0';
+  iframe.style.width='0';
+  iframe.style.height='0';
+  iframe.style.border='0';
+  iframe.style.opacity='0';
+  document.body.appendChild(iframe);
+  const doc=iframe.contentWindow.document;
+  doc.open();
+  doc.write(htmlComandaPedido(p));
+  doc.close();
+  setTimeout(()=>{ try{iframe.remove()}catch(e){} }, 15000);
+}
+function imprimirPedidoPopup(p){
   if(!p){alert('Pedido não encontrado para imprimir.');return;}
   const w=window.open('','_blank','width=420,height=720');
-  if(!w){alert('O navegador bloqueou a impressão. Libere pop-ups para este site.');return;}
+  if(!w){alert('O navegador bloqueou a impressão. Libere pop-ups para este site ou ative o modo direto na aba Impressora.');return;}
   w.document.open(); w.document.write(htmlComandaPedido(p)); w.document.close();
+}
+function imprimirPedido(p){
+  const cfg=getConfigImpressora();
+  if(cfg.direto!==false) return imprimirPedidoDireto(p);
+  return imprimirPedidoPopup(p);
 }
 function registrarPedidoImpresso(id){
   if(!id) return;
