@@ -125,7 +125,7 @@ function mensagemPedido(p) {
 }
 
 async function testarApi() {
-  const url = `${SITE_URL}/api/bot-health`;
+  const url = `${SITE_URL}/api/store-settings`;
   try {
     const r = await fetch(url);
     const data = await r.json().catch(() => ({}));
@@ -139,7 +139,7 @@ async function testarApi() {
     }
   } catch (e) {
     apiOnline = false;
-    console.error('❌ A API do robô não respondeu.');
+    console.error('❌ A API do site não respondeu.');
     console.error(`➡️ Teste no navegador: ${url}`);
     console.error('➡️ Se aparecer 404, você precisa reenviar/deployar este ZIP atualizado na Vercel.');
     console.error(`Detalhe: ${e.message}`);
@@ -152,7 +152,7 @@ async function buscarPendentes() {
   const data = await r.json().catch(() => ({}));
   if (!r.ok || !data.ok) {
     if (r.status === 404) {
-      throw new Error(`HTTP 404 - rota não existe na Vercel. Faça deploy deste ZIP atualizado e teste: ${SITE_URL}/api/bot-health`);
+      throw new Error(`HTTP 404 - rota não existe na Vercel. Faça deploy deste ZIP atualizado e teste: ${SITE_URL}/api/store-settings`);
     }
     throw new Error(data.error || `HTTP ${r.status}`);
   }

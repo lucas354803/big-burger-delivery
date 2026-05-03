@@ -34,6 +34,7 @@
         <button class="main-tab" onclick="abrirMain('loja')">🏪 Loja aberta/horários</button>
         <button class="main-tab" onclick="abrirMain('banner')">🎬 Banner / Vídeo</button>
         <button class="main-tab" onclick="abrirMain('financeiro')">💸 Financeiro</button>
+        <button class="main-tab" onclick="abrirMain('historico')">📚 Histórico</button>
         <button class="main-tab" onclick="abrirMain('impressora')">🖨️ Impressora</button>
         <button class="main-tab" onclick="abrirMain('clientes')">👥 Clientes</button>
         <button class="main-tab" onclick="abrirMain('motoboys')">🏍️ Motoboys</button>
@@ -148,6 +149,29 @@
           <div class="financeiro-note">
             <b>ℹ️ Sobre o relatório diário</b><br>
             Ao clicar em zerar, o sistema baixa uma cópia do relatório para impressão e começa uma nova contagem do dia neste painel.
+          </div>
+        </div>
+      </div>
+
+
+      <div id="main-historico" class="main-content">
+        <div class="financeiro-shell">
+          <div class="financeiro-header">
+            <div>
+              <h1>📚 Histórico de pedidos finalizados</h1>
+              <p>Pedidos finalizados que saíram do painel quando você zerou o relatório diário.</p>
+            </div>
+            <div class="financeiro-actions">
+              <button class="btn report-download" onclick="loadPedidos()">🔄 Atualizar histórico</button>
+            </div>
+          </div>
+          <div class="orders-topbar">
+            <input id="historicoBusca" class="order-search" placeholder="Buscar no histórico por nome, telefone ou pedido" oninput="renderHistoricoPedidos()">
+          </div>
+          <div id="historicoPedidosResumo" class="stats-grid financeiro-stats"></div>
+          <div class="admin-card financeiro-card">
+            <h2>Pedidos arquivados</h2>
+            <div id="historicoPedidosOut">Carregando histórico...</div>
           </div>
         </div>
       </div>

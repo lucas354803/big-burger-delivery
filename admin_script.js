@@ -1,5 +1,5 @@
 
-const state={categorias:[],produtos:[],categorias_complementos:[],complementos:[],produto_complemento_categorias:[],cidades_entrega:[],bairros_entrega:[],clientes:[],clientesResumo:null,financeiro:null,loja_config:null,horarios_funcionamento:[],clientesPagina:1,clientesPorPagina:20,clienteEditando:null,motoboys:[],motoboyEntregas:[],banner_inicial:null};
+const state={categorias:[],produtos:[],categorias_complementos:[],complementos:[],produto_complemento_categorias:[],cidades_entrega:[],bairros_entrega:[],clientes:[],clientesResumo:null,financeiro:null,loja_config:null,horarios_funcionamento:[],clientesPagina:1,clientesPorPagina:20,clienteEditando:null,motoboys:[],motoboyEntregas:[],banner_inicial:null,pedidosHistorico:[]};
 const brl=v=>Number(v||0).toLocaleString('pt-BR',{style:'currency',currency:'BRL'});
 function abrirMain(id){
   document.querySelectorAll('.main-tab,.main-content').forEach(x=>x.classList.remove('active'));
@@ -71,6 +71,9 @@ function normalizarStatusPedido(status){
   if(['entregue'].includes(status)) return 'finalizado';
   return status || 'em_analise';
 }
+function pedidoArquivado(p){return p?.arquivado_relatorio===true || p?.arquivado_relatorio==='true' || p?.arquivado===true || p?.arquivado==='true';}
+function pedidosVisiveisPainel(){return pedidosCache.filter(p=>!pedidoArquivado(p));}
+function pedidosHistoricoRelatorio(){return pedidosCache.filter(p=>pedidoArquivado(p) && normalizarStatusPedido(p.status)==='finalizado');}
 function numeroPedido(p){ if(p && p.numero_pedido) return String(p.numero_pedido).padStart(2, '0'); return String(p?.id||'').split('-')[0].toUpperCase(); }
 function shortId(id){return String(id||'').split('-')[0].toUpperCase()}
 function itensTexto(itens){
@@ -198,7 +201,7 @@ function toggleSomPedidos(){somPedidosLigado=!somPedidosLigado;localStorage.setI
 function renderPedidosGestor(){
   const out=document.getElementById('pedidosBoard'); if(!out) return;
   const busca=(document.getElementById('pedidoBusca')?.value||'').toLowerCase().trim();
-  let lista=[...pedidosCache];
+  let lista=pedidosVisiveisPainel();
   if(busca) lista=lista.filter(p=>[p.id,p.cliente_nome,p.cliente_telefone,enderecoPedido(p),itensTexto(p.itens)].join(' ').toLowerCase().includes(busca));
   const totalNovos=lista.filter(p=>normalizarStatusPedido(p.status)==='em_analise').length;
   out.innerHTML=`<div class="orders-summary"><div><b>${lista.length}</b><span>Pedidos totais</span></div><div><b>${totalNovos}</b><span>Em análise</span></div><div><b>${brl(lista.reduce((s,p)=>s+Number(p.valor_total||0),0))}</b><span>Valor dos pedidos</span></div></div><div class="kanban">${orderStatuses.map(col=>{const pedidos=lista.filter(p=>normalizarStatusPedido(p.status)===col.id);const valor=pedidos.reduce((s,p)=>s+Number(p.valor_total||0),0);return `<section class="kanban-col ${col.cls}"><h3>${col.emoji} ${col.titulo} <em>${pedidos.length}</em></h3><small>${brl(valor)}</small><div class="kanban-list">${pedidos.map(cardPedido).join('')||'<p class="empty-col">Sem pedidos</p>'}</div></section>`}).join('')}</div>`;
@@ -214,6 +217,7 @@ async function loadPedidos(silencioso=false){
     const r=await fetch('/api/admin?ts='+Date.now(), {cache:'no-store'}); const d=await r.json();
     if(!r.ok||!d.ok) throw new Error(d.error||JSON.stringify(d));
     pedidosCache=d.pedidos||[];
+    state.pedidosHistorico=pedidosHistoricoRelatorio();
     state.financeiro=d.resumo||null;
     const novoTotal=pedidosCache.length;
     if(ultimoTotalPedidos && novoTotal>ultimoTotalPedidos && somPedidosLigado) tocarSomPedido();
@@ -225,6 +229,7 @@ async function loadPedidos(silencioso=false){
     });
     ultimoTotalPedidos=novoTotal;
     renderPedidosGestor();
+    renderHistoricoPedidos();
   }catch(e){if(out && !silencioso) out.innerHTML='<div class="err">Erro ao carregar pedidos: '+e.message+'</div>'}
   finally{loadPedidosEmAndamento=false;}
 }
@@ -475,12 +480,21 @@ function baixarRelatorioDiario(){
   setTimeout(()=>URL.revokeObjectURL(a.href),1000);
   const w=window.open('','_blank'); if(w){w.document.write(html);w.document.close();}
 }
-function zerarRelatorioDiario(){
-  if(!confirm('Antes de zerar, o relatório será baixado para você imprimir. Deseja continuar?')) return;
+async function zerarRelatorioDiario(){
+  if(!confirm('Antes de zerar, o relatório será baixado para você imprimir. Os pedidos finalizados também sairão do painel e irão para o Histórico. Deseja continuar?')) return;
   baixarRelatorioDiario();
-  localStorage.setItem('financeiroResetDiarioISO', new Date().toISOString());
-  renderFinanceiro();
-  alert('Relatório diário zerado com sucesso. Novos pedidos entrarão em uma nova contagem.');
+  try{
+    const r=await fetch('/api/zerar-relatorio',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({})});
+    const d=await r.json().catch(()=>({}));
+    if(!r.ok||!d.ok) throw new Error(d.error||JSON.stringify(d));
+    localStorage.setItem('financeiroResetDiarioISO', new Date().toISOString());
+    await loadPedidos(true);
+    renderFinanceiro();
+    renderHistoricoPedidos();
+    alert(`Relatório diário zerado com sucesso. ${d.arquivados||0} pedido(s) finalizado(s) foram enviados para o Histórico.`);
+  }catch(e){
+    alert('Relatório baixado, mas não consegui limpar os finalizados do painel. Execute o SQL supabase/zerar_relatorio_historico.sql e tente novamente. Erro: '+e.message);
+  }
 }
 function renderFinanceiro(){
   const lista=pedidosDoRelatorioDiario();
@@ -493,6 +507,19 @@ function renderFinanceiro(){
   if(out){out.innerHTML=lista.length?`<table class="table dark-table"><tr><th>Pedido</th><th>Cliente</th><th>Pagamento</th><th>Status</th><th>Entrega</th><th>Taxa entrega</th><th>Total</th><th>Data/Hora</th></tr>${lista.map(p=>`<tr><td>#${numeroPedido(p)}</td><td>${escapeHtml(p.cliente_nome||'')}</td><td>${escapeHtml(p.forma_pagamento||'')}</td><td>${escapeHtml(normalizarStatusPedido(p.status)).replaceAll('_',' ')}</td><td>${p.taxa_entrega?'Delivery':'Retirada'}</td><td>${brl(p.taxa_entrega||0)}</td><td><b>${brl(p.valor_total||0)}</b></td><td>${dataBR(p.created_at)}</td></tr>`).join('')}<tr class="finance-total"><td colspan="5"><b>Totais do dia</b></td><td><b>${brl(resumo.taxas)}</b></td><td><b>${brl(resumo.faturamento)}</b></td><td></td></tr></table>`:'<div class="empty-finance">Relatório diário zerado. Os próximos pedidos aparecerão aqui.</div>';}
 }
 
+
+
+function renderHistoricoPedidos(){
+  const out=document.getElementById('historicoPedidosOut');
+  const resumo=document.getElementById('historicoPedidosResumo');
+  if(!out && !resumo) return;
+  let lista=pedidosHistoricoRelatorio().sort((a,b)=>new Date(b.arquivado_em||b.created_at||0)-new Date(a.arquivado_em||a.created_at||0));
+  const busca=(document.getElementById('historicoBusca')?.value||'').toLowerCase().trim();
+  if(busca) lista=lista.filter(p=>[p.id,p.numero_pedido,p.cliente_nome,p.cliente_telefone,enderecoPedido(p),itensTexto(p.itens)].join(' ').toLowerCase().includes(busca));
+  const total=lista.reduce((s,p)=>s+Number(p.valor_total||0),0);
+  if(resumo) resumo.innerHTML=`<div class="stat-card dark-stat"><div>📦</div><span>Pedidos no histórico</span><b>${lista.length}</b></div><div class="stat-card dark-stat"><div>💰</div><span>Valor arquivado</span><b>${brl(total)}</b></div>`;
+  if(out) out.innerHTML=lista.length?`<div class="history-list">${lista.map(p=>`<div class="order-card history-card"><div class="order-title"><b>#${numeroPedido(p)}</b><span>${brl(p.valor_total)}</span></div><div class="order-customer">👤 ${escapeHtml(p.cliente_nome||'')}<br>📞 ${escapeHtml(p.cliente_telefone||'')}</div><div class="order-items">${itensTexto(p.itens).replaceAll('\n','<br>')}</div><div class="order-address">📍 ${escapeHtml(enderecoPedido(p))}<br>💳 ${escapeHtml(p.forma_pagamento||'pix')} • 🚚 ${brl(p.taxa_entrega||0)}<br>🕒 Arquivado: ${p.arquivado_em?dataBR(p.arquivado_em):'relatório diário'}</div><div class="order-actions"><button class="order-action print" onclick='imprimirPedido(${JSON.stringify(p).replaceAll("'","&#39;")})'>🖨️ Imprimir</button><button class="order-action whats" onclick='abrirWhats(${JSON.stringify(p).replaceAll("'","&#39;")},"aceito")'>💬 WhatsApp</button></div></div>`).join('')}</div>`:'<div class="empty-finance">Nenhum pedido no histórico ainda. Quando você zerar o relatório diário, os finalizados vão aparecer aqui.</div>';
+}
 
 async function loadMotoboys(){
   const out=document.getElementById('motoboysOut');

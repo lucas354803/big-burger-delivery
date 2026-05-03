@@ -84,6 +84,8 @@ CREATE TABLE pedidos (
   valor_total numeric(10,2) NOT NULL DEFAULT 0,
   status text NOT NULL DEFAULT 'aguardando_pagamento',
   tempo_estimado_minutos integer,
+  arquivado_relatorio boolean NOT NULL DEFAULT false,
+  arquivado_em timestamptz,
   created_at timestamptz NOT NULL DEFAULT now()
 );
 
