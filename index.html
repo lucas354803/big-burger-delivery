@@ -1,0 +1,123 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Big Burger Delivery</title>
+  <link rel="manifest" href="/manifest.json">
+  <meta name="theme-color" content="#e21b1b">
+  <link rel="apple-touch-icon" href="/icon-192.png">
+  <link rel="stylesheet" href="/style.css">
+</head>
+<body>
+  <header class="topbar">
+    <div class="brand brand-logo"><img src="/logo.png" alt="Big Burger" class="logo-img"><div><strong>BIG<span>BURGER</span></strong><small>DELIVERY</small></div></div>
+    <div id="lojaStatus" class="store-status header-status open">🟢 Loja aberta <small>Tempo de entrega: 40 min</small></div>
+    <nav>
+      <a class="active" href="#inicio">🏠 Início</a>
+      <a href="#cardapio">🍟 Cardápio</a>
+      <a href="#promos">🎁 Promoções</a>
+      <a href="/admin">🔐 ADMIN</a>
+    </nav>
+    <div class="cart-pill">🛒 Meu pedido <b id="topTotal">R$ 0,00</b></div>
+  </header>
+
+  <main class="layout" id="inicio">
+    <section class="content">
+      <section class="hero-pro" id="heroBanner">
+        <div class="hero-copy">
+          <p class="tag" id="heroTag">🔥 Feito na hora • entrega rápida</p>
+          <h1 id="heroTitulo">O MELHOR <span>BURGER</span> DA CIDADE!</h1>
+          <p id="heroTexto">Ingredientes selecionados, sabor irresistível e Pix direto no pedido.</p>
+          <button class="cta" id="heroBotao" onclick="document.querySelector('#cardapio').scrollIntoView({behavior:'smooth'})">PEÇA AGORA ›</button>
+        </div>
+        <div class="hero-video-card" id="heroMediaCard" aria-label="mídia Big Burger">
+          <video class="hero-video" id="heroMedia" src="/bigburger-video.mp4" autoplay muted loop playsinline></video>
+          <div class="video-badge" id="heroSelo">🔥 BIG BURGER</div>
+        </div>
+      </section>
+
+      <section class="benefits benefits-pro">
+        <div><span class="benefit-icon">🏍️</span><b>Entrega rápida</b><small id="tempoEntregaInfo">Tempo médio: 40 min</small></div>
+        <div><span class="benefit-icon">⭐</span><b>Qualidade garantida</b><small>Ingredientes frescos e selecionados</small></div>
+        <div><span class="benefit-icon">🔐</span><b>Pagamento seguro</b><small>Pix Mercado Pago</small></div>
+        <div><span class="benefit-icon">🎁</span><b>Promoções</b><small>Ofertas exclusivas da Big Burger</small></div>
+      </section>
+
+      <section id="cardapio" class="section-head">
+        <div><p class="tag">🔥 Cardápio por categoria</p><h2 id="menuTitle">Os mais pedidos da Big Burger</h2></div>
+        <button class="outline">Ver todos ›</button>
+      </section>
+
+      <div class="category-bar" id="categoryBar"></div>
+
+      <div class="grid" id="menu"></div>
+
+      <section id="promos" class="section-head combos">
+        <div><p class="tag">⭐ Combos especiais</p><h2>Promoções para pedir hoje</h2></div>
+        <button class="outline" onclick="document.querySelector('#promosGrid')?.scrollIntoView({behavior:'smooth'})">Ver promoções ›</button>
+      </section>
+      <div class="grid promos-grid" id="promosGrid"></div>
+    </section>
+
+    <aside class="sidebar">
+      <div class="side-card cart-box">
+        <div class="side-title"><h3>🛒 MEU PEDIDO</h3><span id="cartCount">0</span></div>
+        <div id="cart"></div>
+        <div class="subtotal"><span>Total</span><b id="total">R$ 0,00</b></div>
+        <a class="btn red" href="#checkout">Finalizar pedido</a>
+      </div>
+
+
+      <div class="side-card" id="checkout">
+        <h3>📍 Dados para entrega</h3>
+        <div id="checkoutStatus"></div>
+        <input id="nome" placeholder="Seu nome completo">
+        <input id="telefone" placeholder="WhatsApp / telefone">
+        <select id="cidade" onchange="atualizarBairros()">
+          <option value="">Selecione a cidade</option>
+        </select>
+        <select id="bairro" onchange="atualizarTaxaEntrega()">
+          <option value="">Selecione o bairro</option>
+        </select>
+        <input id="rua" placeholder="Rua e número">
+        <select id="formaPagamento" onchange="atualizarBotaoPagamento()">
+          <option value="pix">Pix</option>
+          <option value="dinheiro">Dinheiro</option>
+          <option value="cartao">Cartão na entrega</option>
+        </select>
+        <textarea id="obs" placeholder="Observação do pedido"></textarea>
+        <div class="delivery-summary"><span>Taxa de entrega</span><b id="taxaEntrega">R$ 0,00</b></div>
+        <div class="delivery-summary strong"><span>Total com entrega</span><b id="totalComEntrega">R$ 0,00</b></div>
+        <button id="btnFinalizar" class="btn green" onclick="finalizar()">Gerar Pix e finalizar pedido</button>
+        <div id="result"></div>
+      </div>
+    </aside>
+  </main>
+
+  <div class="modal" id="modal" hidden>
+    <div class="modal-bg" onclick="fecharModal()"></div>
+    <div class="modal-card">
+      <button class="close" onclick="fecharModal()">×</button>
+      <div class="modal-img" id="modalImg"></div>
+      <div class="modal-info">
+        <h2 id="modalNome"></h2>
+        <p id="modalDesc"></p>
+        <h3 id="modalPreco"></h3>
+        <div class="option-box"><b>Adicionais</b><small>Escolha até 6 opções</small><div id="addons"></div></div>
+        <div class="item-obs-box">
+          <label for="obsItem">📝 Observação do item</label>
+          <textarea id="obsItem" maxlength="160" placeholder="Ex: sem cebola, sem tomate, carne bem passada..."></textarea>
+          <small>Essa observação vai junto no pedido e aparece na comanda.</small>
+        </div>
+        <button class="btn red" onclick="adicionarModal()">Adicionar ao pedido</button>
+      </div>
+    </div>
+  </div>
+
+  <footer>Big Burger Delivery © Pedido direto, mais rápido e mais barato.</footer>
+  <script src="/app.js"></script>
+  <button id="installAppBtn" class="install-app-btn">📲 Instalar App</button>
+  <script src="/pwa.js"></script>
+</body>
+</html>
