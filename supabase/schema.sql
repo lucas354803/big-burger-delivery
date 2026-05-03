@@ -69,7 +69,7 @@ CREATE TABLE produto_complemento_categorias (
 
 CREATE TABLE pedidos (
   id uuid PRIMARY KEY DEFAULT uuid_generate_v4(),
-  numero_pedido bigserial UNIQUE,
+  numero_pedido bigserial,
   cliente_nome text NOT NULL,
   cliente_telefone text NOT NULL,
   endereco text NOT NULL,
@@ -375,3 +375,28 @@ INSERT INTO site_banner (id, ativo, tipo, media_url, tag, titulo, destaque, text
 VALUES (1, true, 'video', '/bigburger-video.mp4', '🔥 Feito na hora • entrega rápida', 'O MELHOR BURGER DA CIDADE!', 'BURGER', 'Ingredientes selecionados, sabor irresistível e Pix direto no pedido.', 'PEÇA AGORA ›', '🔥 BIG BURGER')
 ON CONFLICT (id) DO NOTHING;
 
+
+
+-- Permite reiniciar a numeração diária sem apagar pedidos antigos.
+-- Remove a trava UNIQUE antiga, porque depois do reset vai existir #01 em dias diferentes.
+ALTER TABLE pedidos DROP CONSTRAINT IF EXISTS pedidos_numero_pedido_key;
+DROP INDEX IF EXISTS pedidos_numero_pedido_key;
+
+CREATE OR REPLACE FUNCTION resetar_numero_pedidos_diario()
+RETURNS void
+LANGUAGE plpgsql
+SECURITY DEFINER
+AS $$
+DECLARE
+  seq_name text;
+BEGIN
+  seq_name := pg_get_serial_sequence('public.pedidos', 'numero_pedido');
+  IF seq_name IS NOT NULL THEN
+    EXECUTE format('ALTER SEQUENCE %s RESTART WITH 1', seq_name);
+  END IF;
+END;
+$$;
+
+GRANT EXECUTE ON FUNCTION resetar_numero_pedidos_diario() TO anon;
+GRANT EXECUTE ON FUNCTION resetar_numero_pedidos_diario() TO authenticated;
+GRANT EXECUTE ON FUNCTION resetar_numero_pedidos_diario() TO service_role;

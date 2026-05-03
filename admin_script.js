@@ -1,5 +1,5 @@
 
-const state={categorias:[],produtos:[],categorias_complementos:[],complementos:[],produto_complemento_categorias:[],cidades_entrega:[],bairros_entrega:[],clientes:[],clientesResumo:null,financeiro:null,loja_config:null,horarios_funcionamento:[],clientesPagina:1,clientesPorPagina:20,clienteEditando:null,motoboys:[],motoboyEntregas:[],banner_inicial:null,pedidosHistorico:[]};
+const state={categorias:[],produtos:[],categorias_complementos:[],complementos:[],produto_complemento_categorias:[],cidades_entrega:[],bairros_entrega:[],clientes:[],clientesResumo:null,financeiro:null,loja_config:null,horarios_funcionamento:[],clientesPagina:1,clientesPorPagina:20,clienteEditando:null,motoboys:[],motoboyEntregas:[],banner_inicial:null,pedidosHistorico:[],historicoPagina:1,historicoPorPagina:15,historicoBuscaAtual:''};
 const brl=v=>Number(v||0).toLocaleString('pt-BR',{style:'currency',currency:'BRL'});
 function abrirMain(id){
   document.querySelectorAll('.main-tab,.main-content').forEach(x=>x.classList.remove('active'));
@@ -509,16 +509,44 @@ function renderFinanceiro(){
 
 
 
+function renderCardHistorico(p){
+  const safePedido=JSON.stringify(p).replaceAll("'","&#39;");
+  return `<div class="order-card history-card"><div class="order-title"><b>#${numeroPedido(p)}</b><span>${brl(p.valor_total)}</span></div><div class="order-customer">👤 ${escapeHtml(p.cliente_nome||'')}<br>📞 ${escapeHtml(p.cliente_telefone||'')}</div><div class="order-items">${itensTexto(p.itens).replaceAll('\n','<br>')}</div><div class="order-address">📍 ${escapeHtml(enderecoPedido(p))}<br>💳 ${escapeHtml(p.forma_pagamento||'pix')} • 🚚 ${brl(p.taxa_entrega||0)}<br>🕒 Arquivado: ${p.arquivado_em?dataBR(p.arquivado_em):'relatório diário'}</div><div class="order-actions"><button class="order-action print" onclick='imprimirPedido(${safePedido})'>🖨️ Imprimir</button><button class="order-action whats" onclick='abrirWhats(${safePedido},"aceito")'>💬 WhatsApp</button></div></div>`;
+}
+function irPaginaHistorico(pagina){
+  const total=Math.max(1, Number(window.__totalPaginasHistorico||1));
+  state.historicoPagina=Math.min(Math.max(1, Number(pagina)||1), total);
+  renderHistoricoPedidos();
+}
+function renderPaginacaoHistorico(totalPaginas,totalItens){
+  if(totalPaginas<=1) return '';
+  const atual=state.historicoPagina;
+  let botoes='';
+  for(let i=1;i<=totalPaginas;i++){
+    if(i===1 || i===totalPaginas || Math.abs(i-atual)<=2){
+      botoes+=`<button class="page-btn ${i===atual?'active':''}" onclick="irPaginaHistorico(${i})">${i}</button>`;
+    }else if(i===atual-3 || i===atual+3){
+      botoes+=`<span class="page-dots">...</span>`;
+    }
+  }
+  return `<div class="history-pagination"><button class="page-btn" ${atual<=1?'disabled':''} onclick="irPaginaHistorico(${atual-1})">‹ Anterior</button><div class="page-numbers">${botoes}</div><button class="page-btn" ${atual>=totalPaginas?'disabled':''} onclick="irPaginaHistorico(${atual+1})">Próxima ›</button><span class="page-info">Página ${atual} de ${totalPaginas} • ${totalItens} pedido(s)</span></div>`;
+}
 function renderHistoricoPedidos(){
   const out=document.getElementById('historicoPedidosOut');
   const resumo=document.getElementById('historicoPedidosResumo');
   if(!out && !resumo) return;
   let lista=pedidosHistoricoRelatorio().sort((a,b)=>new Date(b.arquivado_em||b.created_at||0)-new Date(a.arquivado_em||a.created_at||0));
   const busca=(document.getElementById('historicoBusca')?.value||'').toLowerCase().trim();
+  if(busca!==state.historicoBuscaAtual){ state.historicoBuscaAtual=busca; state.historicoPagina=1; }
   if(busca) lista=lista.filter(p=>[p.id,p.numero_pedido,p.cliente_nome,p.cliente_telefone,enderecoPedido(p),itensTexto(p.itens)].join(' ').toLowerCase().includes(busca));
   const total=lista.reduce((s,p)=>s+Number(p.valor_total||0),0);
-  if(resumo) resumo.innerHTML=`<div class="stat-card dark-stat"><div>📦</div><span>Pedidos no histórico</span><b>${lista.length}</b></div><div class="stat-card dark-stat"><div>💰</div><span>Valor arquivado</span><b>${brl(total)}</b></div>`;
-  if(out) out.innerHTML=lista.length?`<div class="history-list">${lista.map(p=>`<div class="order-card history-card"><div class="order-title"><b>#${numeroPedido(p)}</b><span>${brl(p.valor_total)}</span></div><div class="order-customer">👤 ${escapeHtml(p.cliente_nome||'')}<br>📞 ${escapeHtml(p.cliente_telefone||'')}</div><div class="order-items">${itensTexto(p.itens).replaceAll('\n','<br>')}</div><div class="order-address">📍 ${escapeHtml(enderecoPedido(p))}<br>💳 ${escapeHtml(p.forma_pagamento||'pix')} • 🚚 ${brl(p.taxa_entrega||0)}<br>🕒 Arquivado: ${p.arquivado_em?dataBR(p.arquivado_em):'relatório diário'}</div><div class="order-actions"><button class="order-action print" onclick='imprimirPedido(${JSON.stringify(p).replaceAll("'","&#39;")})'>🖨️ Imprimir</button><button class="order-action whats" onclick='abrirWhats(${JSON.stringify(p).replaceAll("'","&#39;")},"aceito")'>💬 WhatsApp</button></div></div>`).join('')}</div>`:'<div class="empty-finance">Nenhum pedido no histórico ainda. Quando você zerar o relatório diário, os finalizados vão aparecer aqui.</div>';
+  const totalPaginas=Math.max(1, Math.ceil(lista.length/state.historicoPorPagina));
+  window.__totalPaginasHistorico=totalPaginas;
+  if(state.historicoPagina>totalPaginas) state.historicoPagina=totalPaginas;
+  const inicio=(state.historicoPagina-1)*state.historicoPorPagina;
+  const pagina=lista.slice(inicio,inicio+state.historicoPorPagina);
+  if(resumo) resumo.innerHTML=`<div class="stat-card dark-stat"><div>📦</div><span>Pedidos no histórico</span><b>${lista.length}</b></div><div class="stat-card dark-stat"><div>💰</div><span>Valor arquivado</span><b>${brl(total)}</b></div><div class="stat-card dark-stat"><div>📄</div><span>Mostrando por página</span><b>${state.historicoPorPagina}</b></div>`;
+  if(out) out.innerHTML=lista.length?`<div class="history-list">${pagina.map(renderCardHistorico).join('')}</div>${renderPaginacaoHistorico(totalPaginas,lista.length)}`:'<div class="empty-finance">Nenhum pedido no histórico ainda. Quando você zerar o relatório diário, os finalizados vão aparecer aqui.</div>';
 }
 
 async function loadMotoboys(){
