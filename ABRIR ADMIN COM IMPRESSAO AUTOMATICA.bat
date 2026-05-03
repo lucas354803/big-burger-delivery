@@ -1,8 +1,9 @@
 @echo off
-set URL=https://big-burger-delivery.vercel.app/admin.html
+set URL=http://localhost:3000/admin.html
 
-echo Abrindo Big Burger Admin com impressao automatica...
+echo Abrindo Big Burger Admin SEM QZ com impressao automatica...
 echo IMPORTANTE: deixe sua impressora termica como impressora padrao do Windows.
+echo Se seu sistema estiver no Vercel, edite este arquivo e troque a URL.
 echo.
 
 if exist "%ProgramFiles(x86)%\Microsoft\Edge\Application\msedge.exe" (

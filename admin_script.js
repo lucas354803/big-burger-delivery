@@ -33,7 +33,13 @@ const orderStatuses=[
 
 const impressoraPadrao={papel:80,fonte:13,titulo:22,margem:6,nome:'BIG BURGER',subtitulo:'COMANDA DE PEDIDO',negrito:true,auto:true,logo:true,fecharJanela:true,direto:true,qzAtivo:false,qzImpressora:''};
 function getConfigImpressora(){
-  try{return {...impressoraPadrao,...JSON.parse(localStorage.getItem('configImpressoraBigBurger')||'{}')}}catch(e){return {...impressoraPadrao}}
+  try{
+    const cfg={...impressoraPadrao,...JSON.parse(localStorage.getItem('configImpressoraBigBurger')||'{}')};
+    // VERSAO SEM QZ: força QZ desligado mesmo que tenha ficado salvo no navegador antigo.
+    cfg.qzAtivo=false;
+    cfg.qzImpressora='';
+    return cfg;
+  }catch(e){return {...impressoraPadrao,qzAtivo:false,qzImpressora:''}}
 }
 function setConfigImpressora(cfg){localStorage.setItem('configImpressoraBigBurger',JSON.stringify({...getConfigImpressora(),...cfg}));}
 function carregarConfigImpressora(){
@@ -49,11 +55,9 @@ function carregarConfigImpressora(){
   if(typeof imp_logo!=='undefined') imp_logo.checked=c.logo!==false;
   if(typeof imp_fechar!=='undefined') imp_fechar.checked=c.fecharJanela!==false;
   if(typeof imp_direto!=='undefined') imp_direto.checked=c.direto!==false;
-  if(typeof imp_qz_ativo!=='undefined') imp_qz_ativo.checked=c.qzAtivo===true;
-  if(typeof imp_qz_nome!=='undefined') imp_qz_nome.value=c.qzImpressora||'';
   renderPreviewComanda();
 }
-function lerConfigImpressoraTela(){return {papel:Number(imp_papel?.value||80),fonte:Number(imp_fonte?.value||13),titulo:Number(imp_titulo?.value||22),margem:Number(imp_margem?.value||6),nome:(imp_nome?.value||'BIG BURGER').trim(),subtitulo:(imp_subtitulo?.value||'COMANDA DE PEDIDO').trim(),negrito:!!imp_negrito?.checked,auto:!!imp_auto?.checked,logo:!!imp_logo?.checked,fecharJanela:!!imp_fechar?.checked,direto:!!imp_direto?.checked,qzAtivo:!!imp_qz_ativo?.checked,qzImpressora:(imp_qz_nome?.value||'').trim()};}
+function lerConfigImpressoraTela(){return {papel:Number(imp_papel?.value||80),fonte:Number(imp_fonte?.value||13),titulo:Number(imp_titulo?.value||22),margem:Number(imp_margem?.value||6),nome:(imp_nome?.value||'BIG BURGER').trim(),subtitulo:(imp_subtitulo?.value||'COMANDA DE PEDIDO').trim(),negrito:!!imp_negrito?.checked,auto:!!imp_auto?.checked,logo:!!imp_logo?.checked,fecharJanela:!!imp_fechar?.checked,direto:!!imp_direto?.checked,qzAtivo:false,qzImpressora:''};}
 function salvarConfigImpressora(e){
   if(e) e.preventDefault();
   setConfigImpressora(lerConfigImpressoraTela());
@@ -106,22 +110,34 @@ function abrirWhats(p,tipo){
 // Para funcionar 100% sem abrir a tela de impressão, instale e deixe o QZ Tray aberto no Windows.
 let qzConectando = null;
 function qzDisponivel(){ return typeof window.qz !== 'undefined' && qz.websocket; }
+function qzTimeout(ms, msg){
+  return new Promise((_, reject)=>setTimeout(()=>reject(new Error(msg)), ms));
+}
 function configurarSegurancaQZ(){
   if(!qzDisponivel() || window.__bigBurgerQzSecurityOk) return;
   try{
     // Modo sem certificado próprio: o QZ vai pedir permissão na primeira vez.
-    // Marque "Remember this decision / Permitir sempre" no QZ Tray.
-    qz.security.setCertificatePromise((resolve)=>resolve(null));
-    qz.security.setSignaturePromise(()=> (resolve)=>resolve(null));
+    // No aviso do QZ Tray, marque Permitir sempre/Remember this decision.
+    qz.security.setCertificatePromise((resolve)=>resolve(''));
+    qz.security.setSignaturePromise(()=> (resolve)=>resolve(''));
     window.__bigBurgerQzSecurityOk=true;
   }catch(e){ console.warn('QZ security config:', e); }
 }
 async function conectarQZ(){
-  if(!qzDisponivel()) throw new Error('Biblioteca QZ não carregou. Verifique sua internet e se o script qz-tray.js carregou.');
+  if(!qzDisponivel()) throw new Error('Biblioteca QZ não carregou. Atualize a página com internet ou instale o QZ Tray.');
   configurarSegurancaQZ();
   if(qz.websocket.isActive()) return true;
   if(!qzConectando){
-    qzConectando = qz.websocket.connect({retries:2, delay:700}).finally(()=>{qzConectando=null;});
+    const tentativa = qz.websocket.connect({
+      host:['localhost','127.0.0.1'],
+      usingSecure:true,
+      retries:0,
+      delay:0
+    });
+    qzConectando = Promise.race([
+      tentativa,
+      qzTimeout(8000, 'Não consegui conectar no QZ Tray. Abra o QZ Tray no Windows, deixe ele perto do relógio e clique em Permitir/Sempre permitir quando aparecer.')
+    ]).finally(()=>{qzConectando=null;});
   }
   await qzConectando;
   return true;
@@ -131,65 +147,60 @@ function montarHtmlComandaQZ(p){
   const papel=Number(cfg.papel||80);
   const fonte=Number(cfg.fonte||13);
   const titulo=Number(cfg.titulo||22);
-  const margem=Number(cfg.margem||6);
+  const margem=Number(cfg.margem||4);
   const peso=cfg.negrito!==false?'800':'500';
-  const data=new Date().toLocaleString('pt-BR');
+  const data=limparParaComanda(new Date().toLocaleString('pt-BR'));
   const logoUrl=location.origin + '/print-logo.png';
-  const qrUrl='https://api.qrserver.com/v1/create-qr-code/?size=220x220&margin=1&data=' + encodeURIComponent(location.origin+'/motoboy?pedido='+p.id);
-  const itens=itensTexto(p.itens).split('\n').map(l=>`<div class="item-line">${escapeHtml(l)}</div>`).join('');
-  const obs=p.observacao ? `<div class="sec obs"><b>OBSERVAÇÃO</b><br>${escapeHtml(p.observacao)}</div>` : '';
+  const qrUrl='https://api.qrserver.com/v1/create-qr-code/?size=220x220&margin=1&data=' + encodeURIComponent(pedidoQrUrl(p));
+  const itens=itensTextoComanda(p.itens).split('\n').map(l=>`<div class="item-line">${escapeComanda(l)}</div>`).join('');
+  const obs=p.observacao ? `<div class="sec obs"><b>OBSERVACAO</b><br>${escapeComanda(p.observacao)}</div>` : '';
   const largura=papel===58 ? 210 : 300;
-  const logoW=papel===58 ? 88 : 120;
-  const qrW=papel===58 ? 96 : 118;
+  const logoW=papel===58 ? 92 : 128;
+  const qrW=papel===58 ? 96 : 120;
   return `<!doctype html><html><head><meta charset="utf-8"><style>
-    html,body{margin:0;padding:0;background:#fff;color:#000;font-family:Arial,Helvetica,sans-serif;-webkit-print-color-adjust:exact;print-color-adjust:exact}
-    .ticket{width:${largura}px;margin:0 auto;padding:${margem}px;font-size:${fonte}px;font-weight:${peso};line-height:1.32;color:#000}
-    .center{text-align:center}.logo{width:${logoW}px;max-height:92px;object-fit:contain;margin:0 auto 4px;display:block}
-    h1{font-size:${titulo}px;line-height:1;margin:2px 0 2px;font-weight:900;letter-spacing:.4px}.sub{font-size:${Math.max(11,fonte-1)}px;margin:0 0 6px;font-weight:800}.dash{border-top:1px dashed #000;margin:7px 0}.row{display:flex;justify-content:space-between;gap:8px;margin:3px 0}.label{font-weight:900}.pedido{font-size:${Math.max(18,fonte+6)}px;font-weight:900}.item-line{border:1px solid #000;border-radius:6px;padding:5px 6px;margin:5px 0;font-size:${Math.max(13,fonte+1)}px;font-weight:900}.endereco{font-size:${Math.max(12,fonte)}px;font-weight:800}.total{font-size:${Math.max(20,fonte+8)}px;font-weight:900;text-align:right;margin-top:6px}.obs{white-space:pre-wrap}.thanks{font-weight:900;margin-top:5px}.qr{width:${qrW}px;height:${qrW}px;margin:3px auto;display:block}.small{font-size:10px}.cut{height:16px}
+  body{margin:0;background:#fff;color:#000;font-family:Arial,Helvetica,sans-serif;font-size:${fonte}px;font-weight:${peso}}
+  .ticket{width:${largura}px;padding:${margem}px;margin:0 auto}.center{text-align:center}.logo{width:${logoW}px;max-height:92px;object-fit:contain;margin:0 auto 5px;display:block}.title{font-size:${titulo}px;font-weight:900;letter-spacing:.5px;line-height:1.05}.sub{font-size:${Math.max(fonte-1,11)}px;margin:2px 0 6px}.dash{border-top:1px dashed #000;margin:7px 0}.row{display:flex;justify-content:space-between;gap:8px;margin:4px 0}.label{font-weight:900}.pedido{font-size:${Math.max(fonte+7,20)}px;font-weight:900}.item-line{font-size:${Math.max(fonte+2,15)}px;line-height:1.35;margin:2px 0}.endereco,.obs{line-height:1.3}.total{font-size:${Math.max(fonte+8,21)}px;font-weight:900;text-align:right;margin-top:6px}.qr{width:${qrW}px;height:${qrW}px;object-fit:contain;margin-top:5px}.small{font-size:${Math.max(fonte-2,10)}px}.thanks{font-weight:900;margin-top:5px}.cut{height:22px}
   </style></head><body><div class="ticket">
-    <div class="center">${cfg.logo!==false?`<img src="${logoUrl}" class="logo">`:''}<h1>${escapeHtml(cfg.nome||'BIG BURGER')}</h1><div class="sub">${escapeHtml(cfg.subtitulo||'COMANDA DE PEDIDO')}<br>${data}</div></div>
+    ${cfg.logo!==false?`<img class="logo" src="${logoUrl}" alt="Big Burger">`:''}
+    <div class="center"><div class="title">${escapeComanda(cfg.nome||'BIG BURGER')}</div><div class="sub">${escapeComanda(cfg.subtitulo||'COMANDA DE PEDIDO')}<br>${data}</div></div>
     <div class="dash"></div>
-    <div class="row pedido"><span>Pedido</span><span>#${numeroPedido(p)}</span></div>
-    <div class="row"><span class="label">Cliente</span><span>${escapeHtml(p.cliente_nome||'')}</span></div>
-    <div class="row"><span class="label">Telefone</span><span>${escapeHtml(p.cliente_telefone||'')}</span></div>
+    <div class="row pedido"><span>Pedido</span><span>#${escapeComanda(numeroPedido(p))}</span></div>
+    <div class="row"><span class="label">Cliente</span><span>${escapeComanda(p.cliente_nome||'')}</span></div>
+    <div class="row"><span class="label">Telefone</span><span>${escapeComanda(p.cliente_telefone||'')}</span></div>
+    <div class="dash"></div><div class="label">ITENS</div>${itens}
+    <div class="dash"></div><div class="label">ENDERECO</div><div class="endereco">${escapeComanda(enderecoPedido(p)||'Retirada/sem endereco')}</div>
     <div class="dash"></div>
-    <div class="label">ITENS</div>${itens}
-    <div class="dash"></div>
-    <div class="label">ENDEREÇO</div><div class="endereco">${escapeHtml(enderecoPedido(p)||'Retirada/sem endereço')}</div>
-    <div class="dash"></div>
-    <div class="row"><span class="label">Pagamento</span><span>${escapeHtml(p.forma_pagamento||'pix')}</span></div>
+    <div class="row"><span class="label">Pagamento</span><span>${escapeComanda(p.forma_pagamento||'pix')}</span></div>
     <div class="row"><span class="label">Taxa entrega</span><span>${brl(p.taxa_entrega||0)}</span></div>
-    <div class="total">TOTAL: ${brl(p.valor_total||0)}</div>
-    ${obs}
-    <div class="dash"></div>
-    <div class="center"><div class="label">QR CODE DO MOTOBOY</div><img class="qr" src="${qrUrl}"><div class="small">Escanear para registrar pedido</div><div class="thanks">Obrigado pela preferência ❤️</div></div><div class="cut"></div>
+    <div class="total">TOTAL: ${brl(p.valor_total||0)}</div>${obs}
+    <div class="dash"></div><div class="center"><div class="label">QR CODE DO MOTOBOY</div><img class="qr" src="${qrUrl}"><div class="small">Escanear para registrar pedido</div><div class="small">${escapeComanda(pedidoQrUrl(p))}</div><div class="thanks">Obrigado pela preferencia!</div></div><div class="cut"></div>
   </div></body></html>`;
 }
 function textoComandaQZ(p){
   const cfg=getConfigImpressora();
-  const data=new Date().toLocaleString('pt-BR');
-  const itens=itensTexto(p.itens);
-  const endereco=enderecoPedido(p)||'Retirada/sem endereço';
-  const qr=location.origin+'/motoboy?pedido='+p.id;
+  const data=limparParaComanda(new Date().toLocaleString('pt-BR'));
+  const itens=itensTextoComanda(p.itens);
+  const endereco=limparParaComanda(enderecoPedido(p)||'Retirada/sem endereco');
+  const qr=pedidoQrUrl(p);
   const negritoOn='\x1B\x45\x01', negritoOff='\x1B\x45\x00';
   const centro='\x1B\x61\x01', esquerda='\x1B\x61\x00';
   const maior='\x1D\x21\x11', normal='\x1D\x21\x00';
   const corte='\n\n\n\x1D\x56\x00';
-  return '\x1B\x40' + centro + negritoOn + maior + (cfg.nome||'BIG BURGER') + normal + '\n' +
-    (cfg.subtitulo||'COMANDA DE PEDIDO') + '\n' + data + '\n' +
+  return '\x1B\x40' + centro + negritoOn + maior + limparParaComanda(cfg.nome||'BIG BURGER') + normal + '\n' +
+    limparParaComanda(cfg.subtitulo||'COMANDA DE PEDIDO') + '\n' + data + '\n' +
     '------------------------------\n' + esquerda +
-    negritoOn + 'PEDIDO #' + numeroPedido(p) + negritoOff + '\n\n' +
-    'Cliente: ' + (p.cliente_nome||'') + '\n' +
-    'Telefone: ' + (p.cliente_telefone||'') + '\n' +
+    negritoOn + 'PEDIDO #' + limparParaComanda(numeroPedido(p)) + negritoOff + '\n\n' +
+    'Cliente: ' + limparParaComanda(p.cliente_nome||'') + '\n' +
+    'Telefone: ' + limparParaComanda(p.cliente_telefone||'') + '\n' +
     '------------------------------\n' +
     negritoOn + 'ITENS\n' + negritoOff + itens + '\n' +
     '------------------------------\n' +
     negritoOn + 'ENDERECO\n' + negritoOff + endereco + '\n' +
     '------------------------------\n' +
-    'Pagamento: ' + (p.forma_pagamento||'pix') + '\n' +
+    'Pagamento: ' + limparParaComanda(p.forma_pagamento||'pix') + '\n' +
     'Taxa entrega: ' + brl(p.taxa_entrega||0) + '\n' +
     negritoOn + 'TOTAL: ' + brl(p.valor_total||0) + negritoOff + '\n' +
-    (p.observacao ? '\nOBS: ' + p.observacao + '\n' : '') +
+    (p.observacao ? '\nOBS: ' + limparParaComanda(p.observacao) + '\n' : '') +
     '------------------------------\n' +
     'QR Motoboy:\n' + qr + '\n' +
     corte;
@@ -198,7 +209,7 @@ async function carregarImpressorasQZ(){
   const out=document.getElementById('impressoraStatus');
   const select=document.getElementById('imp_qz_nome');
   try{
-    if(out) out.innerHTML='🔌 Conectando no QZ Tray...';
+    if(out) out.innerHTML='Conectando no QZ Tray... se passar de 8 segundos, abra o QZ Tray perto do relógio do Windows.';
     await conectarQZ();
     const printers=await qz.printers.find();
     if(select){
@@ -206,19 +217,19 @@ async function carregarImpressorasQZ(){
       select.innerHTML='<option value="">Impressora padrão do Windows</option>' + printers.map(n=>`<option value="${escapeHtml(n)}">${escapeHtml(n)}</option>`).join('');
       select.value=atual;
     }
-    if(out) out.innerHTML='✅ QZ conectado. Impressoras carregadas.';
+    if(out) out.innerHTML='QZ conectado. Impressoras carregadas. Escolha sua impressora e salve.';
   }catch(e){
-    if(out) out.innerHTML='<span class="err-inline">Erro no QZ: '+escapeHtml(e.message||String(e))+'</span>';
+    if(out) out.innerHTML='<span class="err-inline">QZ não conectou: '+escapeHtml(e.message||String(e))+'<br>Enquanto isso a impressão normal com logo e QR Code continua funcionando.</span>';
   }
 }
 async function testarConexaoQZ(){
   const out=document.getElementById('impressoraStatus');
   try{
-    if(out) out.innerHTML='🔌 Testando QZ Tray...';
+    if(out) out.innerHTML='Testando QZ Tray...';
     await conectarQZ();
-    if(out) out.innerHTML='✅ QZ Tray funcionando. Agora clique em "Carregar impressoras" e escolha sua térmica.';
+    if(out) out.innerHTML='QZ Tray funcionando. Agora clique em Carregar impressoras e escolha sua térmica.';
   }catch(e){
-    if(out) out.innerHTML='<span class="err-inline">QZ não conectado. Instale/abra o QZ Tray. Erro: '+escapeHtml(e.message||String(e))+'</span>';
+    if(out) out.innerHTML='<span class="err-inline">QZ não conectado: '+escapeHtml(e.message||String(e))+'</span>';
   }
 }
 async function imprimirPedidoQZ(p){
@@ -244,13 +255,17 @@ function htmlComandaPedido(p){
   const papel=Number(cfg.papel||80);
   const fonte=Number(cfg.fonte||13);
   const titulo=Number(cfg.titulo||22);
-  const margem=Number(cfg.margem||6);
+  const margem=Number(cfg.margem||4);
   const peso=cfg.negrito!==false?'800':'400';
-  const itens=itensTexto(p.itens).replaceAll('\n','<br>');
-  const data=new Date().toLocaleString('pt-BR');
-  return `<!doctype html><html><head><meta charset="utf-8"><title>Comanda #${numeroPedido(p)}</title><style>
-  *{box-sizing:border-box}body{font-family:Arial,Helvetica,sans-serif;margin:0;padding:${margem}px;color:#000;background:#fff;font-size:${fonte}px;font-weight:${peso}}.ticket{width:${papel}mm;max-width:${papel}mm;margin:0 auto}.logo{display:block;width:${papel==58?'34':'42'}mm;max-height:28mm;object-fit:contain;margin:0 auto 6px}h1{font-size:${titulo}px;text-align:center;margin:0 0 4px;font-weight:900}.sub{text-align:center;border-bottom:1px dashed #000;padding-bottom:8px;margin-bottom:8px;font-weight:${peso}}.row{display:flex;justify-content:space-between;gap:8px;margin:4px 0}.big{font-size:${Math.max(fonte+5,18)}px;font-weight:900}.sec{border-top:1px dashed #000;margin-top:8px;padding-top:8px}.items{font-size:${Math.max(fonte+2,15)}px;line-height:1.35}.total{font-size:${Math.max(fonte+7,20)}px;font-weight:900;text-align:right;margin-top:8px}.obs{font-size:${Math.max(fonte+1,14)}px;white-space:pre-wrap}@media print{body{padding:${margem}px}.ticket{width:${papel}mm;max-width:${papel}mm}button{display:none}}
-  </style></head><body><div class="ticket">${cfg.logo!==false?'<img src="/print-logo.png" class="logo" alt="Big Burger">':''}<h1>${escapeHtml(cfg.nome||'BIG BURGER')}</h1><div class="sub">${escapeHtml(cfg.subtitulo||'COMANDA DE PEDIDO')}<br>${data}</div><div class="row big"><span>Pedido</span><span>#${numeroPedido(p)}</span></div><div class="row"><span>Cliente</span><b>${escapeHtml(p.cliente_nome||'')}</b></div><div class="row"><span>Telefone</span><b>${escapeHtml(p.cliente_telefone||'')}</b></div><div class="sec"><b>ITENS</b><div class="items">${itens}</div></div><div class="sec"><b>ENDEREÇO</b><div>${escapeHtml(enderecoPedido(p)||'Retirada/sem endereço')}</div></div><div class="sec"><div class="row"><span>Pagamento</span><b>${escapeHtml(p.forma_pagamento||'pix')}</b></div><div class="row"><span>Taxa entrega</span><b>${brl(p.taxa_entrega||0)}</b></div><div class="total">TOTAL: ${brl(p.valor_total||0)}</div></div>${p.observacao?`<div class="sec obs"><b>OBS:</b><br>${escapeHtml(p.observacao)}</div>`:''}<div class="sec" style="text-align:center"><b>QR CODE DO MOTOBOY</b><br><img style="width:${papel==58?'32':'38'}mm;height:${papel==58?'32':'38'}mm;object-fit:contain" src="https://api.qrserver.com/v1/create-qr-code/?size=180x180&data=${encodeURIComponent(location.origin+'/motoboy?pedido='+p.id)}" alt="QR Pedido"><br><small>Escanear para registrar pedido</small></div></div><script>window.onload=function(){setTimeout(function(){window.print();},450); if(${cfg.fecharJanela!==false?'true':'false'}){window.onafterprint=function(){setTimeout(function(){window.close();},300)}}}<\/script></body></html>`;
+  const itens=itensTextoComanda(p.itens).split('\n').map(l=>escapeComanda(l)).join('<br>');
+  const data=limparParaComanda(new Date().toLocaleString('pt-BR'));
+  const qrData=pedidoQrUrl(p);
+  const qrImg='https://api.qrserver.com/v1/create-qr-code/?size=220x220&margin=1&data='+encodeURIComponent(qrData);
+  const obs=p.observacao?`<div class="sec obs"><b>OBS:</b><br>${escapeComanda(p.observacao)}</div>`:'';
+  const printScript=imgLoadScriptPrint()+`<script>if(${cfg.fecharJanela!==false?'true':'false'}){window.onafterprint=function(){setTimeout(function(){window.close();},300)}}<\/script>`;
+  return `<!doctype html><html><head><meta charset="utf-8"><title>Comanda #${escapeComanda(numeroPedido(p))}</title><style>
+  *{box-sizing:border-box}body{font-family:Arial,Helvetica,sans-serif;margin:0;padding:${margem}px;color:#000;background:#fff;font-size:${fonte}px;font-weight:${peso}}.ticket{width:${papel}mm;max-width:${papel}mm;margin:0 auto}.logo{display:block;width:${papel==58?'36':'44'}mm;max-height:28mm;object-fit:contain;margin:0 auto 6px}h1{font-size:${titulo}px;text-align:center;margin:0 0 4px;font-weight:900}.sub{text-align:center;border-bottom:1px dashed #000;padding-bottom:8px;margin-bottom:8px;font-weight:${peso}}.row{display:flex;justify-content:space-between;gap:8px;margin:4px 0}.big{font-size:${Math.max(fonte+6,19)}px;font-weight:900}.sec{border-top:1px dashed #000;margin-top:8px;padding-top:8px}.items{font-size:${Math.max(fonte+2,15)}px;line-height:1.35}.total{font-size:${Math.max(fonte+8,21)}px;font-weight:900;text-align:right;margin-top:8px}.obs{font-size:${Math.max(fonte+1,14)}px;white-space:pre-wrap}.qr-img{width:${papel==58?'34':'40'}mm;height:${papel==58?'34':'40'}mm;object-fit:contain}.qr-link{font-size:${Math.max(fonte-3,9)}px;word-break:break-all}.thanks{text-align:center;font-weight:900;margin-top:6px}@media print{body{padding:${margem}px}.ticket{width:${papel}mm;max-width:${papel}mm}button{display:none}}
+  </style></head><body><div class="ticket">${cfg.logo!==false?'<img src="/print-logo.png" class="logo" alt="Big Burger">':''}<h1>${escapeComanda(cfg.nome||'BIG BURGER')}</h1><div class="sub">${escapeComanda(cfg.subtitulo||'COMANDA DE PEDIDO')}<br>${escapeComanda(data)}</div><div class="row big"><span>Pedido</span><span>#${escapeComanda(numeroPedido(p))}</span></div><div class="row"><span>Cliente</span><b>${escapeComanda(p.cliente_nome||'')}</b></div><div class="row"><span>Telefone</span><b>${escapeComanda(p.cliente_telefone||'')}</b></div><div class="sec"><b>ITENS</b><div class="items">${itens}</div></div><div class="sec"><b>ENDERECO</b><div>${escapeComanda(enderecoPedido(p)||'Retirada/sem endereco')}</div></div><div class="sec"><div class="row"><span>Pagamento</span><b>${escapeComanda(p.forma_pagamento||'pix')}</b></div><div class="row"><span>Taxa entrega</span><b>${brl(p.taxa_entrega||0)}</b></div><div class="total">TOTAL: ${brl(p.valor_total||0)}</div></div>${obs}<div class="sec" style="text-align:center"><b>QR CODE DO MOTOBOY</b><br><img class="qr-img" src="${qrImg}" alt="QR Pedido"><div class="qr-link">${escapeComanda(qrData)}</div><small>Escanear para registrar pedido</small></div><div class="thanks">Obrigado pela preferencia!</div></div>${printScript}</body></html>`;
 }
 function imprimirPedidoDireto(p){
   if(!p){alert('Pedido não encontrado para imprimir.');return;}
@@ -282,14 +297,8 @@ function imprimirPedidoPopup(p){
 }
 function imprimirPedido(p){
   const cfg=getConfigImpressora();
-  if(cfg.qzAtivo===true){
-    imprimirPedidoQZ(p).catch(e=>{
-      console.error(e);
-      alert('Erro na impressão automática QZ: '+(e.message||e)+'\n\nVerifique se o QZ Tray está aberto e permitido. Vou abrir a impressão normal como reserva.');
-      if(cfg.direto!==false) imprimirPedidoDireto(p); else imprimirPedidoPopup(p);
-    });
-    return;
-  }
+  // VERSAO SEM QZ: usa somente a impressao normal do Windows/navegador, com logo e QR Code.
+  // Para sair sem janela, abra o admin pelo BAT com --kiosk-printing.
   if(cfg.direto!==false) return imprimirPedidoDireto(p);
   return imprimirPedidoPopup(p);
 }
@@ -432,6 +441,19 @@ async function loadClientes(){
 function dataBR(v){return v?new Date(v).toLocaleString('pt-BR'):''}
 function whatsLink(tel){const limpo=String(tel||'').replace(/\D/g,'');return limpo?`https://wa.me/55${limpo.replace(/^55/,'')}`:'#'}
 function escapeHtml(v){return String(v??'').replace(/[&<>"]/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[m]))}
+
+function limparParaComanda(v){
+  return String(v??'')
+    .normalize('NFKC')
+    .replace(/[\u{1F000}-\u{1FAFF}\u{2600}-\u{27BF}\u{FE0F}\u{200D}]/gu,'')
+    .replace(/[^\n\r\t\x20-\x7EÀ-ÿºª°,.:%$#@()\/\\+\-=]/g,'')
+    .replace(/[ \t]{2,}/g,' ')
+    .trim();
+}
+function escapeComanda(v){return escapeHtml(limparParaComanda(v));}
+function itensTextoComanda(itens){return limparParaComanda(itensTexto(itens));}
+function pedidoQrUrl(p){return location.origin+'/motoboy?pedido='+encodeURIComponent(p?.id||'TESTE');}
+function imgLoadScriptPrint(){return `<script>(function(){function done(){setTimeout(function(){window.print();},250)}var imgs=[].slice.call(document.images);if(!imgs.length)return done();var left=imgs.length;imgs.forEach(function(img){if(img.complete){if(--left===0)done()}else{img.onload=img.onerror=function(){if(--left===0)done()}}});setTimeout(done,1800);})();<\/script>`;}
 function renderClientes(){
   if(typeof clientesOut==='undefined') return;
   let lista=[...(state.clientes||[])];

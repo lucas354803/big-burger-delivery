@@ -259,23 +259,11 @@
           </div>
           <div class="mini-grid">
             <label class="check switch-line"><input id="imp_direto" type="checkbox" checked> Modo direto sem abrir janela nova</label>
-            <label class="check switch-line"><input id="imp_qz_ativo" type="checkbox"> Usar QZ Tray para imprimir 100% automático</label>
+            <div class="printer-note" style="margin:0">✅ Versão sem QZ Tray: usa a impressora padrão do Windows. Para ficar mais automático, abra o painel pelo arquivo <b>ABRIR ADMIN SEM QZ - IMPRESSAO AUTOMATICA.bat</b>.</div>
           </div>
-          <div class="mini-grid">
-            <label>Impressora QZ
-              <select id="imp_qz_nome">
-                <option value="">Impressora padrão do Windows</option>
-              </select>
-            </label>
-            <div class="printer-note" style="margin:0">Para sair sem tela nenhuma, instale e deixe o <b>QZ Tray</b> aberto. Na primeira conexão, clique em <b>Permitir sempre</b>.</div>
-          </div>
-          <div class="printer-note">✅ Com QZ Tray ativo, o pedido pode imprimir direto quando for aceito, sem abrir a janela de impressão do navegador. ⚠️ A comanda QZ sai em texto térmico profissional; logo/QR visual continuam no modo impressão normal.</div>
+          <div class="printer-note">✅ Sem erro de certificado, sem bloqueio do QZ, com logo da Big Burger, QR Code e sem emoji na comanda.</div>
           <div class="mini-grid">
             <button class="btn red">Salvar configuração</button>
-            <button type="button" class="btn ghost" onclick="testarConexaoQZ()">🔌 Testar QZ</button>
-          </div>
-          <div class="mini-grid">
-            <button type="button" class="btn ghost" onclick="carregarImpressorasQZ()">🖨️ Carregar impressoras QZ</button>
             <button type="button" class="btn ghost" onclick="testarImpressora()">🧾 Testar impressão</button>
           </div>
           <div id="impressoraStatus" class="small"></div>
@@ -484,7 +472,6 @@ function liberarAdmin(){document.body.classList.remove('admin-locked');const l=d
 function entrarAdmin(){const v=document.getElementById('adminSenha')?.value||'';const e=document.getElementById('adminLoginErro');if(v===ADMIN_PASSWORD){sessionStorage.setItem('big_admin_ok','1');liberarAdmin()}else if(e){e.innerHTML='<span class="err-inline">Senha incorreta.</span>'}}
 document.addEventListener('DOMContentLoaded',()=>{if(sessionStorage.getItem('big_admin_ok')==='1') liberarAdmin(); const i=document.getElementById('adminSenha'); if(i)i.addEventListener('keydown',ev=>{if(ev.key==='Enter')entrarAdmin()})});
 </script>
-<script src="https://cdn.jsdelivr.net/npm/qz-tray@2.2.4/qz-tray.js"></script>
 <script src="/admin_script.js"></script>
 
 

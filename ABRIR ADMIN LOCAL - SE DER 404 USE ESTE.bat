@@ -1,0 +1,2 @@
+@echo off
+call "%~dp0ABRIR ADMIN SEM QZ - IMPRESSAO AUTOMATICA.bat"
