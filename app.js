@@ -128,8 +128,15 @@ function render(){
   total.textContent=fmt(totalGeral);
   if(typeof taxaEntrega !== 'undefined' && taxaEntrega) taxaEntrega.textContent=fmt(taxaEntregaSelecionada);
   if(typeof totalComEntrega !== 'undefined' && totalComEntrega) totalComEntrega.textContent=fmt(totalGeral);
-  cart.innerHTML=carrinho.length?carrinho.map(p=>`<div class="row"><span><b>1x ${p.nome}</b><br><small class="small">${(p.addons||[]).map(a=>a.nome).join(', ')||'Sem adicionais'}${p.observacao?`<br>📝 Obs: ${p.observacao}`:''}</small></span><b>${fmt(p.preco)}</b></div>`).join(''):'<div class="cart-empty">🛒<br>Seu carrinho está vazio<br><small>Adicione itens deliciosos para começar!</small></div>';
+  cart.innerHTML=carrinho.length?carrinho.map((p,index)=>`<div class="row cart-item-row"><span class="cart-item-info"><b>1x ${p.nome}</b><br><small class="small">${(p.addons||[]).map(a=>a.nome).join(', ')||'Sem adicionais'}${p.observacao?`<br>📝 Obs: ${p.observacao}`:''}</small></span><div class="cart-item-actions"><b>${fmt(p.preco)}</b><button class="cart-trash" type="button" title="Remover produto" aria-label="Remover produto" onclick="removerItemCarrinho(${index})">🗑️</button></div></div>`).join(''):'<div class="cart-empty">🛒<br>Seu carrinho está vazio<br><small>Adicione itens deliciosos para começar!</small></div>';
 }
+
+function removerItemCarrinho(index){
+  if(index < 0 || index >= carrinho.length) return;
+  carrinho.splice(index,1);
+  render();
+}
+
 function renderCategorias(){
   if(typeof categoryBar === 'undefined' || !categoryBar) return;
   const catsBase=[{id:'todos',nome:'🔥 Todos'},...categorias].filter((c,idx,arr)=>arr.findIndex(x=>String(x.id)===String(c.id))===idx);
