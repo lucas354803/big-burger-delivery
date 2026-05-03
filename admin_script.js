@@ -126,6 +126,45 @@ async function conectarQZ(){
   await qzConectando;
   return true;
 }
+function montarHtmlComandaQZ(p){
+  const cfg=getConfigImpressora();
+  const papel=Number(cfg.papel||80);
+  const fonte=Number(cfg.fonte||13);
+  const titulo=Number(cfg.titulo||22);
+  const margem=Number(cfg.margem||6);
+  const peso=cfg.negrito!==false?'800':'500';
+  const data=new Date().toLocaleString('pt-BR');
+  const logoUrl=location.origin + '/print-logo.png';
+  const qrUrl='https://api.qrserver.com/v1/create-qr-code/?size=220x220&margin=1&data=' + encodeURIComponent(location.origin+'/motoboy?pedido='+p.id);
+  const itens=itensTexto(p.itens).split('\n').map(l=>`<div class="item-line">${escapeHtml(l)}</div>`).join('');
+  const obs=p.observacao ? `<div class="sec obs"><b>OBSERVAÇÃO</b><br>${escapeHtml(p.observacao)}</div>` : '';
+  const largura=papel===58 ? 210 : 300;
+  const logoW=papel===58 ? 88 : 120;
+  const qrW=papel===58 ? 96 : 118;
+  return `<!doctype html><html><head><meta charset="utf-8"><style>
+    html,body{margin:0;padding:0;background:#fff;color:#000;font-family:Arial,Helvetica,sans-serif;-webkit-print-color-adjust:exact;print-color-adjust:exact}
+    .ticket{width:${largura}px;margin:0 auto;padding:${margem}px;font-size:${fonte}px;font-weight:${peso};line-height:1.32;color:#000}
+    .center{text-align:center}.logo{width:${logoW}px;max-height:92px;object-fit:contain;margin:0 auto 4px;display:block}
+    h1{font-size:${titulo}px;line-height:1;margin:2px 0 2px;font-weight:900;letter-spacing:.4px}.sub{font-size:${Math.max(11,fonte-1)}px;margin:0 0 6px;font-weight:800}.dash{border-top:1px dashed #000;margin:7px 0}.row{display:flex;justify-content:space-between;gap:8px;margin:3px 0}.label{font-weight:900}.pedido{font-size:${Math.max(18,fonte+6)}px;font-weight:900}.item-line{border:1px solid #000;border-radius:6px;padding:5px 6px;margin:5px 0;font-size:${Math.max(13,fonte+1)}px;font-weight:900}.endereco{font-size:${Math.max(12,fonte)}px;font-weight:800}.total{font-size:${Math.max(20,fonte+8)}px;font-weight:900;text-align:right;margin-top:6px}.obs{white-space:pre-wrap}.thanks{font-weight:900;margin-top:5px}.qr{width:${qrW}px;height:${qrW}px;margin:3px auto;display:block}.small{font-size:10px}.cut{height:16px}
+  </style></head><body><div class="ticket">
+    <div class="center">${cfg.logo!==false?`<img src="${logoUrl}" class="logo">`:''}<h1>${escapeHtml(cfg.nome||'BIG BURGER')}</h1><div class="sub">${escapeHtml(cfg.subtitulo||'COMANDA DE PEDIDO')}<br>${data}</div></div>
+    <div class="dash"></div>
+    <div class="row pedido"><span>Pedido</span><span>#${numeroPedido(p)}</span></div>
+    <div class="row"><span class="label">Cliente</span><span>${escapeHtml(p.cliente_nome||'')}</span></div>
+    <div class="row"><span class="label">Telefone</span><span>${escapeHtml(p.cliente_telefone||'')}</span></div>
+    <div class="dash"></div>
+    <div class="label">ITENS</div>${itens}
+    <div class="dash"></div>
+    <div class="label">ENDEREÇO</div><div class="endereco">${escapeHtml(enderecoPedido(p)||'Retirada/sem endereço')}</div>
+    <div class="dash"></div>
+    <div class="row"><span class="label">Pagamento</span><span>${escapeHtml(p.forma_pagamento||'pix')}</span></div>
+    <div class="row"><span class="label">Taxa entrega</span><span>${brl(p.taxa_entrega||0)}</span></div>
+    <div class="total">TOTAL: ${brl(p.valor_total||0)}</div>
+    ${obs}
+    <div class="dash"></div>
+    <div class="center"><div class="label">QR CODE DO MOTOBOY</div><img class="qr" src="${qrUrl}"><div class="small">Escanear para registrar pedido</div><div class="thanks">Obrigado pela preferência ❤️</div></div><div class="cut"></div>
+  </div></body></html>`;
+}
 function textoComandaQZ(p){
   const cfg=getConfigImpressora();
   const data=new Date().toLocaleString('pt-BR');
@@ -187,11 +226,17 @@ async function imprimirPedidoQZ(p){
   await conectarQZ();
   const cfg=getConfigImpressora();
   const printer = cfg.qzImpressora ? await qz.printers.find(cfg.qzImpressora) : await qz.printers.getDefault();
-  const config = qz.configs.create(printer, {encoding:'UTF-8', copies:1});
-  const data = [{type:'raw', format:'plain', data:textoComandaQZ(p)}];
-  await qz.print(config, data);
+  const config = qz.configs.create(printer, {copies:1, units:'mm', margins:{top:0,right:0,bottom:0,left:0}, scaleContent:true, rasterize:true});
+  const html = montarHtmlComandaQZ(p);
+  try{
+    await qz.print(config, [{type:'html', format:'plain', data:html}]);
+  }catch(htmlErr){
+    console.warn('Falha no QZ HTML, tentando modo térmico texto:', htmlErr);
+    const rawConfig = qz.configs.create(printer, {encoding:'UTF-8', copies:1});
+    await qz.print(rawConfig, [{type:'raw', format:'plain', data:textoComandaQZ(p)}]);
+  }
   const out=document.getElementById('impressoraStatus');
-  if(out) out.innerHTML='✅ Comanda enviada direto para: '+escapeHtml(printer);
+  if(out) out.innerHTML='✅ Comanda bonita com logo enviada direto para: '+escapeHtml(printer);
 }
 
 function htmlComandaPedido(p){
