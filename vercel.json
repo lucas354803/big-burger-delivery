@@ -1,7 +1,17 @@
 {
   "version": 2,
   "rewrites": [
-    { "source": "/admin", "destination": "/admin.html" },
-    { "source": "/motoboy", "destination": "/motoboy.html" }
+    {
+      "source": "/api/:route",
+      "destination": "/api?route=:route"
+    },
+    {
+      "source": "/admin",
+      "destination": "/admin.html"
+    },
+    {
+      "source": "/motoboy",
+      "destination": "/motoboy.html"
+    }
   ]
 }
