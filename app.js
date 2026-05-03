@@ -244,3 +244,46 @@ async function finalizar(){
   }catch(e){result.innerHTML=`<div class="err"><b>Erro:</b> ${e.message}</div>`}
 }
 carregarMenu();
+
+
+const bannerPadrao={ativo:true,tipo:'video',media_url:'/bigburger-video.mp4',tag:'🔥 Feito na hora • entrega rápida',titulo:'O MELHOR BURGER DA CIDADE!',destaque:'BURGER',texto:'Ingredientes selecionados, sabor irresistível e Pix direto no pedido.',botao_texto:'PEÇA AGORA ›',selo:'🔥 BIG BURGER'};
+function escapeHtmlBanner(v){return String(v??'').replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));}
+function tituloBannerHtml(titulo,destaque){
+  titulo=String(titulo||bannerPadrao.titulo); destaque=String(destaque||'').trim();
+  if(destaque && titulo.toLowerCase().includes(destaque.toLowerCase())){
+    const i=titulo.toLowerCase().indexOf(destaque.toLowerCase());
+    return `${escapeHtmlBanner(titulo.slice(0,i))}<span>${escapeHtmlBanner(titulo.slice(i,i+destaque.length))}</span>${escapeHtmlBanner(titulo.slice(i+destaque.length))}`;
+  }
+  return escapeHtmlBanner(titulo);
+}
+function aplicarBannerInicial(b){
+  b={...bannerPadrao,...(b||{})};
+  const hero=document.getElementById('heroBanner'); if(!hero) return;
+  hero.style.display=b.ativo===false?'none':'';
+  const tagEl=document.getElementById('heroTag');
+  const tituloEl=document.getElementById('heroTitulo');
+  const textoEl=document.getElementById('heroTexto');
+  const botaoEl=document.getElementById('heroBotao');
+  const seloEl=document.getElementById('heroSelo');
+  if(tagEl) tagEl.textContent=b.tag||bannerPadrao.tag;
+  if(tituloEl) tituloEl.innerHTML=tituloBannerHtml(b.titulo,b.destaque);
+  if(textoEl) textoEl.textContent=b.texto||'';
+  if(botaoEl) botaoEl.textContent=b.botao_texto||'PEÇA AGORA ›';
+  if(seloEl) seloEl.textContent=b.selo||'🔥 BIG BURGER';
+  const card=document.getElementById('heroMediaCard');
+  if(card){
+    const url=b.media_url||bannerPadrao.media_url;
+    if(b.tipo==='imagem') card.innerHTML=`<img class="hero-video hero-image" id="heroMedia" src="${escapeHtmlBanner(url)}" alt="Big Burger"><div class="video-badge" id="heroSelo">${escapeHtmlBanner(b.selo||'🔥 BIG BURGER')}</div>`;
+    else card.innerHTML=`<video class="hero-video" id="heroMedia" src="${escapeHtmlBanner(url)}" autoplay muted loop playsinline></video><div class="video-badge" id="heroSelo">${escapeHtmlBanner(b.selo||'🔥 BIG BURGER')}</div>`;
+  }
+}
+async function carregarBannerInicial(){
+  try{
+    const local=JSON.parse(localStorage.getItem('bigburger_banner_inicial')||'null');
+    if(local) aplicarBannerInicial(local);
+    const r=await fetch('/api/site-banner?_='+Date.now(),{cache:'no-store'});
+    const d=await r.json();
+    if(r.ok&&d.ok&&d.banner){ localStorage.setItem('bigburger_banner_inicial',JSON.stringify(d.banner)); aplicarBannerInicial(d.banner); }
+  }catch(e){}
+}
+carregarBannerInicial();

@@ -32,6 +32,7 @@
         <button class="main-tab" onclick="abrirMain('editor')">🧾 Editor de Cardápio</button>
         <button class="main-tab" onclick="abrirMain('entrega')">📍 Entrega</button>
         <button class="main-tab" onclick="abrirMain('loja')">🏪 Loja aberta/horários</button>
+        <button class="main-tab" onclick="abrirMain('banner')">🎬 Banner / Vídeo</button>
         <button class="main-tab" onclick="abrirMain('financeiro')">💸 Financeiro</button>
         <button class="main-tab" onclick="abrirMain('impressora')">🖨️ Impressora</button>
         <button class="main-tab" onclick="abrirMain('clientes')">👥 Clientes</button>
@@ -74,6 +75,57 @@
           <div id="configLojaStatus" class="small"></div>
         </form>
       </div>
+
+      <div id="main-banner" class="main-content">
+        <div class="editor-title">
+          <h1>🎬 Banner / Vídeo inicial</h1>
+          <p>Edite a área grande da página inicial. Você pode usar vídeo MP4 ou imagem por link.</p>
+        </div>
+        <div class="admin-grid wide">
+          <form class="admin-form" onsubmit="salvarBannerInicial(event)">
+            <h2>Configuração do banner</h2>
+            <label class="check switch-line"><input id="banner_ativo" type="checkbox" checked> Mostrar banner na página inicial</label>
+            <div class="mini-grid">
+              <label>Tipo de mídia
+                <select id="banner_tipo" onchange="previewBannerInicial()">
+                  <option value="video">Vídeo MP4</option>
+                  <option value="imagem">Imagem</option>
+                </select>
+              </label>
+              <label>Texto do selo
+                <input id="banner_selo" placeholder="🔥 BIG BURGER">
+              </label>
+            </div>
+            <label>URL da mídia
+              <input id="banner_url" placeholder="Ex: /bigburger-video.mp4 ou https://site.com/video.mp4" oninput="previewBannerInicial()">
+            </label>
+            <label>Texto pequeno acima do título
+              <input id="banner_tag" placeholder="🔥 Feito na hora • entrega rápida">
+            </label>
+            <label>Título principal
+              <input id="banner_titulo" placeholder="O MELHOR BURGER DA CIDADE!">
+            </label>
+            <label>Palavra em vermelho no título
+              <input id="banner_destaque" placeholder="BURGER">
+            </label>
+            <label>Texto abaixo do título
+              <textarea id="banner_texto" placeholder="Ingredientes selecionados, sabor irresistível..."></textarea>
+            </label>
+            <label>Texto do botão
+              <input id="banner_botao" placeholder="PEÇA AGORA ›">
+            </label>
+            <button class="btn red">Salvar banner</button>
+            <button type="button" class="btn ghost" onclick="loadBannerInicial()">Recarregar</button>
+            <div id="bannerStatus" class="small"></div>
+          </form>
+          <div class="admin-card">
+            <h2>Prévia</h2>
+            <div id="bannerPreview" class="banner-admin-preview"></div>
+            <p class="small">Dica: para vídeo, use link terminado em <b>.mp4</b>. Para imagem, use .jpg, .png ou .webp.</p>
+          </div>
+        </div>
+      </div>
+
 
       <div id="main-financeiro" class="main-content">
         <div class="financeiro-shell">

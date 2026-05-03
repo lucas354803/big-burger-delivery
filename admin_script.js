@@ -1,5 +1,5 @@
 
-const state={categorias:[],produtos:[],categorias_complementos:[],complementos:[],produto_complemento_categorias:[],cidades_entrega:[],bairros_entrega:[],clientes:[],clientesResumo:null,financeiro:null,loja_config:null,horarios_funcionamento:[],clientesPagina:1,clientesPorPagina:20,clienteEditando:null,motoboys:[],motoboyEntregas:[]};
+const state={categorias:[],produtos:[],categorias_complementos:[],complementos:[],produto_complemento_categorias:[],cidades_entrega:[],bairros_entrega:[],clientes:[],clientesResumo:null,financeiro:null,loja_config:null,horarios_funcionamento:[],clientesPagina:1,clientesPorPagina:20,clienteEditando:null,motoboys:[],motoboyEntregas:[],banner_inicial:null};
 const brl=v=>Number(v||0).toLocaleString('pt-BR',{style:'currency',currency:'BRL'});
 function abrirMain(id){
   document.querySelectorAll('.main-tab,.main-content').forEach(x=>x.classList.remove('active'));
@@ -434,7 +434,6 @@ async function salvarConfigLoja(e){
     if(out)out.innerHTML='⚠️ Salvei neste navegador, mas o banco não confirmou. Erro: '+err.message+'<br>Confira SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY e execute o SQL corrigir_config_loja.sql.';
   }
 }
-function escapeHtml(v){return String(v??'').replace(/[&<>"]/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[m]));}
 function inicioDiaISO(){const d=new Date();d.setHours(0,0,0,0);return d.toISOString();}
 function getFinanceiroResetISO(){return localStorage.getItem('financeiroResetDiarioISO') || inicioDiaISO();}
 function pedidosDoRelatorioDiario(){
@@ -554,6 +553,62 @@ async function zerarMotoboysDia(){
   await loadMotoboys();
 }
 
-loadPedidos();loadClientes();loadTudo();loadConfigLoja();carregarConfigImpressora();loadMotoboys();
+
+
+const bannerInicialPadrao={ativo:true,tipo:'video',media_url:'/bigburger-video.mp4',tag:'🔥 Feito na hora • entrega rápida',titulo:'O MELHOR BURGER DA CIDADE!',destaque:'BURGER',texto:'Ingredientes selecionados, sabor irresistível e Pix direto no pedido.',botao_texto:'PEÇA AGORA ›',selo:'🔥 BIG BURGER'};
+function getBannerInicialLocal(){try{return JSON.parse(localStorage.getItem('bigburger_banner_inicial')||'null')}catch(e){return null}}
+function setBannerInicialLocal(b){try{localStorage.setItem('bigburger_banner_inicial',JSON.stringify(b))}catch(e){}}
+function renderBannerInicialForm(){
+  const b={...bannerInicialPadrao,...(state.banner_inicial||{})};
+  if(typeof banner_ativo!=='undefined') banner_ativo.checked=b.ativo!==false;
+  if(typeof banner_tipo!=='undefined') banner_tipo.value=b.tipo==='imagem'?'imagem':'video';
+  if(typeof banner_url!=='undefined') banner_url.value=b.media_url||'';
+  if(typeof banner_tag!=='undefined') banner_tag.value=b.tag||'';
+  if(typeof banner_titulo!=='undefined') banner_titulo.value=b.titulo||'';
+  if(typeof banner_destaque!=='undefined') banner_destaque.value=b.destaque||'';
+  if(typeof banner_texto!=='undefined') banner_texto.value=b.texto||'';
+  if(typeof banner_botao!=='undefined') banner_botao.value=b.botao_texto||'';
+  if(typeof banner_selo!=='undefined') banner_selo.value=b.selo||'';
+  previewBannerInicial();
+}
+function dadosBannerInicialForm(){return {ativo:banner_ativo.checked,tipo:banner_tipo.value,media_url:banner_url.value.trim()||'/bigburger-video.mp4',tag:banner_tag.value.trim(),titulo:banner_titulo.value.trim(),destaque:banner_destaque.value.trim(),texto:banner_texto.value.trim(),botao_texto:banner_botao.value.trim(),selo:banner_selo.value.trim()};}
+function previewBannerInicial(){
+  const out=document.getElementById('bannerPreview'); if(!out || typeof banner_tipo==='undefined') return;
+  const b={...bannerInicialPadrao,...dadosBannerInicialForm()};
+  const media=b.tipo==='imagem'?`<img src="${escapeHtml(b.media_url)}" alt="Prévia">`:`<video src="${escapeHtml(b.media_url)}" autoplay muted loop playsinline></video>`;
+  out.innerHTML=`<div class="banner-preview-card">${media}<span>${escapeHtml(b.selo||'🔥 BIG BURGER')}</span></div><h3>${escapeHtml(b.titulo||'')}</h3><p><b>${escapeHtml(b.tag||'')}</b></p><p>${escapeHtml(b.texto||'')}</p><button class="btn red" type="button">${escapeHtml(b.botao_texto||'PEÇA AGORA ›')}</button>`;
+}
+async function loadBannerInicial(){
+  const out=document.getElementById('bannerStatus'); if(out) out.textContent='Carregando banner...';
+  const local=getBannerInicialLocal(); if(local){state.banner_inicial=local;renderBannerInicialForm();}
+  try{
+    const r=await fetch('/api/site-banner?_='+Date.now(),{cache:'no-store',headers:{'Cache-Control':'no-cache'}});
+    const d=await r.json();
+    if(!r.ok||!d.ok) throw new Error(d.error||JSON.stringify(d));
+    state.banner_inicial=d.banner||bannerInicialPadrao;
+    setBannerInicialLocal(state.banner_inicial);
+    renderBannerInicialForm();
+    if(out) out.innerHTML='✅ Banner carregado.';
+  }catch(e){
+    if(out) out.innerHTML=local?'✅ Banner carregado do navegador. ⚠️ Banco não respondeu: '+e.message:'<span class="err">Erro ao carregar banner: '+e.message+'</span>';
+  }
+}
+async function salvarBannerInicial(e){
+  e.preventDefault();
+  const payload=dadosBannerInicialForm();
+  state.banner_inicial=payload; setBannerInicialLocal(payload); previewBannerInicial();
+  const out=document.getElementById('bannerStatus'); if(out) out.textContent='Salvando banner...';
+  try{
+    const r=await fetch('/api/site-banner?_='+Date.now(),{method:'POST',headers:{'Content-Type':'application/json','Cache-Control':'no-cache'},cache:'no-store',body:JSON.stringify(payload)});
+    const d=await r.json();
+    if(!r.ok||!d.ok) throw new Error(d.error||JSON.stringify(d));
+    state.banner_inicial=d.banner||payload; setBannerInicialLocal(state.banner_inicial); renderBannerInicialForm();
+    if(out) out.innerHTML='✅ Banner salvo! Atualize o cardápio para ver.';
+  }catch(err){
+    if(out) out.innerHTML='⚠️ Salvei neste navegador, mas o banco não confirmou. Execute supabase/site_banner.sql. Erro: '+err.message;
+  }
+}
+
+loadPedidos();loadClientes();loadTudo();loadConfigLoja();loadBannerInicial();carregarConfigImpressora();loadMotoboys();
 if(pedidosAutoRefreshTimer) clearInterval(pedidosAutoRefreshTimer);
 pedidosAutoRefreshTimer=setInterval(()=>loadPedidos(true),5000);

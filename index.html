@@ -24,16 +24,16 @@
 
   <main class="layout" id="inicio">
     <section class="content">
-      <section class="hero-pro">
+      <section class="hero-pro" id="heroBanner">
         <div class="hero-copy">
-          <p class="tag">🔥 Feito na hora • entrega rápida</p>
-          <h1>O MELHOR <span>BURGER</span> DA CIDADE!</h1>
-          <p>Ingredientes selecionados, sabor irresistível e Pix direto no pedido.</p>
-          <button class="cta" onclick="document.querySelector('#cardapio').scrollIntoView({behavior:'smooth'})">PEÇA AGORA ›</button>
+          <p class="tag" id="heroTag">🔥 Feito na hora • entrega rápida</p>
+          <h1 id="heroTitulo">O MELHOR <span>BURGER</span> DA CIDADE!</h1>
+          <p id="heroTexto">Ingredientes selecionados, sabor irresistível e Pix direto no pedido.</p>
+          <button class="cta" id="heroBotao" onclick="document.querySelector('#cardapio').scrollIntoView({behavior:'smooth'})">PEÇA AGORA ›</button>
         </div>
-        <div class="hero-video-card" aria-label="vídeo do hambúrguer Big Burger">
-          <video class="hero-video" src="/bigburger-video.mp4" autoplay muted loop playsinline></video>
-          <div class="video-badge">🔥 BIG BURGER</div>
+        <div class="hero-video-card" id="heroMediaCard" aria-label="mídia Big Burger">
+          <video class="hero-video" id="heroMedia" src="/bigburger-video.mp4" autoplay muted loop playsinline></video>
+          <div class="video-badge" id="heroSelo">🔥 BIG BURGER</div>
         </div>
       </section>
 
