@@ -88,30 +88,6 @@ function itensTexto(itens){
   if(!Array.isArray(itens)||!itens.length) return 'Itens não informados';
   return itens.map(i=>`${i.qtd||i.quantidade||1}x ${i.nome||i.name||'Produto'}${i.preco?` - ${brl(i.preco)}`:''}`).join('\\n');
 }
-
-function textoTermicoSeguro(v){
-  return String(v ?? '')
-    .normalize('NFD').replace(/[\u0300-\u036f]/g,'')
-    .replace(/[\u{1F000}-\u{1FAFF}\u{2600}-\u{27BF}]/gu,'')
-    .replace(/[^\n\r\t\x20-\x7E]/g,'')
-    .replace(/[ \t]{2,}/g,' ')
-    .trim();
-}
-function limparLinhaTermica(v, max=42){
-  const t=textoTermicoSeguro(v);
-  return t.length>max ? t.slice(0,max-1) : t;
-}
-function itensTextoTermico(itens){
-  try{ if(typeof itens==='string') itens=JSON.parse(itens); }catch(e){}
-  if(!Array.isArray(itens)||!itens.length) return 'Itens nao informados';
-  return itens.map(i=>{
-    const qtd=i.qtd||i.quantidade||1;
-    const nome=limparLinhaTermica(i.nome||i.name||'Produto', 32);
-    const preco=i.preco?` - ${brl(i.preco)}`:'';
-    return `${qtd}x ${nome}${preco}`;
-  }).join('\n');
-}
-
 function enderecoPedido(p){return [p.cidade,p.bairro,p.rua].filter(Boolean).join(' • ') || p.endereco || ''}
 function limparTel(t){return String(t||'').replace(/\D/g,'').replace(/^55/,'')}
 function abrirWhats(p,tipo){
@@ -133,8 +109,8 @@ function qzDisponivel(){ return typeof window.qz !== 'undefined' && qz.websocket
 function configurarSegurancaQZ(){
   if(!qzDisponivel() || window.__bigBurgerQzSecurityOk) return;
   try{
-    // Sem certificado assinado próprio: se o QZ não estiver em modo auto-accept, ele pode pedir permissão.
-    // Use o arquivo CONFIGURAR QZ SEM AVISO.bat e reinicie o QZ Tray.
+    // Modo sem certificado próprio: o QZ vai pedir permissão na primeira vez.
+    // Marque "Remember this decision / Permitir sempre" no QZ Tray.
     qz.security.setCertificatePromise((resolve)=>resolve(null));
     qz.security.setSignaturePromise(()=> (resolve)=>resolve(null));
     window.__bigBurgerQzSecurityOk=true;
@@ -189,42 +165,81 @@ function montarHtmlComandaQZ(p){
     <div class="center"><div class="label">QR CODE DO MOTOBOY</div><img class="qr" src="${qrUrl}"><div class="small">Escanear para registrar pedido</div><div class="thanks">Obrigado pela preferência ❤️</div></div><div class="cut"></div>
   </div></body></html>`;
 }
+
+function limparTextoTermico(txt){
+  return String(txt || '')
+    .normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+    .replace(/[\u{1F000}-\u{1FAFF}]/gu, '')
+    .replace(/[★☆✓✔✅❌🔥🍔🍟🚚🛵📍💳📞👤🔴🟡🔵🟢⚫🔔🖨️💬]/g, '')
+    .replace(/[–—]/g, '-')
+    .replace(/[•·]/g, '-')
+    .replace(/[^\x09\x0A\x0D\x20-\x7E\x80-\xFF]/g, '')
+    .replace(/\s{2,}/g, ' ')
+    .trim();
+}
+function limparMoedaTermica(valor){ return limparTextoTermico(brl(valor || 0)); }
+function repetirTermico(ch, n){ return new Array(n + 1).join(ch); }
+function linhaTermica(){ return repetirTermico('-', 32) + '\n'; }
+function escposQrCode(texto){
+  const data = limparTextoTermico(texto || '');
+  const len = data.length + 3;
+  const pL = String.fromCharCode(len % 256);
+  const pH = String.fromCharCode(Math.floor(len / 256));
+  return '\x1D\x28\x6B\x04\x00\x31\x41\x32\x00' +
+         '\x1D\x28\x6B\x03\x00\x31\x43\x06' +
+         '\x1D\x28\x6B\x03\x00\x31\x45\x30' +
+         '\x1D\x28\x6B' + pL + pH + '\x31\x50\x30' + data +
+         '\x1D\x28\x6B\x03\x00\x31\x51\x30';
+}
+function itensTextoTermico(itens){
+  try{ if(typeof itens === 'string') itens = JSON.parse(itens); }catch(e){}
+  if(!Array.isArray(itens) || !itens.length) return 'Itens nao informados\n';
+  return itens.map(i => {
+    const qtd = i.qtd || i.quantidade || 1;
+    const nome = limparTextoTermico(i.nome || i.name || 'Produto');
+    const preco = i.preco ? ' - ' + limparMoedaTermica(i.preco) : '';
+    return `${qtd}x ${nome}${preco}`;
+  }).join('\n') + '\n';
+}
+
 function textoComandaQZ(p){
   const cfg=getConfigImpressora();
-  const data=textoTermicoSeguro(new Date().toLocaleString('pt-BR'));
+  const data=limparTextoTermico(new Date().toLocaleString('pt-BR'));
   const itens=itensTextoTermico(p.itens);
-  const endereco=textoTermicoSeguro(enderecoPedido(p)||'Retirada/sem endereco');
-  const obs=textoTermicoSeguro(p.observacao||'');
-  const nomeLoja=textoTermicoSeguro(cfg.nome||'BIG BURGER').toUpperCase();
-  const subtitulo=textoTermicoSeguro(cfg.subtitulo||'COMANDA DE PEDIDO').toUpperCase();
-  const cliente=textoTermicoSeguro(p.cliente_nome||'');
-  const telefone=textoTermicoSeguro(p.cliente_telefone||'');
-  const pagamento=textoTermicoSeguro(p.forma_pagamento||'pix');
-  const qr=textoTermicoSeguro(location.origin+'/motoboy?pedido='+p.id);
-  const negritoOn='\x1B\x45\x01', negritoOff='\x1B\x45\x00';
+  const endereco=limparTextoTermico(enderecoPedido(p)||'Retirada/sem endereco');
+  const qr=location.origin+'/motoboy?pedido='+p.id;
+  const init='\x1B\x40';
   const centro='\x1B\x61\x01', esquerda='\x1B\x61\x00';
+  const negritoOn='\x1B\x45\x01', negritoOff='\x1B\x45\x00';
   const maior='\x1D\x21\x11', medio='\x1D\x21\x01', normal='\x1D\x21\x00';
   const corte='\n\n\n\x1D\x56\x00';
-  const linha='--------------------------------\n';
-  return '\x1B\x40' + centro + negritoOn + maior + nomeLoja + normal + '\n' +
-    subtitulo + '\n' + data + '\n' +
-    linha + esquerda +
-    negritoOn + medio + 'PEDIDO #' + numeroPedido(p) + normal + negritoOff + '\n\n' +
-    'Cliente : ' + cliente + '\n' +
-    'Telefone: ' + telefone + '\n' +
-    linha +
-    negritoOn + 'ITENS\n' + negritoOff + itens + '\n' +
-    linha +
-    negritoOn + 'ENDERECO\n' + negritoOff + endereco + '\n' +
-    linha +
-    'Pagamento    : ' + pagamento + '\n' +
-    'Taxa entrega : ' + brl(p.taxa_entrega||0) + '\n' +
-    centro + negritoOn + medio + 'TOTAL: ' + brl(p.valor_total||0) + normal + negritoOff + '\n' + esquerda +
-    (obs ? '\nOBS: ' + obs + '\n' : '') +
-    linha +
-    centro + 'QR CODE DO MOTOBOY\n' + esquerda + qr + '\n' +
-    centro + 'Obrigado pela preferencia!\n' + esquerda +
-    corte;
+  const nomeLoja=limparTextoTermico(cfg.nome||'BIG BURGER');
+  const subtitulo=limparTextoTermico(cfg.subtitulo||'COMANDA DE PEDIDO');
+  const cliente=limparTextoTermico(p.cliente_nome||'');
+  const telefone=limparTextoTermico(p.cliente_telefone||'');
+  const pagamento=limparTextoTermico(p.forma_pagamento||'pix');
+  const obs=limparTextoTermico(p.observacao||'');
+
+  let txt = init + centro + negritoOn + maior + nomeLoja + normal + '\n';
+  txt += subtitulo + '\n' + data + '\n' + linhaTermica();
+  txt += esquerda + negritoOn + 'PEDIDO #' + limparTextoTermico(numeroPedido(p)) + negritoOff + '\n\n';
+  txt += 'Cliente: ' + cliente + '\n';
+  txt += 'Telefone: ' + telefone + '\n';
+  txt += linhaTermica();
+  txt += negritoOn + 'ITENS' + negritoOff + '\n' + itens;
+  txt += linhaTermica();
+  txt += negritoOn + 'ENDERECO' + negritoOff + '\n' + endereco + '\n';
+  txt += linhaTermica();
+  txt += 'Pagamento: ' + pagamento + '\n';
+  txt += 'Taxa entrega: ' + limparMoedaTermica(p.taxa_entrega||0) + '\n';
+  txt += centro + negritoOn + medio + 'TOTAL: ' + limparMoedaTermica(p.valor_total||0) + normal + negritoOff + '\n';
+  if(obs) txt += esquerda + '\nOBS: ' + obs + '\n';
+  txt += linhaTermica();
+  txt += centro + 'QR CODE DO MOTOBOY\n';
+  txt += escposQrCode(qr) + '\n';
+  txt += 'Escanear para registrar pedido\n';
+  txt += corte;
+  return txt;
 }
 async function carregarImpressorasQZ(){
   const out=document.getElementById('impressoraStatus');
@@ -253,74 +268,17 @@ async function testarConexaoQZ(){
     if(out) out.innerHTML='<span class="err-inline">QZ não conectado. Instale/abra o QZ Tray. Erro: '+escapeHtml(e.message||String(e))+'</span>';
   }
 }
-
-function qrCodeEscpos(texto){
-  // QR Code nativo ESC/POS: não usa emoji, não depende de imagem e costuma funcionar na PERTO Printer TEC.
-  const data=textoTermicoSeguro(texto||'');
-  const len=data.length+3;
-  const pL=String.fromCharCode(len%256);
-  const pH=String.fromCharCode(Math.floor(len/256));
-  return '(k 1A2 ' + // modelo 2
-         '(k 1C' +       // tamanho
-         '(k 1E1' +       // correção M
-         '(k' + pL + pH + '1P0' + data +
-         '(k 1Q0';
-}
-async function urlImagemBase64(url){
-  const r=await fetch(url,{cache:'no-store'});
-  if(!r.ok) throw new Error('Logo não carregou');
-  const blob=await r.blob();
-  return await new Promise((resolve,reject)=>{
-    const fr=new FileReader();
-    fr.onload=()=>resolve(String(fr.result).split(',')[1]||'');
-    fr.onerror=reject;
-    fr.readAsDataURL(blob);
-  });
-}
-function textoComandaQZComQr(p){
-  const txt=textoComandaQZ(p);
-  const link=location.origin+'/motoboy?pedido='+p.id;
-  // troca a linha do link por QR nativo real
-  return txt.replace(/QR CODE DO MOTOBOY
-[\s\S]*?Obrigado pela preferencia!
-/, 'QR CODE DO MOTOBOY
-' + qrCodeEscpos(link) + '
-Obrigado pela preferencia!
-');
-}
 async function imprimirPedidoQZ(p){
-  if(!p){alert('Pedido não encontrado para imprimir.');return;}
+  if(!p){alert('Pedido nao encontrado para imprimir.');return;}
   await conectarQZ();
   const cfg=getConfigImpressora();
   const printer = cfg.qzImpressora ? await qz.printers.find(cfg.qzImpressora) : await qz.printers.getDefault();
-  const rawConfig = qz.configs.create(printer, {
-    encoding:'CP850',
-    copies:1,
-    rasterize:false,
-    margins:0
-  });
-  const dados=[];
-  // Logo: envia como imagem ESC/POS antes da comanda. Se a impressora não aceitar imagem, cai para texto normal.
-  if(cfg.logo!==false){
-    try{
-      const logo64=await urlImagemBase64('/print-logo.png');
-      dados.push({type:'image', format:'base64', data:logo64, options:{language:'ESCPOS', dotDensity:'double', imageWidth:260}});
-      dados.push({type:'raw', format:'plain', data:'
-'});
-    }catch(e){
-      console.warn('Logo QZ não carregou, imprimindo sem imagem:', e);
-    }
-  }
-  dados.push({type:'raw', format:'plain', data:textoComandaQZComQr(p)});
-  try{
-    await qz.print(rawConfig, dados);
-  }catch(e){
-    console.warn('Falha com logo/QR nativo; usando texto seguro:', e);
-    await qz.print(rawConfig, [{type:'raw', format:'plain', data:textoComandaQZ(p)}]);
-  }
+  const rawConfig = qz.configs.create(printer, {encoding:'CP437', copies:1});
+  await qz.print(rawConfig, [{type:'raw', format:'plain', data:textoComandaQZ(p)}]);
   const out=document.getElementById('impressoraStatus');
-  if(out) out.innerHTML='✅ Comanda enviada para '+escapeHtml(printer)+' com layout seguro, sem emojis, com logo/QR quando compatível.';
+  if(out) out.innerHTML='✅ Comanda enviada direto para: '+escapeHtml(printer)+'<br><small>Modo PERTO TEC: sem emojis, QR nativo e sem travar pedidos.</small>';
 }
+
 
 function htmlComandaPedido(p){
   const cfg=getConfigImpressora();
