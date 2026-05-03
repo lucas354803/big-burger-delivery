@@ -106,22 +106,34 @@ function abrirWhats(p,tipo){
 // Para funcionar 100% sem abrir a tela de impressão, instale e deixe o QZ Tray aberto no Windows.
 let qzConectando = null;
 function qzDisponivel(){ return typeof window.qz !== 'undefined' && qz.websocket; }
+function qzTimeout(ms, msg){
+  return new Promise((_, reject)=>setTimeout(()=>reject(new Error(msg)), ms));
+}
 function configurarSegurancaQZ(){
   if(!qzDisponivel() || window.__bigBurgerQzSecurityOk) return;
   try{
     // Modo sem certificado próprio: o QZ vai pedir permissão na primeira vez.
-    // Marque "Remember this decision / Permitir sempre" no QZ Tray.
-    qz.security.setCertificatePromise((resolve)=>resolve(null));
-    qz.security.setSignaturePromise(()=> (resolve)=>resolve(null));
+    // No aviso do QZ Tray, marque Permitir sempre/Remember this decision.
+    qz.security.setCertificatePromise((resolve)=>resolve(''));
+    qz.security.setSignaturePromise(()=> (resolve)=>resolve(''));
     window.__bigBurgerQzSecurityOk=true;
   }catch(e){ console.warn('QZ security config:', e); }
 }
 async function conectarQZ(){
-  if(!qzDisponivel()) throw new Error('Biblioteca QZ não carregou. Verifique sua internet e se o script qz-tray.js carregou.');
+  if(!qzDisponivel()) throw new Error('Biblioteca QZ não carregou. Atualize a página com internet ou instale o QZ Tray.');
   configurarSegurancaQZ();
   if(qz.websocket.isActive()) return true;
   if(!qzConectando){
-    qzConectando = qz.websocket.connect({retries:2, delay:700}).finally(()=>{qzConectando=null;});
+    const tentativa = qz.websocket.connect({
+      host:['localhost','127.0.0.1'],
+      usingSecure:true,
+      retries:0,
+      delay:0
+    });
+    qzConectando = Promise.race([
+      tentativa,
+      qzTimeout(8000, 'Não consegui conectar no QZ Tray. Abra o QZ Tray no Windows, deixe ele perto do relógio e clique em Permitir/Sempre permitir quando aparecer.')
+    ]).finally(()=>{qzConectando=null;});
   }
   await qzConectando;
   return true;
@@ -193,7 +205,7 @@ async function carregarImpressorasQZ(){
   const out=document.getElementById('impressoraStatus');
   const select=document.getElementById('imp_qz_nome');
   try{
-    if(out) out.innerHTML='🔌 Conectando no QZ Tray...';
+    if(out) out.innerHTML='Conectando no QZ Tray... se passar de 8 segundos, abra o QZ Tray perto do relógio do Windows.';
     await conectarQZ();
     const printers=await qz.printers.find();
     if(select){
@@ -201,19 +213,19 @@ async function carregarImpressorasQZ(){
       select.innerHTML='<option value="">Impressora padrão do Windows</option>' + printers.map(n=>`<option value="${escapeHtml(n)}">${escapeHtml(n)}</option>`).join('');
       select.value=atual;
     }
-    if(out) out.innerHTML='✅ QZ conectado. Impressoras carregadas.';
+    if(out) out.innerHTML='QZ conectado. Impressoras carregadas. Escolha sua impressora e salve.';
   }catch(e){
-    if(out) out.innerHTML='<span class="err-inline">Erro no QZ: '+escapeHtml(e.message||String(e))+'</span>';
+    if(out) out.innerHTML='<span class="err-inline">QZ não conectou: '+escapeHtml(e.message||String(e))+'<br>Enquanto isso a impressão normal com logo e QR Code continua funcionando.</span>';
   }
 }
 async function testarConexaoQZ(){
   const out=document.getElementById('impressoraStatus');
   try{
-    if(out) out.innerHTML='🔌 Testando QZ Tray...';
+    if(out) out.innerHTML='Testando QZ Tray...';
     await conectarQZ();
-    if(out) out.innerHTML='✅ QZ Tray funcionando. Agora clique em "Carregar impressoras" e escolha sua térmica.';
+    if(out) out.innerHTML='QZ Tray funcionando. Agora clique em Carregar impressoras e escolha sua térmica.';
   }catch(e){
-    if(out) out.innerHTML='<span class="err-inline">QZ não conectado. Instale/abra o QZ Tray. Erro: '+escapeHtml(e.message||String(e))+'</span>';
+    if(out) out.innerHTML='<span class="err-inline">QZ não conectado: '+escapeHtml(e.message||String(e))+'</span>';
   }
 }
 async function imprimirPedidoQZ(p){
