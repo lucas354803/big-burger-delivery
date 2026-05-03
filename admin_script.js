@@ -133,8 +133,8 @@ function qzDisponivel(){ return typeof window.qz !== 'undefined' && qz.websocket
 function configurarSegurancaQZ(){
   if(!qzDisponivel() || window.__bigBurgerQzSecurityOk) return;
   try{
-    // Modo sem certificado próprio: o QZ vai pedir permissão na primeira vez.
-    // Marque "Remember this decision / Permitir sempre" no QZ Tray.
+    // Sem certificado assinado próprio: se o QZ não estiver em modo auto-accept, ele pode pedir permissão.
+    // Use o arquivo CONFIGURAR QZ SEM AVISO.bat e reinicie o QZ Tray.
     qz.security.setCertificatePromise((resolve)=>resolve(null));
     qz.security.setSignaturePromise(()=> (resolve)=>resolve(null));
     window.__bigBurgerQzSecurityOk=true;
@@ -253,17 +253,73 @@ async function testarConexaoQZ(){
     if(out) out.innerHTML='<span class="err-inline">QZ não conectado. Instale/abra o QZ Tray. Erro: '+escapeHtml(e.message||String(e))+'</span>';
   }
 }
+
+function qrCodeEscpos(texto){
+  // QR Code nativo ESC/POS: não usa emoji, não depende de imagem e costuma funcionar na PERTO Printer TEC.
+  const data=textoTermicoSeguro(texto||'');
+  const len=data.length+3;
+  const pL=String.fromCharCode(len%256);
+  const pH=String.fromCharCode(Math.floor(len/256));
+  return '(k 1A2 ' + // modelo 2
+         '(k 1C' +       // tamanho
+         '(k 1E1' +       // correção M
+         '(k' + pL + pH + '1P0' + data +
+         '(k 1Q0';
+}
+async function urlImagemBase64(url){
+  const r=await fetch(url,{cache:'no-store'});
+  if(!r.ok) throw new Error('Logo não carregou');
+  const blob=await r.blob();
+  return await new Promise((resolve,reject)=>{
+    const fr=new FileReader();
+    fr.onload=()=>resolve(String(fr.result).split(',')[1]||'');
+    fr.onerror=reject;
+    fr.readAsDataURL(blob);
+  });
+}
+function textoComandaQZComQr(p){
+  const txt=textoComandaQZ(p);
+  const link=location.origin+'/motoboy?pedido='+p.id;
+  // troca a linha do link por QR nativo real
+  return txt.replace(/QR CODE DO MOTOBOY
+[\s\S]*?Obrigado pela preferencia!
+/, 'QR CODE DO MOTOBOY
+' + qrCodeEscpos(link) + '
+Obrigado pela preferencia!
+');
+}
 async function imprimirPedidoQZ(p){
   if(!p){alert('Pedido não encontrado para imprimir.');return;}
   await conectarQZ();
   const cfg=getConfigImpressora();
   const printer = cfg.qzImpressora ? await qz.printers.find(cfg.qzImpressora) : await qz.printers.getDefault();
-  // Modo compatível com PERTO Printer TEC: texto ESC/POS sem emoji, sem acento especial e sem imagem/pixel.
-  // Isso evita ????? e evita papel em branco.
-  const rawConfig = qz.configs.create(printer, {encoding:'CP850', copies:1});
-  await qz.print(rawConfig, [{type:'raw', format:'plain', data:textoComandaQZ(p)}]);
+  const rawConfig = qz.configs.create(printer, {
+    encoding:'CP850',
+    copies:1,
+    rasterize:false,
+    margins:0
+  });
+  const dados=[];
+  // Logo: envia como imagem ESC/POS antes da comanda. Se a impressora não aceitar imagem, cai para texto normal.
+  if(cfg.logo!==false){
+    try{
+      const logo64=await urlImagemBase64('/print-logo.png');
+      dados.push({type:'image', format:'base64', data:logo64, options:{language:'ESCPOS', dotDensity:'double', imageWidth:260}});
+      dados.push({type:'raw', format:'plain', data:'
+'});
+    }catch(e){
+      console.warn('Logo QZ não carregou, imprimindo sem imagem:', e);
+    }
+  }
+  dados.push({type:'raw', format:'plain', data:textoComandaQZComQr(p)});
+  try{
+    await qz.print(rawConfig, dados);
+  }catch(e){
+    console.warn('Falha com logo/QR nativo; usando texto seguro:', e);
+    await qz.print(rawConfig, [{type:'raw', format:'plain', data:textoComandaQZ(p)}]);
+  }
   const out=document.getElementById('impressoraStatus');
-  if(out) out.innerHTML='✅ Comanda térmica enviada direto para: '+escapeHtml(printer)+' — modo seguro sem emojis.';
+  if(out) out.innerHTML='✅ Comanda enviada para '+escapeHtml(printer)+' com layout seguro, sem emojis, com logo/QR quando compatível.';
 }
 
 function htmlComandaPedido(p){
