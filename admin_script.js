@@ -85,10 +85,39 @@ function pedidosVisiveisPainel(){return pedidosCache.filter(p=>!pedidoArquivado(
 function pedidosHistoricoRelatorio(){return pedidosCache.filter(p=>pedidoArquivado(p) && normalizarStatusPedido(p.status)==='finalizado');}
 function numeroPedido(p){ if(p && p.numero_pedido) return String(p.numero_pedido).padStart(2, '0'); return String(p?.id||'').split('-')[0].toUpperCase(); }
 function shortId(id){return String(id||'').split('-')[0].toUpperCase()}
+function normalizarListaComplementos(valor){
+  if(!valor) return [];
+  if(typeof valor==='string'){
+    try{ valor=JSON.parse(valor); }catch(e){ return valor.trim() ? [valor.trim()] : []; }
+  }
+  if(!Array.isArray(valor)) valor=[valor];
+  return valor.map(a=>{
+    if(!a) return '';
+    if(typeof a==='string') return a;
+    const nome=a.nome||a.name||a.titulo||a.title||a.descricao||a.label||'Adicional';
+    const preco=Number(a.preco||a.price||a.valor||0);
+    return `${nome}${preco>0?` (${brl(preco)})`:''}`;
+  }).filter(Boolean);
+}
+function observacaoItem(i){
+  return i?.observacao || i?.observacao_item || i?.obs || i?.note || i?.notes || '';
+}
 function itensTexto(itens){
   try{ if(typeof itens==='string') itens=JSON.parse(itens); }catch(e){}
   if(!Array.isArray(itens)||!itens.length) return 'Itens não informados';
-  return itens.map(i=>`${i.qtd||i.quantidade||1}x ${i.nome||i.name||'Produto'}${i.preco?` - ${brl(i.preco)}`:''}`).join('\\n');
+  return itens.map(i=>{
+    const qtd=i.qtd||i.quantidade||i.quantity||1;
+    const nome=i.nome||i.name||i.produto_nome||'Produto';
+    const preco=Number(i.preco||i.valor||i.total||i.price||0);
+    const adicionais=normalizarListaComplementos(i.addons||i.adicionais||i.complementos||i.extras||i.opcionais);
+    const obs=observacaoItem(i);
+    let linha=`${qtd}x ${nome}${preco>0?` - ${brl(preco)}`:''}`;
+    if(adicionais.length) linha += `
+   + Adicionais: ${adicionais.join(', ')}`;
+    if(obs) linha += `
+   Obs item: ${obs}`;
+    return linha;
+  }).join('\n');
 }
 function enderecoPedido(p){return [p.cidade,p.bairro,p.rua].filter(Boolean).join(' • ') || p.endereco || ''}
 function limparTel(t){return String(t||'').replace(/\D/g,'').replace(/^55/,'')}
@@ -377,7 +406,7 @@ async function atualizarStatusPedido(id,status,whatsTipo){
     const r=await fetch('/api?route=order-status',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({id,status,tempo_estimado_minutos:tempo,enviar_whatsapp:true})});
     const d=await r.json();
     if(!r.ok||!d.ok) throw new Error(d.error||JSON.stringify(d));
-    if(status==='em_preparo') imprimirPedidoAoAceitar(pedido);
+    if(status==='em_preparo'){ pararSomPedido(); imprimirPedidoAoAceitar(pedido); }
 
     let roboResultado=null;
     try{
@@ -395,7 +424,7 @@ async function atualizarStatusPedido(id,status,whatsTipo){
 }
 function cardPedido(p){
   const st=normalizarStatusPedido(p.status);
-  const itens=itensTexto(p.itens).replaceAll('\\n','<br>');
+  const itens=itensTexto(p.itens).replaceAll('\n','<br>');
   let acoes='';
   if(st==='em_analise') acoes=`<button class="order-action accept" onclick="atualizarStatusPedido('${p.id}','em_preparo','aceito')">✅ Aceitar pedido</button>`;
   if(st==='em_preparo') acoes=`<button class="order-action ready" onclick="atualizarStatusPedido('${p.id}','pronto','pronto')">🔵 Marcar pronto</button><button class="order-action delivery" onclick="atualizarStatusPedido('${p.id}','em_entrega','entrega')">🛵 Saiu para entrega</button>`;
@@ -404,9 +433,45 @@ function cardPedido(p){
   if(st==='finalizado') acoes=`<span class="order-done">Pedido finalizado</span>`;
   return `<div class="order-card"><div class="order-title"><b>#${numeroPedido(p)}</b><span>${brl(p.valor_total)}</span></div><div class="order-customer">👤 ${p.cliente_nome||''}<br>📞 ${p.cliente_telefone||''}</div><div class="order-items">${itens}</div><div class="order-address">📍 ${enderecoPedido(p)}<br>💳 ${p.forma_pagamento||'pix'} • 🚚 ${brl(p.taxa_entrega||0)}</div><div class="order-actions">${acoes}<button class="order-action print" onclick='imprimirPedido(${JSON.stringify(p).replaceAll("'","&#39;")})'>🖨️ Imprimir</button><button class="order-action whats" onclick='abrirWhats(${JSON.stringify(p).replaceAll("'","&#39;")},"aceito")'>💬 WhatsApp</button></div></div>`;
 }
-function tocarSomPedido(){try{const ctx=new (window.AudioContext||window.webkitAudioContext)();const osc=ctx.createOscillator();const gain=ctx.createGain();osc.type='sine';osc.frequency.value=880;gain.gain.value=.12;osc.connect(gain);gain.connect(ctx.destination);osc.start();setTimeout(()=>{osc.frequency.value=660},120);setTimeout(()=>{osc.stop();ctx.close()},360)}catch(e){}}
+let somPedidoLoopTimer=null;
+let somPedidoAudioCtx=null;
+function getSomPedidoCtx(){
+  try{
+    if(!somPedidoAudioCtx) somPedidoAudioCtx=new (window.AudioContext||window.webkitAudioContext)();
+    if(somPedidoAudioCtx.state==='suspended') somPedidoAudioCtx.resume().catch(()=>{});
+    return somPedidoAudioCtx;
+  }catch(e){return null;}
+}
+function beepPedido(freq=980, inicio=0, duracao=0.18, volume=0.18){
+  const ctx=getSomPedidoCtx(); if(!ctx) return;
+  const osc=ctx.createOscillator(); const gain=ctx.createGain();
+  osc.type='square'; osc.frequency.value=freq;
+  gain.gain.setValueAtTime(0.0001, ctx.currentTime+inicio);
+  gain.gain.exponentialRampToValueAtTime(volume, ctx.currentTime+inicio+0.02);
+  gain.gain.exponentialRampToValueAtTime(0.0001, ctx.currentTime+inicio+duracao);
+  osc.connect(gain); gain.connect(ctx.destination);
+  osc.start(ctx.currentTime+inicio); osc.stop(ctx.currentTime+inicio+duracao+0.03);
+}
+function tocarSomPedido(){
+  beepPedido(1040,0,0.16,.20);
+  beepPedido(780,.20,0.16,.18);
+  beepPedido(1040,.40,0.22,.20);
+}
+function iniciarSomPedidoAteAceitar(){
+  if(!somPedidosLigado || somPedidoLoopTimer) return;
+  tocarSomPedido();
+  somPedidoLoopTimer=setInterval(()=>{ if(somPedidosLigado) tocarSomPedido(); }, 1400);
+}
+function pararSomPedido(){
+  if(somPedidoLoopTimer){ clearInterval(somPedidoLoopTimer); somPedidoLoopTimer=null; }
+}
+function atualizarSomPedidoPendente(){
+  const temPedidoPendente=pedidosVisiveisPainel().some(p=>normalizarStatusPedido(p.status)==='em_analise');
+  if(temPedidoPendente && somPedidosLigado) iniciarSomPedidoAteAceitar(); else pararSomPedido();
+}
 function atualizarBotaoSom(){const b=document.getElementById('btnSomPedidos');if(b)b.textContent=somPedidosLigado?'🔔 Som ligado':'🔕 Som desligado'}
-function toggleSomPedidos(){somPedidosLigado=!somPedidosLigado;localStorage.setItem('somPedidosLigado',somPedidosLigado?'1':'0');atualizarBotaoSom()}
+function toggleSomPedidos(){somPedidosLigado=!somPedidosLigado;localStorage.setItem('somPedidosLigado',somPedidosLigado?'1':'0');if(!somPedidosLigado) pararSomPedido(); else atualizarSomPedidoPendente();atualizarBotaoSom()}
+window.addEventListener('click',()=>{getSomPedidoCtx();},{once:true});
 function renderPedidosGestor(){
   const out=document.getElementById('pedidosBoard'); if(!out) return;
   const busca=(document.getElementById('pedidoBusca')?.value||'').toLowerCase().trim();
@@ -429,7 +494,6 @@ async function loadPedidos(silencioso=false){
     state.pedidosHistorico=pedidosHistoricoRelatorio();
     state.financeiro=d.resumo||null;
     const novoTotal=pedidosCache.length;
-    if(ultimoTotalPedidos && novoTotal>ultimoTotalPedidos && somPedidosLigado) tocarSomPedido();
     pedidosCache.forEach(p=>{
       const antes=anteriores.find(a=>String(a.id)===String(p.id));
       const agora=normalizarStatusPedido(p.status);
@@ -438,6 +502,7 @@ async function loadPedidos(silencioso=false){
     });
     ultimoTotalPedidos=novoTotal;
     renderPedidosGestor();
+    atualizarSomPedidoPendente();
     // Não atualiza o histórico junto com o painel de pedidos.
     // O histórico agora carrega só ao abrir a aba, trocar página, pesquisar ou zerar relatório.
   }catch(e){if(out && !silencioso) out.innerHTML='<div class="err">Erro ao carregar pedidos: '+e.message+'</div>'}
