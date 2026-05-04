@@ -908,3 +908,111 @@
     font-size: 11px !important;
   }
 }
+
+/* =========================================================
+   AJUSTE FINAL MOBILE: status e carrinho sem cortar
+   ========================================================= */
+@media (max-width: 768px) {
+  .topbar {
+    display: grid !important;
+    grid-template-columns: 1fr auto !important;
+    grid-template-areas:
+      "brand brand"
+      "status cart" !important;
+    align-items: center !important;
+    gap: 8px 10px !important;
+    padding: 10px 12px 68px !important;
+    min-height: 0 !important;
+    height: auto !important;
+    overflow: visible !important;
+  }
+
+  .brand {
+    grid-area: brand !important;
+    width: 100% !important;
+  }
+
+  .header-status {
+    grid-area: status !important;
+    order: unset !important;
+    width: 100% !important;
+    max-width: none !important;
+    min-width: 0 !important;
+    margin: 0 !important;
+    padding: 7px 10px !important;
+    border-radius: 16px !important;
+    font-size: 13px !important;
+    line-height: 1.05 !important;
+    white-space: nowrap !important;
+    overflow: hidden !important;
+    text-overflow: ellipsis !important;
+    box-shadow: 0 4px 12px rgba(22,101,52,.12) !important;
+  }
+
+  .header-status small {
+    display: block !important;
+    margin-top: 2px !important;
+    font-size: 10px !important;
+    line-height: 1.1 !important;
+    white-space: nowrap !important;
+    overflow: hidden !important;
+    text-overflow: ellipsis !important;
+  }
+
+  .cart-pill {
+    grid-area: cart !important;
+    order: unset !important;
+    width: 118px !important;
+    min-width: 118px !important;
+    max-width: 118px !important;
+    margin: 0 !important;
+    padding: 7px 9px !important;
+    border-radius: 16px !important;
+    display: flex !important;
+    flex-direction: column !important;
+    align-items: flex-start !important;
+    justify-content: center !important;
+    gap: 1px !important;
+    font-size: 12px !important;
+    line-height: 1.05 !important;
+    white-space: nowrap !important;
+    overflow: hidden !important;
+  }
+
+  .cart-pill b {
+    font-size: 15px !important;
+    line-height: 1.05 !important;
+    text-align: left !important;
+    width: 100% !important;
+    overflow: hidden !important;
+    text-overflow: ellipsis !important;
+  }
+
+  .topbar nav {
+    top: auto !important;
+    height: 56px !important;
+  }
+
+  .layout {
+    padding-top: 14px !important;
+  }
+}
+
+@media (max-width: 380px) {
+  .cart-pill {
+    width: 104px !important;
+    min-width: 104px !important;
+    max-width: 104px !important;
+    font-size: 11px !important;
+    padding: 7px 8px !important;
+  }
+
+  .cart-pill b {
+    font-size: 13px !important;
+  }
+
+  .header-status {
+    font-size: 12px !important;
+    padding: 7px 9px !important;
+  }
+}
