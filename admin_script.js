@@ -102,22 +102,37 @@ function normalizarListaComplementos(valor){
 function observacaoItem(i){
   return i?.observacao || i?.observacao_item || i?.obs || i?.note || i?.notes || '';
 }
-function itensTexto(itens){
+function normalizarItensPedido(itens){
   try{ if(typeof itens==='string') itens=JSON.parse(itens); }catch(e){}
-  if(!Array.isArray(itens)||!itens.length) return 'Itens não informados';
+  if(!Array.isArray(itens)) return [];
   return itens.map(i=>{
     const qtd=i.qtd||i.quantidade||i.quantity||1;
-    const nome=i.nome||i.name||i.produto_nome||'Produto';
+    const nome=i.nome||i.name||i.produto_nome||i.produto||'Produto';
     const preco=Number(i.preco||i.valor||i.total||i.price||0);
-    const adicionais=normalizarListaComplementos(i.addons||i.adicionais||i.complementos||i.extras||i.opcionais);
+    const adicionais=normalizarListaComplementos(i.addons||i.adicionais||i.complementos||i.extras||i.opcionais||i.opcoes||i.options);
     const obs=observacaoItem(i);
-    let linha=`${qtd}x ${nome}${preco>0?` - ${brl(preco)}`:''}`;
-    if(adicionais.length) linha += `
-   + Adicionais: ${adicionais.join(', ')}`;
-    if(obs) linha += `
-   Obs item: ${obs}`;
+    return {qtd,nome,preco,adicionais,obs};
+  });
+}
+function itensTexto(itens){
+  const lista=normalizarItensPedido(itens);
+  if(!lista.length) return 'Itens não informados';
+  return lista.map(i=>{
+    let linha=`${i.qtd}x ${i.nome}${i.preco>0?` - ${brl(i.preco)}`:''}`;
+    if(i.adicionais.length) linha += '\n' + i.adicionais.map(a=>`  + ${a}`).join('\n');
+    if(i.obs) linha += `\n  Obs: ${i.obs}`;
     return linha;
-  }).join('\n');
+  }).join('\n\n');
+}
+function itensHtmlComanda(itens){
+  const lista=normalizarItensPedido(itens);
+  if(!lista.length) return '<div class="item-box"><b>Itens não informados</b></div>';
+  return lista.map(i=>{
+    const adds=i.adicionais.map(a=>`<div class="item-add">+ ${escapeHtml(textoPrint(a))}</div>`).join('');
+    const obs=i.obs?`<div class="item-obs">Obs: ${escapeHtml(textoPrint(i.obs))}</div>`:'';
+    const preco=i.preco>0?` <span class="item-price">${brl(i.preco)}</span>`:'';
+    return `<div class="item-box"><div class="item-name">${escapeHtml(String(i.qtd))}x ${escapeHtml(textoPrint(i.nome))}${preco}</div>${adds}${obs}</div>`;
+  }).join('');
 }
 function enderecoPedido(p){return [p.cidade,p.bairro,p.rua].filter(Boolean).join(' • ') || p.endereco || ''}
 function limparTel(t){return String(t||'').replace(/\D/g,'').replace(/^55/,'')}
@@ -169,7 +184,7 @@ function montarHtmlComandaQZ(p){
   const data=new Date().toLocaleString('pt-BR');
   const logoUrl=location.origin + '/print-logo.png';
   const qrUrl='https://api.qrserver.com/v1/create-qr-code/?size=220x220&margin=1&data=' + encodeURIComponent(location.origin+'/motoboy?pedido='+p.id);
-  const itens=itensTexto(p.itens).split('\n').map(l=>`<div class="item-line">${escapeHtml(textoPrint(l))}</div>`).join('');
+  const itens=itensHtmlComanda(p.itens);
   const obs=p.observacao ? `<div class="sec obs"><b>OBSERVAÇÃO</b><br>${escapeHtml(textoPrint(p.observacao))}</div>` : '';
   const largura=papel===58 ? 210 : 300;
   const logoW=papel===58 ? 88 : 120;
@@ -178,7 +193,7 @@ function montarHtmlComandaQZ(p){
     html,body{margin:0;padding:0;background:#fff;color:#000;font-family:Arial,Helvetica,sans-serif;-webkit-print-color-adjust:exact;print-color-adjust:exact}
     .ticket{width:${largura}px;margin:0 auto;padding:${margem}px;font-size:${fonte}px;font-weight:${peso};line-height:1.32;color:#000}
     .center{text-align:center}.logo{width:${logoW}px;max-height:92px;object-fit:contain;margin:0 auto 4px;display:block}
-    h1{font-size:${titulo}px;line-height:1;margin:2px 0 2px;font-weight:900;letter-spacing:.4px}.sub{font-size:${Math.max(11,fonte-1)}px;margin:0 0 6px;font-weight:800}.dash{border-top:1px dashed #000;margin:7px 0}.row{display:flex;justify-content:space-between;gap:8px;margin:3px 0}.label{font-weight:900}.pedido{font-size:${Math.max(18,fonte+6)}px;font-weight:900}.item-line{border:1px solid #000;border-radius:6px;padding:5px 6px;margin:5px 0;font-size:${Math.max(13,fonte+1)}px;font-weight:900}.endereco{font-size:${Math.max(12,fonte)}px;font-weight:800}.total{font-size:${Math.max(20,fonte+8)}px;font-weight:900;text-align:right;margin-top:6px}.obs{white-space:pre-wrap}.thanks{font-weight:900;margin-top:5px}.qr{width:${qrW}px;height:${qrW}px;margin:3px auto;display:block}.small{font-size:10px}.cut{height:16px}
+    h1{font-size:${titulo}px;line-height:1;margin:2px 0 2px;font-weight:900;letter-spacing:.4px}.sub{font-size:${Math.max(11,fonte-1)}px;margin:0 0 6px;font-weight:800}.dash{border-top:1px dashed #000;margin:7px 0}.row{display:flex;justify-content:space-between;gap:8px;margin:3px 0}.label{font-weight:900}.pedido{font-size:${Math.max(18,fonte+6)}px;font-weight:900}.item-box{border:1px solid #000;border-radius:6px;padding:6px 7px;margin:6px 0;font-size:${Math.max(13,fonte+1)}px;font-weight:900;page-break-inside:avoid}.item-name{font-weight:900}.item-price{float:right}.item-add{padding-left:10px;margin-top:2px;font-weight:800}.item-obs{padding-left:10px;margin-top:3px;font-weight:900}.endereco{font-size:${Math.max(12,fonte)}px;font-weight:800}.total{font-size:${Math.max(20,fonte+8)}px;font-weight:900;text-align:right;margin-top:6px}.obs{white-space:pre-wrap}.thanks{font-weight:900;margin-top:5px}.qr{width:${qrW}px;height:${qrW}px;margin:3px auto;display:block}.small{font-size:10px}.cut{height:16px}
   </style></head><body><div class="ticket">
     <div class="center">${cfg.logo!==false?`<img src="${logoUrl}" class="logo">`:''}<h1>${escapeHtml(cfg.nome||'BIG BURGER')}</h1><div class="sub">${escapeHtml(cfg.subtitulo||'COMANDA DE PEDIDO')}<br>${data}</div></div>
     <div class="dash"></div>
@@ -279,10 +294,10 @@ function htmlComandaPedido(p, autoPrint=true){
   const titulo=Number(cfg.titulo||22);
   const margem=Number(cfg.margem||6);
   const peso=cfg.negrito!==false?'800':'400';
-  const itens=itensTexto(p.itens).split('\n').map(l=>escapeHtml(textoPrint(l))).join('<br>');
+  const itens=itensHtmlComanda(p.itens);
   const data=new Date().toLocaleString('pt-BR');
   return `<!doctype html><html><head><meta charset="utf-8"><title>Comanda #${numeroPedido(p)}</title><style>
-  *{box-sizing:border-box}body{font-family:Arial,Helvetica,sans-serif;margin:0;padding:${margem}px;color:#000;background:#fff;font-size:${fonte}px;font-weight:${peso}}.ticket{width:${papel}mm;max-width:${papel}mm;margin:0 auto}.logo{display:block;width:${papel==58?'34':'42'}mm;max-height:28mm;object-fit:contain;margin:0 auto 6px}h1{font-size:${titulo}px;text-align:center;margin:0 0 4px;font-weight:900}.sub{text-align:center;border-bottom:1px dashed #000;padding-bottom:8px;margin-bottom:8px;font-weight:${peso}}.row{display:flex;justify-content:space-between;gap:8px;margin:4px 0}.big{font-size:${Math.max(fonte+5,18)}px;font-weight:900}.sec{border-top:1px dashed #000;margin-top:8px;padding-top:8px}.items{font-size:${Math.max(fonte+2,15)}px;line-height:1.35}.total{font-size:${Math.max(fonte+7,20)}px;font-weight:900;text-align:right;margin-top:8px}.obs{font-size:${Math.max(fonte+1,14)}px;white-space:pre-wrap}@media print{body{padding:${margem}px}.ticket{width:${papel}mm;max-width:${papel}mm}button{display:none}}
+  *{box-sizing:border-box}body{font-family:Arial,Helvetica,sans-serif;margin:0;padding:${margem}px;color:#000;background:#fff;font-size:${fonte}px;font-weight:${peso}}.ticket{width:${papel}mm;max-width:${papel}mm;margin:0 auto}.logo{display:block;width:${papel==58?'34':'42'}mm;max-height:28mm;object-fit:contain;margin:0 auto 6px}h1{font-size:${titulo}px;text-align:center;margin:0 0 4px;font-weight:900}.sub{text-align:center;border-bottom:1px dashed #000;padding-bottom:8px;margin-bottom:8px;font-weight:${peso}}.row{display:flex;justify-content:space-between;gap:8px;margin:4px 0}.big{font-size:${Math.max(fonte+5,18)}px;font-weight:900}.sec{border-top:1px dashed #000;margin-top:8px;padding-top:8px}.items{font-size:${Math.max(fonte+2,15)}px;line-height:1.35}.item-box{border:1px solid #000;border-radius:6px;padding:6px 7px;margin:6px 0;page-break-inside:avoid}.item-name{font-weight:900}.item-price{float:right}.item-add{padding-left:10px;margin-top:2px}.item-obs{padding-left:10px;margin-top:3px;font-weight:900}.total{font-size:${Math.max(fonte+7,20)}px;font-weight:900;text-align:right;margin-top:8px}.obs{font-size:${Math.max(fonte+1,14)}px;white-space:pre-wrap}@media print{body{padding:${margem}px}.ticket{width:${papel}mm;max-width:${papel}mm}button{display:none}}
   </style></head><body><div class="ticket">${cfg.logo!==false?'<img src="/print-logo.png" class="logo" alt="Big Burger">':''}<h1>${escapeHtml(cfg.nome||'BIG BURGER')}</h1><div class="sub">${escapeHtml(cfg.subtitulo||'COMANDA DE PEDIDO')}<br>${data}</div><div class="row big"><span>Pedido</span><span>#${numeroPedido(p)}</span></div><div class="row"><span>Cliente</span><b>${escapeHtml(textoPrint(p.cliente_nome||''))}</b></div><div class="row"><span>Telefone</span><b>${escapeHtml(p.cliente_telefone||'')}</b></div><div class="sec"><b>ITENS</b><div class="items">${itens}</div></div><div class="sec"><b>ENDEREÇO</b><div>${escapeHtml(textoPrint(enderecoPedido(p)||'Retirada/sem endereco'))}</div></div><div class="sec"><div class="row"><span>Pagamento</span><b>${escapeHtml(p.forma_pagamento||'pix')}</b></div><div class="row"><span>Taxa entrega</span><b>${brl(p.taxa_entrega||0)}</b></div><div class="total">TOTAL: ${brl(p.valor_total||0)}</div></div>${p.observacao?`<div class="sec obs"><b>OBS:</b><br>${escapeHtml(textoPrint(p.observacao))}</div>`:''}<div class="sec" style="text-align:center"><b>QR CODE DO MOTOBOY</b><br><img style="width:${papel==58?'32':'38'}mm;height:${papel==58?'32':'38'}mm;object-fit:contain" src="https://api.qrserver.com/v1/create-qr-code/?size=180x180&data=${encodeURIComponent(location.origin+'/motoboy?pedido='+p.id)}" alt="QR Pedido"><br><small>Escanear para registrar pedido</small></div></div>${autoPrint?`<script>window.onload=function(){const imgs=[...document.images];Promise.all(imgs.map(img=>img.complete?Promise.resolve():new Promise(r=>{img.onload=img.onerror=r;setTimeout(r,1800)}))).then(()=>setTimeout(()=>window.print(),250)); if(${cfg.fecharJanela!==false?'true':'false'}){window.onafterprint=function(){setTimeout(function(){window.close();},300)}}}<\/script>`:''}</body></html>`;
 }
 function imprimirPedidoDireto(p){
