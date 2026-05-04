@@ -537,3 +537,6 @@
     line-height: 1.1 !important;
   }
 }
+
+.card-check.disabled{opacity:.45;filter:grayscale(1);}
+.card-check.disabled input{cursor:not-allowed;}

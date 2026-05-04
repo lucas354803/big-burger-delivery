@@ -159,13 +159,14 @@ function abrirProduto(i){
   modal.hidden=false;
 }
 function categoriasPermitidasProduto(produto){
-  const ids=produtoComplementoCategorias.filter(v=>v.produto_id===produto.id).map(v=>v.categoria_complemento_id);
-  return ids.length?new Set(ids):null;
+  const ids=produtoComplementoCategorias.filter(v=>String(v.produto_id)===String(produto.id)).map(v=>v.categoria_complemento_id);
+  return new Set(ids); // vazio = produto sem adicionais
 }
 function renderAddonsAgrupados(produto){
   const permitidas=categoriasPermitidasProduto(produto);
+  if(!permitidas.size) return '<p class="small">Este produto não possui adicionais.</p>';
   const gruposBase = categoriasComplementos.length ? categoriasComplementos : [{id:'geral',nome:'Adicionais',min_escolha:0,max_escolha:6}];
-  const grupos = permitidas ? gruposBase.filter(g=>permitidas.has(g.id)) : gruposBase;
+  const grupos = gruposBase.filter(g=>permitidas.has(g.id));
   let html='';
   grupos.forEach(g=>{
     const itens=adicionais.map((a,idx)=>({...a,idx})).filter(a=>(a.categoria_complemento_id||'geral')===g.id);
@@ -221,6 +222,21 @@ function atualizarBotaoPagamento(){
   btnFinalizar.textContent = f==='pix' ? 'Gerar Pix e finalizar pedido' : 'Finalizar pedido';
 }
 function nomeSelecionado(selectEl){return selectEl?.selectedOptions?.[0]?.textContent?.split('•')?.[0]?.trim()||'';}
+
+function limparPedidoDepoisDeFinalizar(){
+  carrinho=[];
+  taxaEntregaSelecionada=0;
+  if(typeof nome!=='undefined' && nome) nome.value='';
+  if(typeof telefone!=='undefined' && telefone) telefone.value='';
+  if(typeof cidade!=='undefined' && cidade) cidade.value='';
+  if(typeof bairro!=='undefined' && bairro) bairro.innerHTML='<option value="">Selecione o bairro</option>';
+  if(typeof rua!=='undefined' && rua) rua.value='';
+  if(typeof obs!=='undefined' && obs) obs.value='';
+  if(typeof formaPagamento!=='undefined' && formaPagamento) formaPagamento.value='pix';
+  renderCidadesEntrega();
+  render();
+}
+
 async function finalizar(){
   const subtotal=carrinho.reduce((s,p)=>s+p.preco,0);
   const valor=subtotal+Number(taxaEntregaSelecionada||0);
@@ -240,7 +256,11 @@ async function finalizar(){
     const data=await r.json();
     if(!r.ok)throw new Error((data.error||'Erro')+' '+(data.detalhes?JSON.stringify(data.detalhes):''));
     if(data.pix?.qr_code_base64){result.innerHTML=`<div class="ok"><h3>Pix gerado!</h3><p>Total com entrega: <b>${fmt(valor)}</b></p><img class="qr" src="data:image/png;base64,${data.pix.qr_code_base64}"><textarea readonly>${data.pix.pix_copia_cola}</textarea><p class="small">Após pagar, o pedido entra automaticamente no painel e avisa a loja.</p></div>`}
-    else{result.innerHTML=`<div class="ok"><h3>Pedido criado!</h3><p>Forma de pagamento: <b>${forma==='dinheiro'?'Dinheiro':'Cartão na entrega'}</b></p><p>Total com entrega: <b>${fmt(valor)}</b></p></div>`}
+    else{
+      result.innerHTML=`<div class="ok"><h3>Pedido criado!</h3><p>Forma de pagamento: <b>${forma==='dinheiro'?'Dinheiro':'Cartão na entrega'}</b></p><p>Total com entrega: <b>${fmt(valor)}</b></p><p class="small">Carrinho limpo. Tela pronta para novo pedido.</p></div>`;
+      limparPedidoDepoisDeFinalizar();
+      setTimeout(()=>{ if(result) result.innerHTML=''; }, 3500);
+    }
   }catch(e){result.innerHTML=`<div class="err"><b>Erro:</b> ${e.message}</div>`}
 }
 carregarMenu();
