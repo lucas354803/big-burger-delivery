@@ -95,10 +95,9 @@ function renderStatusLoja(){
 function produtoCardHtml(p){
   const i=produtos.findIndex(x=>String(x.id)===String(p.id));
   return `<article class="card" onclick="abrirProduto(${i})">
-      ${p.badge?`<div class="badge">${p.badge}</div>`:''}
-      ${p.desconto_ativo&&p.preco_promocional?`<div class="badge discount">OFERTA</div>`:''}
       <div class="food-img" style="${p.imagem_url?`background-image:url('${p.imagem_url}')`:''}"></div>
       <div class="card-body">
+        ${(p.desconto_ativo&&p.preco_promocional)||p.badge?`<div class="card-badges">${p.desconto_ativo&&p.preco_promocional?`<span class="badge discount">OFERTA</span>`:''}${p.badge?`<span class="badge">${p.badge}</span>`:''}</div>`:''}
         <h3>${p.nome}</h3>
         <p>${p.descricao||''}</p>
         <div class="card-foot">

@@ -1016,3 +1016,56 @@
     padding: 7px 9px !important;
   }
 }
+
+/* =========================================================
+   CORREÇÃO FINAL DOS SELOS NO MOBILE
+   - OFERTA e MAIS PEDIDO não ficam mais por cima do nome
+   - Os selos ficam em uma linha própria no canto do card
+   ========================================================= */
+.card-badges{
+  display:flex;
+  align-items:center;
+  gap:6px;
+  flex-wrap:wrap;
+  margin:0 0 7px 0;
+  position:relative;
+  z-index:3;
+}
+.card-badges .badge,
+.card-badges .badge.discount{
+  position:static!important;
+  inset:auto!important;
+  display:inline-flex!important;
+  align-items:center!important;
+  justify-content:center!important;
+  width:auto!important;
+  max-width:100%!important;
+  line-height:1!important;
+  white-space:nowrap!important;
+  border-radius:10px!important;
+  padding:6px 9px!important;
+  font-size:12px!important;
+  font-weight:1000!important;
+  box-shadow:none!important;
+}
+.card-badges .badge{
+  background:#d1fae5!important;
+  color:#059669!important;
+}
+.card-badges .badge.discount{
+  background:#d1fae5!important;
+  color:#059669!important;
+}
+
+@media (max-width:768px){
+  .card .card-body{padding-top:12px!important;}
+  .card-badges{margin-bottom:7px!important;gap:5px!important;}
+  .card-badges .badge,
+  .card-badges .badge.discount{
+    font-size:11px!important;
+    padding:5px 8px!important;
+    border-radius:9px!important;
+    letter-spacing:0!important;
+  }
+  .card h3{margin-top:0!important;clear:both!important;}
+}
