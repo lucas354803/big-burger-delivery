@@ -540,3 +540,371 @@
 
 .card-check.disabled{opacity:.45;filter:grayscale(1);}
 .card-check.disabled input{cursor:not-allowed;}
+
+/* =========================================================
+   MOBILE APP PROFISSIONAL - MODELO CARDAPIO CELULAR
+   Mantem desktop igual e reorganiza somente telas pequenas.
+   ========================================================= */
+@media (max-width: 768px) {
+  body {
+    background: #f3f4f6 !important;
+    color: #1f2937 !important;
+    padding-bottom: 86px !important;
+  }
+
+  .topbar {
+    background: #ffffff !important;
+    color: #1f2937 !important;
+    border-bottom: 1px solid #e5e7eb !important;
+    box-shadow: 0 2px 14px rgba(15,23,42,.08) !important;
+    padding: 10px 14px !important;
+    border-radius: 0 !important;
+  }
+
+  .brand strong,
+  .brand span,
+  .brand small,
+  .cart-pill,
+  .cart-pill b {
+    color: #1f2937 !important;
+  }
+
+  .logo-img {
+    box-shadow: 0 3px 12px rgba(15,23,42,.16) !important;
+  }
+
+  .header-status {
+    order: 2 !important;
+    width: auto !important;
+    min-width: 0 !important;
+    margin-left: auto !important;
+    background: #dcfce7 !important;
+    color: #166534 !important;
+    border: 1px solid #86efac !important;
+    border-radius: 999px !important;
+    padding: 7px 11px !important;
+    font-size: 12px !important;
+    line-height: 1.05 !important;
+  }
+
+  .header-status small {
+    display: block !important;
+    color: #166534 !important;
+    font-size: 10px !important;
+  }
+
+  .cart-pill {
+    order: 3 !important;
+    width: 100% !important;
+    display: flex !important;
+    justify-content: space-between !important;
+    align-items: center !important;
+    background: #111827 !important;
+    color: #fff !important;
+    padding: 9px 12px !important;
+    border-radius: 14px !important;
+    margin: 4px 0 0 !important;
+  }
+
+  .cart-pill b {
+    color: #fff !important;
+    display: inline !important;
+  }
+
+  .topbar nav {
+    position: fixed !important;
+    left: 0 !important;
+    right: 0 !important;
+    bottom: 0 !important;
+    z-index: 9999 !important;
+    order: unset !important;
+    width: 100% !important;
+    display: grid !important;
+    grid-template-columns: repeat(4, 1fr) !important;
+    gap: 0 !important;
+    padding: 7px 8px 9px !important;
+    background: rgba(255,255,255,.98) !important;
+    border-top: 1px solid #e5e7eb !important;
+    box-shadow: 0 -8px 24px rgba(15,23,42,.12) !important;
+    overflow: visible !important;
+  }
+
+  .topbar nav a {
+    display: flex !important;
+    flex-direction: column !important;
+    align-items: center !important;
+    justify-content: center !important;
+    gap: 3px !important;
+    color: #6b7280 !important;
+    background: transparent !important;
+    border: 0 !important;
+    border-radius: 14px !important;
+    padding: 8px 4px !important;
+    font-size: 11px !important;
+    line-height: 1.1 !important;
+    white-space: nowrap !important;
+  }
+
+  .topbar nav a.active,
+  .topbar nav a:hover {
+    color: #eab308 !important;
+    background: #fff7cc !important;
+  }
+
+  .layout {
+    display: flex !important;
+    flex-direction: column !important;
+    gap: 14px !important;
+    padding: 12px !important;
+    max-width: 100% !important;
+  }
+
+  .content {
+    order: 1 !important;
+  }
+
+  .sidebar {
+    order: 2 !important;
+  }
+
+  .hero-pro {
+    background: #ffffff !important;
+    color: #1f2937 !important;
+    border: 1px solid #e5e7eb !important;
+    box-shadow: 0 6px 18px rgba(15,23,42,.08) !important;
+    border-radius: 18px !important;
+    padding: 16px !important;
+  }
+
+  .hero-copy h1,
+  .hero-copy h1 span {
+    color: #111827 !important;
+    text-shadow: none !important;
+  }
+
+  .hero-copy h1 span {
+    color: #e21b1b !important;
+  }
+
+  .hero-copy p:not(.tag) {
+    color: #6b7280 !important;
+  }
+
+  .tag {
+    color: #eab308 !important;
+  }
+
+  .hero-video-card {
+    height: 170px !important;
+    border-radius: 16px !important;
+    box-shadow: none !important;
+    border: 1px solid #e5e7eb !important;
+  }
+
+  .benefits-pro {
+    display: none !important;
+  }
+
+  .section-head {
+    background: transparent !important;
+    color: #1f2937 !important;
+    margin: 22px 0 10px !important;
+  }
+
+  .section-head h2 {
+    color: #1f2937 !important;
+    font-size: 26px !important;
+    line-height: 1.15 !important;
+  }
+
+  .section-head .outline {
+    display: none !important;
+  }
+
+  .category-bar {
+    position: sticky !important;
+    top: 0 !important;
+    z-index: 15 !important;
+    background: #f3f4f6 !important;
+    margin: 0 -12px 12px !important;
+    padding: 10px 12px !important;
+    border-bottom: 1px solid #e5e7eb !important;
+  }
+
+  .cat-btn,
+  .category-bar button {
+    background: #ffffff !important;
+    color: #374151 !important;
+    border: 1px solid #e5e7eb !important;
+    box-shadow: 0 2px 8px rgba(15,23,42,.06) !important;
+    border-radius: 999px !important;
+    font-weight: 900 !important;
+  }
+
+  .cat-btn.active,
+  .category-bar button.active {
+    background: #e21b1b !important;
+    border-color: #e21b1b !important;
+    color: #fff !important;
+  }
+
+  .grid,
+  .promos-grid {
+    display: grid !important;
+    grid-template-columns: 1fr !important;
+    gap: 12px !important;
+  }
+
+  .card {
+    display: grid !important;
+    grid-template-columns: minmax(0, 1fr) 116px !important;
+    min-height: 152px !important;
+    background: #ffffff !important;
+    color: #1f2937 !important;
+    border: 1px solid #e5e7eb !important;
+    border-radius: 16px !important;
+    box-shadow: 0 4px 14px rgba(15,23,42,.08) !important;
+    overflow: hidden !important;
+  }
+
+  .card .food-img {
+    grid-column: 2 !important;
+    grid-row: 1 !important;
+    height: 100% !important;
+    min-height: 152px !important;
+    border-radius: 0 !important;
+    background-size: cover !important;
+    background-position: center !important;
+  }
+
+  .card .card-body {
+    grid-column: 1 !important;
+    grid-row: 1 !important;
+    padding: 14px 12px !important;
+    display: flex !important;
+    flex-direction: column !important;
+    min-width: 0 !important;
+  }
+
+  .card h3 {
+    color: #374151 !important;
+    font-size: 18px !important;
+    line-height: 1.18 !important;
+    margin: 0 0 7px !important;
+    display: -webkit-box !important;
+    -webkit-line-clamp: 2 !important;
+    -webkit-box-orient: vertical !important;
+    overflow: hidden !important;
+  }
+
+  .card p {
+    color: #6b7280 !important;
+    font-size: 15px !important;
+    line-height: 1.35 !important;
+    margin: 0 0 10px !important;
+    min-height: 0 !important;
+    display: -webkit-box !important;
+    -webkit-line-clamp: 3 !important;
+    -webkit-box-orient: vertical !important;
+    overflow: hidden !important;
+  }
+
+  .card-foot {
+    margin-top: auto !important;
+    display: flex !important;
+    align-items: center !important;
+    gap: 8px !important;
+  }
+
+  .price {
+    color: #374151 !important;
+    font-size: 21px !important;
+    font-weight: 900 !important;
+  }
+
+  .mini-btn {
+    background: #e21b1b !important;
+    color: #fff !important;
+    border-radius: 10px !important;
+    padding: 9px 10px !important;
+    font-size: 12px !important;
+  }
+
+  .badge {
+    left: 10px !important;
+    top: 10px !important;
+    background: #d1fae5 !important;
+    color: #059669 !important;
+    border-radius: 10px !important;
+    padding: 6px 9px !important;
+  }
+
+  .side-card {
+    background: #ffffff !important;
+    color: #1f2937 !important;
+    border: 1px solid #e5e7eb !important;
+    box-shadow: 0 4px 14px rgba(15,23,42,.08) !important;
+  }
+
+  .side-title h3,
+  .side-card h3,
+  .subtotal,
+  .delivery-summary,
+  .cart-empty,
+  .small {
+    color: #1f2937 !important;
+  }
+
+  .row {
+    border-bottom: 1px solid #e5e7eb !important;
+  }
+
+  input,
+  textarea,
+  select {
+    background: #f8fafc !important;
+    color: #111827 !important;
+    border: 1px solid #d1d5db !important;
+  }
+
+  .modal-card {
+    background: #ffffff !important;
+    color: #1f2937 !important;
+    display: block !important;
+  }
+
+  .modal-info p,
+  .option-box small,
+  .item-obs-box small {
+    color: #6b7280 !important;
+  }
+}
+
+@media (max-width: 420px) {
+  .card {
+    grid-template-columns: minmax(0, 1fr) 106px !important;
+    min-height: 142px !important;
+  }
+
+  .card .food-img {
+    min-height: 142px !important;
+  }
+
+  .card h3 {
+    font-size: 17px !important;
+  }
+
+  .card p {
+    font-size: 14px !important;
+    -webkit-line-clamp: 3 !important;
+  }
+
+  .price {
+    font-size: 19px !important;
+  }
+
+  .mini-btn {
+    padding: 8px 9px !important;
+    font-size: 11px !important;
+  }
+}
