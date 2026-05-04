@@ -1,0 +1,20 @@
+{
+  "name": "bigburger-electron-print",
+  "version": "1.0.0",
+  "description": "App Big Burger com impressão silenciosa sem QZ Tray",
+  "main": "main.js",
+  "scripts": {
+    "start": "electron .",
+    "build": "electron-builder --win nsis portable"
+  },
+  "devDependencies": {
+    "electron": "^33.4.11",
+    "electron-builder": "^25.1.8"
+  },
+  "build": {
+    "appId": "com.bigburger.delivery",
+    "productName": "Big Burger Delivery",
+    "directories": { "output": "dist" },
+    "win": { "target": ["portable"], "icon": "icon.ico" }
+  }
+}
