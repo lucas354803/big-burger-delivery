@@ -170,3 +170,370 @@
 /* Histórico com paginação igual à aba Clientes */
 .history-client-pagination{margin-top:16px;margin-bottom:16px}
 .history-client-pagination span{color:#e8e8e8}
+
+/* =========================================================
+   AJUSTE MOBILE SEGURO - BIG BURGER
+   Adicionado para melhorar visual no celular sem alterar JS/API.
+   ========================================================= */
+@media (max-width: 768px) {
+  html,
+  body {
+    width: 100% !important;
+    max-width: 100% !important;
+    overflow-x: hidden !important;
+  }
+
+  .topbar {
+    position: sticky !important;
+    top: 0 !important;
+    height: auto !important;
+    min-height: 0 !important;
+    padding: 8px 10px !important;
+    gap: 8px !important;
+    flex-wrap: wrap !important;
+    align-items: center !important;
+  }
+
+  .brand {
+    gap: 8px !important;
+  }
+
+  .brand strong {
+    font-size: 17px !important;
+    line-height: 1 !important;
+  }
+
+  .brand small {
+    font-size: 8px !important;
+    letter-spacing: 3px !important;
+  }
+
+  .logo-img {
+    width: 42px !important;
+    height: 42px !important;
+    border-radius: 10px !important;
+  }
+
+  .header-status {
+    order: 3 !important;
+    width: 100% !important;
+    margin: 0 !important;
+    padding: 8px 10px !important;
+    font-size: 12px !important;
+    white-space: normal !important;
+  }
+
+  .header-status small {
+    font-size: 11px !important;
+    line-height: 1.2 !important;
+  }
+
+  .topbar nav {
+    order: 4 !important;
+    width: 100% !important;
+    display: flex !important;
+    justify-content: flex-start !important;
+    overflow-x: auto !important;
+    gap: 8px !important;
+    padding-bottom: 2px !important;
+    scrollbar-width: none !important;
+  }
+
+  .topbar nav::-webkit-scrollbar {
+    display: none !important;
+  }
+
+  .topbar nav a {
+    flex: 0 0 auto !important;
+    font-size: 12px !important;
+    padding: 8px 10px !important;
+    border-radius: 10px !important;
+    white-space: nowrap !important;
+  }
+
+  .cart-pill {
+    margin-left: auto !important;
+    font-size: 11px !important;
+    padding: 6px 8px !important;
+    border-radius: 10px !important;
+  }
+
+  .cart-pill b {
+    font-size: 12px !important;
+  }
+
+  .layout {
+    display: block !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    padding: 10px !important;
+  }
+
+  .content {
+    width: 100% !important;
+    max-width: 100% !important;
+    min-width: 0 !important;
+  }
+
+  .hero-pro {
+    display: block !important;
+    min-height: auto !important;
+    padding: 16px 12px !important;
+    border-radius: 16px !important;
+    overflow: hidden !important;
+  }
+
+  .hero-copy {
+    max-width: 100% !important;
+  }
+
+  .hero-copy .tag,
+  .tag {
+    font-size: 12px !important;
+  }
+
+  .hero-copy h1 {
+    font-size: 30px !important;
+    line-height: .98 !important;
+    margin: 8px 0 !important;
+  }
+
+  .hero-copy h1 span {
+    font-size: 34px !important;
+  }
+
+  .hero-copy p {
+    font-size: 13px !important;
+    line-height: 1.35 !important;
+  }
+
+  .cta {
+    font-size: 13px !important;
+    padding: 12px 16px !important;
+    border-radius: 12px !important;
+  }
+
+  .hero-video-card {
+    width: 100% !important;
+    height: 190px !important;
+    margin-top: 14px !important;
+    border-radius: 16px !important;
+  }
+
+  .video-badge {
+    left: 10px !important;
+    bottom: 10px !important;
+    font-size: 12px !important;
+    padding: 7px 10px !important;
+  }
+
+  .benefits,
+  .benefits-pro {
+    display: grid !important;
+    grid-template-columns: 1fr !important;
+    gap: 10px !important;
+    margin-top: 12px !important;
+  }
+
+  .benefits-pro div {
+    min-height: 78px !important;
+    padding: 12px !important;
+    grid-template-columns: 44px minmax(0, 1fr) !important;
+    border-radius: 14px !important;
+  }
+
+  .benefit-icon {
+    width: 42px !important;
+    height: 42px !important;
+    border-radius: 12px !important;
+    font-size: 20px !important;
+  }
+
+  .benefits-pro b {
+    font-size: 14px !important;
+  }
+
+  .benefits-pro small {
+    font-size: 12px !important;
+  }
+
+  .section-head {
+    display: block !important;
+    margin: 20px 0 10px !important;
+  }
+
+  .section-head h2 {
+    font-size: 21px !important;
+    line-height: 1.15 !important;
+  }
+
+  .section-head .outline,
+  .outline {
+    margin-top: 10px !important;
+    font-size: 12px !important;
+    padding: 9px 12px !important;
+  }
+
+  .category-bar {
+    display: flex !important;
+    overflow-x: auto !important;
+    gap: 8px !important;
+    padding: 0 0 8px !important;
+    margin-bottom: 10px !important;
+    scrollbar-width: none !important;
+  }
+
+  .category-bar::-webkit-scrollbar {
+    display: none !important;
+  }
+
+  .category-bar button,
+  .category-bar a {
+    flex: 0 0 auto !important;
+    white-space: nowrap !important;
+    font-size: 12px !important;
+    padding: 9px 12px !important;
+  }
+
+  .grid,
+  .promos-grid {
+    display: grid !important;
+    grid-template-columns: 1fr !important;
+    gap: 14px !important;
+  }
+
+  .card {
+    width: 100% !important;
+    max-width: 100% !important;
+    border-radius: 14px !important;
+  }
+
+  .food-img,
+  .card img {
+    height: 145px !important;
+    object-fit: cover !important;
+  }
+
+  .card-body {
+    padding: 12px !important;
+  }
+
+  .card h3 {
+    font-size: 17px !important;
+    line-height: 1.15 !important;
+  }
+
+  .card p {
+    font-size: 13px !important;
+    line-height: 1.35 !important;
+    min-height: auto !important;
+  }
+
+  .price {
+    font-size: 19px !important;
+  }
+
+  .old-price {
+    font-size: 12px !important;
+  }
+
+  .mini-btn,
+  .card button {
+    font-size: 12px !important;
+    padding: 10px 12px !important;
+    border-radius: 10px !important;
+  }
+
+  .sidebar {
+    position: static !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    margin-top: 16px !important;
+  }
+
+  .side-card {
+    padding: 14px !important;
+    border-radius: 16px !important;
+  }
+
+  .side-title h3,
+  .side-card h3 {
+    font-size: 18px !important;
+  }
+
+  #cart {
+    max-height: none !important;
+  }
+
+  .subtotal,
+  .delivery-summary {
+    font-size: 14px !important;
+  }
+
+  input,
+  textarea,
+  select,
+  button,
+  .btn {
+    font-size: 14px !important;
+  }
+
+  input,
+  textarea,
+  select {
+    min-height: 42px !important;
+    padding: 11px 12px !important;
+    border-radius: 10px !important;
+  }
+
+  .btn.red,
+  .btn.green {
+    width: 100% !important;
+    padding: 13px 14px !important;
+    border-radius: 12px !important;
+  }
+
+  .modal-card {
+    width: calc(100% - 20px) !important;
+    max-height: 92vh !important;
+    overflow-y: auto !important;
+    border-radius: 18px !important;
+  }
+
+  .modal-img {
+    height: 180px !important;
+  }
+
+  .modal-info {
+    padding: 14px !important;
+  }
+
+  .modal-info h2 {
+    font-size: 22px !important;
+  }
+
+  footer {
+    font-size: 12px !important;
+    padding: 18px 10px !important;
+  }
+}
+
+@media (max-width: 420px) {
+  .hero-copy h1 {
+    font-size: 26px !important;
+  }
+
+  .hero-copy h1 span {
+    font-size: 30px !important;
+  }
+
+  .food-img,
+  .card img {
+    height: 132px !important;
+  }
+
+  .cart-pill {
+    max-width: 112px !important;
+    line-height: 1.1 !important;
+  }
+}
