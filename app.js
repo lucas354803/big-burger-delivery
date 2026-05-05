@@ -254,7 +254,7 @@ async function finalizar(){
     })});
     const data=await r.json();
     if(!r.ok)throw new Error((data.error||'Erro')+' '+(data.detalhes?JSON.stringify(data.detalhes):''));
-    if(data.pix?.qr_code_base64){result.innerHTML=`<div class="ok"><h3>Pix gerado!</h3><p>Total com entrega: <b>${fmt(valor)}</b></p><img class="qr" src="data:image/png;base64,${data.pix.qr_code_base64}"><textarea readonly>${data.pix.pix_copia_cola}</textarea><p class="small">Após pagar, o pedido entra automaticamente no painel e avisa a loja.</p></div>`}
+    if(data.pix?.qr_code_base64){const pixCode=data.pix.pix_copia_cola||'';result.innerHTML=`<div class="ok"><h3>Pix gerado!</h3><p>Total com entrega: <b>${fmt(valor)}</b></p><img class="qr" src="data:image/png;base64,${data.pix.qr_code_base64}"><textarea id="pixCopiaCola" readonly>${pixCode}</textarea><button type="button" class="copy-pix-btn" onclick="copiarPixCopiaCola()">📋 Copiar código Pix</button><p class="small">Após pagar, o pedido entra automaticamente no painel e avisa a loja.</p></div>`; limparPedidoDepoisDeFinalizar(); }
     else{
       result.innerHTML=`<div class="ok"><h3>Pedido criado!</h3><p>Forma de pagamento: <b>${forma==='dinheiro'?'Dinheiro':'Cartão na entrega'}</b></p><p>Total com entrega: <b>${fmt(valor)}</b></p><p class="small">Carrinho limpo. Tela pronta para novo pedido.</p></div>`;
       limparPedidoDepoisDeFinalizar();
@@ -306,3 +306,18 @@ async function carregarBannerInicial(){
   }catch(e){}
 }
 carregarBannerInicial();
+
+
+async function copiarPixCopiaCola(){
+  const el=document.getElementById('pixCopiaCola');
+  const texto=(el?.value||el?.textContent||'').trim();
+  if(!texto){alert('Código Pix não encontrado.');return;}
+  try{
+    if(navigator.clipboard && window.isSecureContext){await navigator.clipboard.writeText(texto);}
+    else{el.focus();el.select();document.execCommand('copy');}
+    alert('✅ Código Pix copiado!');
+  }catch(e){
+    try{el.focus();el.select();document.execCommand('copy');alert('✅ Código Pix copiado!');}
+    catch(_){alert('Não consegui copiar automático. Segure no código e copie manualmente.');}
+  }
+}

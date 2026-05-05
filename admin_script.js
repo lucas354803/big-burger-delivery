@@ -75,13 +75,14 @@ function testarImpressora(){
   imprimirPedido({id:'TESTE',numero_pedido:'01',cliente_nome:'Cliente Teste',cliente_telefone:'(48) 99999-9999',itens:[{qtd:1,nome:'Big Burger',preco:29.9},{qtd:1,nome:'Fritas',preco:10}],cidade:'Criciúma',bairro:'Centro',rua:'Rua Teste, 123',forma_pagamento:'pix',taxa_entrega:5,valor_total:44.9,observacao:'Teste de impressão da comanda.'});
 }
 function normalizarStatusPedido(status){
-  if(['aguardando_pagamento','pedido_recebido','pago','aprovado','pendente'].includes(status)) return 'em_analise';
+  if(['pedido_recebido','pago','aprovado','pendente'].includes(status)) return 'em_analise';
+  if(['aguardando_pagamento','aguardando_pix'].includes(status)) return 'aguardando_pagamento';
   if(['preparo'].includes(status)) return 'em_preparo';
   if(['entregue'].includes(status)) return 'finalizado';
   return status || 'em_analise';
 }
 function pedidoArquivado(p){return p?.arquivado_relatorio===true || p?.arquivado_relatorio==='true' || p?.arquivado===true || p?.arquivado==='true';}
-function pedidosVisiveisPainel(){return pedidosCache.filter(p=>!pedidoArquivado(p));}
+function pedidosVisiveisPainel(){return pedidosCache.filter(p=>!pedidoArquivado(p) && !['aguardando_pagamento','aguardando_pix'].includes(String(p.status||'')));}
 function pedidosHistoricoRelatorio(){return pedidosCache.filter(p=>pedidoArquivado(p) && normalizarStatusPedido(p.status)==='finalizado');}
 function numeroPedido(p){ if(p && p.numero_pedido) return String(p.numero_pedido).padStart(2, '0'); return String(p?.id||'').split('-')[0].toUpperCase(); }
 function shortId(id){return String(id||'').split('-')[0].toUpperCase()}
@@ -437,11 +438,25 @@ async function atualizarStatusPedido(id,status,whatsTipo){
     await loadPedidos();
   }catch(e){alert('Erro ao atualizar pedido: '+e.message)}
 }
+
+async function recusarPedido(id){
+  if(!id) return;
+  const ok=confirm('Deseja recusar e apagar este pedido?\n\nEssa ação remove o pedido do painel.');
+  if(!ok) return;
+  try{
+    const r=await fetch('/api?route=pedidos',{method:'DELETE',headers:{'Content-Type':'application/json'},body:JSON.stringify({id})});
+    const d=await r.json().catch(()=>({}));
+    if(!r.ok||!d.ok) throw new Error(d.error||JSON.stringify(d));
+    alert('❌ Pedido recusado e apagado.');
+    await loadPedidos();
+  }catch(e){alert('Erro ao recusar pedido: '+e.message)}
+}
+
 function cardPedido(p){
   const st=normalizarStatusPedido(p.status);
   const itens=itensTexto(p.itens).replaceAll('\n','<br>');
   let acoes='';
-  if(st==='em_analise') acoes=`<button class="order-action accept" onclick="atualizarStatusPedido('${p.id}','em_preparo','aceito')">✅ Aceitar pedido</button>`;
+  if(st==='em_analise') acoes=`<button class="order-action accept" onclick="atualizarStatusPedido('${p.id}','em_preparo','aceito')">✅ Aceitar pedido</button><button class="order-action refuse" onclick="recusarPedido('${p.id}')">❌ Recusar pedido</button>`;
   if(st==='em_preparo') acoes=`<button class="order-action ready" onclick="atualizarStatusPedido('${p.id}','pronto','pronto')">🔵 Marcar pronto</button><button class="order-action delivery" onclick="atualizarStatusPedido('${p.id}','em_entrega','entrega')">🛵 Saiu para entrega</button>`;
   if(st==='pronto') acoes=`<button class="order-action delivery" onclick="atualizarStatusPedido('${p.id}','em_entrega','entrega')">🛵 Saiu para entrega</button>`;
   if(st==='em_entrega') acoes=`<button class="order-action done" onclick="atualizarStatusPedido('${p.id}','finalizado','')">✅ Finalizar</button>`;

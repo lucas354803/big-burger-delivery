@@ -1,0 +1,21 @@
+ATUALIZAÇÃO APLICADA
+
+1) Cardápio
+- Adicionado botão: "📋 Copiar código Pix" abaixo do Pix copia e cola.
+
+2) Admin / Pedidos
+- Adicionado botão: "❌ Recusar pedido" quando o pedido estiver em análise.
+- Ao recusar, o pedido é apagado do painel e também remove vínculos de pagamentos/corridas/motoboy.
+
+3) Segurança do Pix
+- Pedido Pix nasce como "aguardando_pagamento".
+- Pedido aguardando Pix NÃO aparece no painel do Admin.
+- O painel só libera o pedido depois que o Mercado Pago confirmar pelo webhook.
+- O endpoint de status bloqueia avanço de pedido que ainda esteja aguardando Pix.
+
+4) Para o Pix automático funcionar depois
+- Manter MP_TOKEN configurado na Vercel.
+- Configurar webhook do Mercado Pago apontando para:
+  https://SEU-SITE.vercel.app/api?route=webhook
+
+Depois que o Mercado Pago aprovar o pagamento, o pedido entra no painel para aceitar/preparar.

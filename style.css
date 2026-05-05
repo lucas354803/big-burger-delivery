@@ -1071,3 +1071,9 @@
 }
 .order-action.danger,.client-actions button.danger{background:#7f1d1d!important;color:#fff!important;border:1px solid #ef4444!important;}
 .order-action.danger:hover,.client-actions button.danger:hover{filter:brightness(1.12);}
+
+.copy-pix-btn{width:100%;margin-top:10px;background:#22c55e;color:#04130a;border:0;border-radius:10px;padding:12px 14px;font-weight:900;cursor:pointer;box-shadow:0 8px 20px rgba(34,197,94,.22)}
+.copy-pix-btn:hover{filter:brightness(1.06)}
+
+.order-action.refuse{background:#7f1d1d!important;color:#fff!important;border:1px solid #ef4444!important}
+.order-action.refuse:hover{background:#dc2626!important}
