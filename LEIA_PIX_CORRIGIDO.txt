@@ -1,0 +1,20 @@
+PIX CORRIGIDO - BIG BURGER
+
+O que foi ajustado:
+- O Pix copia e cola agora é gerado no padrão EMV oficial do Pix.
+- O código agora calcula o CRC correto.
+- O QR Code agora é gerado a partir do código Pix correto.
+- Se tiver MP_TOKEN no Vercel, continua usando Mercado Pago.
+- Se ainda não tiver MP_TOKEN, gera Pix estático válido usando PIX_KEY.
+
+IMPORTANTE NO VERCEL:
+Coloque essas variáveis em Settings > Environment Variables:
+
+PIX_KEY = sua chave Pix
+PIX_NOME = BIG BURGER
+PIX_CIDADE = CRICIUMA
+
+Para Mercado Pago depois:
+MP_TOKEN = seu Access Token do Mercado Pago
+
+Depois de mudar variável no Vercel, precisa fazer novo Deploy.

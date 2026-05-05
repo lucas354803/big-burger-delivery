@@ -1,0 +1,28 @@
+BIG BURGER - MERCADO PAGO AUTOMATICO
+
+Atualizacao aplicada:
+- Usa Mercado Pago para gerar Pix quando existir token no Vercel.
+- Aceita as variaveis MP_TOKEN, MP_ACCESS_TOKEN ou MERCADO_PAGO_ACCESS_TOKEN.
+- Pedido Pix nasce como aguardando_pagamento e NAO aparece no painel.
+- Webhook confirma pagamento aprovado e libera o pedido para Em analise.
+- Se pedido automatico estiver ligado, apos Pix aprovado vai direto para Em preparo.
+- O botao Recusar apaga o pedido quando estiver em analise.
+- O botao Copiar codigo Pix continua no cardapio.
+
+CONFIGURAR NO VERCEL:
+1) Settings > Environment Variables
+2) Adicione:
+   MP_TOKEN=seu_access_token_do_mercado_pago
+
+Opcional, mas recomendado:
+   MP_WEBHOOK_URL=https://SEU-SITE.vercel.app/api?route=webhook
+
+CONFIGURAR NO MERCADO PAGO:
+1) Entre em Desenvolvedores > Webhooks / Notificacoes
+2) URL de notificacao:
+   https://SEU-SITE.vercel.app/api?route=webhook
+3) Evento: Pagamentos
+
+IMPORTANTE:
+- Depois de colocar variavel no Vercel, faca novo Deploy.
+- Nao coloque seu token dentro do codigo. Use somente variavel de ambiente.
