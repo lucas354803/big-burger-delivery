@@ -108,14 +108,53 @@ function produtoCardHtml(p){
     </article>`;
 }
 
+function nomeCategoriaLimpo(cat){
+  return String(cat?.nome || cat || 'Categoria').replace(/^[^A-Za-zÀ-ÿ0-9]+\s*/, '').trim();
+}
+
+function renderProdutosSeparadosPorCategoria(){
+  const categoriasOrdenadas = categorias.length ? categorias : categoriasFallback.filter(c=>c.id!=='todos');
+  const blocos = [];
+
+  categoriasOrdenadas.forEach(cat=>{
+    const itens = produtos.filter(p=>String(p.categoria_id||'')===String(cat.id));
+    if(!itens.length) return;
+    blocos.push(`
+      <div class="category-section">
+        <div class="category-separator">
+          <span class="category-separator-icon">${String(cat.nome||'').match(/^[^A-Za-zÀ-ÿ0-9]+/)?.[0]?.trim() || '🍔'}</span>
+          <h3>${nomeCategoriaLimpo(cat)}</h3>
+        </div>
+        <div class="category-products">
+          ${itens.map(produtoCardHtml).join('')}
+        </div>
+      </div>
+    `);
+  });
+
+  const semCategoria = produtos.filter(p=>!categoriasOrdenadas.some(c=>String(c.id)===String(p.categoria_id||'')));
+  if(semCategoria.length){
+    blocos.push(`
+      <div class="category-section">
+        <div class="category-separator"><span class="category-separator-icon">⭐</span><h3>Outros</h3></div>
+        <div class="category-products">${semCategoria.map(produtoCardHtml).join('')}</div>
+      </div>
+    `);
+  }
+
+  return blocos.join('') || '<div class="empty-menu">Nenhum produto cadastrado ainda.</div>';
+}
+
 function render(){
   renderCategorias();
   const visiveis = categoriaSelecionada==='todos' ? produtos : produtos.filter(p=>String(p.categoria_id||'')===String(categoriaSelecionada));
   if(typeof menuTitle !== 'undefined' && menuTitle){
     const cat = categoriaSelecionada==='todos' ? null : categorias.find(c=>String(c.id)===String(categoriaSelecionada));
-    menuTitle.textContent = cat ? cat.nome.replace(/^[^A-Za-zÀ-ÿ0-9]+\s*/, '') : 'Os mais pedidos da Big Burger';
+    menuTitle.textContent = cat ? nomeCategoriaLimpo(cat) : 'Cardápio separado por categorias';
   }
-  menu.innerHTML=visiveis.map(produtoCardHtml).join('') || '<div class="empty-menu">Nenhum produto cadastrado nessa categoria.</div>';
+  menu.innerHTML = categoriaSelecionada==='todos'
+    ? renderProdutosSeparadosPorCategoria()
+    : (visiveis.map(produtoCardHtml).join('') || '<div class="empty-menu">Nenhum produto cadastrado nessa categoria.</div>');
   const promos = produtos.filter(p=>p.promocao_ativa);
   if(typeof promosGrid !== 'undefined' && promosGrid){
     promosGrid.innerHTML = promos.length ? promos.map(produtoCardHtml).join('') : '<div class="empty-menu">Nenhuma promoção cadastrada ainda. Cadastre pelo Admin → Promoções.</div>';
