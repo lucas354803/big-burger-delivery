@@ -1,0 +1,11 @@
+ATUALIZAÇÃO - BOTÕES DE EXCLUIR
+
+Foi adicionado:
+1. Botão 🗑️ para excluir cliente na aba Clientes.
+   - Cliente manual: apaga o cadastro.
+   - Cliente que veio de pedido: apaga os pedidos ligados ao telefone/nome para sumir da lista.
+
+2. Botão 🗑️ Excluir nos Pedidos Arquivados.
+   - Apaga o pedido arquivado do histórico.
+
+Depois de subir na Vercel, use Ctrl+F5 no navegador para limpar cache.

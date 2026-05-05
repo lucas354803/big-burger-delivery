@@ -559,7 +559,10 @@ function renderClientes(){
   if(state.clientesPagina<1) state.clientesPagina=1;
   const inicio=(state.clientesPagina-1)*porPagina;
   const pagina=lista.slice(inicio,inicio+porPagina);
-  const rows=pagina.map(c=>`<tr><td><b>${escapeHtml(c.cliente_nome||'')}</b><br><small>${escapeHtml(c.origem==='manual'?'Cadastro manual':(c.origem==='manual+pedido'?'Manual + pedidos':'Pedido automático'))}</small></td><td>${escapeHtml(c.cliente_telefone||'')}<br>${c.cliente_telefone?`<a href="${whatsLink(c.cliente_telefone)}" target="_blank">Chamar no WhatsApp</a>`:''}</td><td>${escapeHtml(c.email||'')}</td><td><b>${c.total_pedidos||0}</b></td><td><b>${brl(c.total_gasto||0)}</b></td><td>${dataBR(c.ultimo_pedido)}</td><td class="client-actions"><button title="Ver" onclick='verCliente(${JSON.stringify(c).replaceAll("'","&#39;")})'>👁️</button>${c.id?`<button title="Editar" onclick='editarCliente(${JSON.stringify(c).replaceAll("'","&#39;")})'>✏️</button><button title="Excluir" onclick="excluirCliente('${c.id}')">🗑️</button>`:`<button title="Cliente vindo de pedido" disabled>🔒</button>`}</td></tr>`).join('');
+  const rows=pagina.map(c=>{
+    const safe=JSON.stringify(c).replaceAll("'","&#39;");
+    return `<tr><td><b>${escapeHtml(c.cliente_nome||'')}</b><br><small>${escapeHtml(c.origem==='manual'?'Cadastro manual':(c.origem==='manual+pedido'?'Manual + pedidos':'Pedido automático'))}</small></td><td>${escapeHtml(c.cliente_telefone||'')}<br>${c.cliente_telefone?`<a href="${whatsLink(c.cliente_telefone)}" target="_blank">Chamar no WhatsApp</a>`:''}</td><td>${escapeHtml(c.email||'')}</td><td><b>${c.total_pedidos||0}</b></td><td><b>${brl(c.total_gasto||0)}</b></td><td>${dataBR(c.ultimo_pedido)}</td><td class="client-actions"><button title="Ver" onclick='verCliente(${safe})'>👁️</button>${c.id?`<button title="Editar" onclick='editarCliente(${safe})'>✏️</button>`:''}<button class="danger" title="Excluir cliente" onclick='excluirClienteCompleto(${safe})'>🗑️</button></td></tr>`;
+  }).join('');
   clientesOut.innerHTML=total?`<div class="client-table-wrap"><table class="table clientes-table dark-table"><thead><tr><th>Nome</th><th>Telefone</th><th>E-mail</th><th>Pedidos</th><th>Total gasto</th><th>Último pedido</th><th>Ações</th></tr></thead><tbody>${rows}</tbody></table></div><div class="client-pagination"><span>Mostrando ${total?inicio+1:0} a ${Math.min(inicio+porPagina,total)} de ${total} clientes</span><div><button onclick="mudarPaginaClientes(1)" ${state.clientesPagina===1?'disabled':''}>Primeira</button><button onclick="mudarPaginaClientes(${state.clientesPagina-1})" ${state.clientesPagina===1?'disabled':''}>Anterior</button><b>${state.clientesPagina}</b><button onclick="mudarPaginaClientes(${state.clientesPagina+1})" ${state.clientesPagina===paginas?'disabled':''}>Próxima</button><button onclick="mudarPaginaClientes(${paginas})" ${state.clientesPagina===paginas?'disabled':''}>Última</button></div><label>Itens por página:<select onchange="state.clientesPorPagina=Number(this.value);state.clientesPagina=1;renderClientes()"><option value="20" ${porPagina===20?'selected':''}>20</option><option value="40" ${porPagina===40?'selected':''}>40</option><option value="60" ${porPagina===60?'selected':''}>60</option></select></label></div>`:'<p class="empty-finance">Nenhum cliente registrado ainda. Cadastre manualmente ou aguarde os pedidos aparecerem aqui automaticamente.</p>';
 }
 function mudarPaginaClientes(p){state.clientesPagina=Number(p||1);renderClientes()}
@@ -594,11 +597,31 @@ async function salvarClienteManual(ev){
   await loadClientes();
 }
 async function excluirCliente(id){
-  if(!confirm('Excluir este cliente cadastrado manualmente? Os pedidos feitos por ele não serão apagados.')) return;
+  if(!confirm('Excluir este cadastro manual? Os pedidos feitos por ele não serão apagados.')) return;
   const r=await fetch('/api?route=clientes&id='+encodeURIComponent(id),{method:'DELETE'});
   const d=await r.json();
   if(!r.ok||!d.ok){alert('Erro ao excluir cliente: '+(d.error||JSON.stringify(d)));return;}
   await loadClientes();
+}
+async function excluirClienteCompleto(c){
+  const nome=c?.cliente_nome||'este cliente';
+  const temPedidos=Number(c?.total_pedidos||0)>0;
+  const msg=temPedidos
+    ? `Excluir ${nome} da lista e apagar todos os pedidos desse cliente?\n\nAtenção: isso remove pedidos ativos, finalizados e arquivados ligados ao telefone/nome dele.`
+    : `Excluir o cadastro de ${nome}?`;
+  if(!confirm(msg)) return;
+  const params=new URLSearchParams();
+  if(c?.id) params.set('id', c.id);
+  if(c?.cliente_telefone) params.set('telefone', c.cliente_telefone);
+  if(c?.cliente_nome) params.set('nome', c.cliente_nome);
+  if(temPedidos) params.set('apagarPedidos','true');
+  const r=await fetch('/api?route=clientes&'+params.toString(),{method:'DELETE'});
+  const d=await r.json();
+  if(!r.ok||!d.ok){alert('Erro ao excluir cliente: '+(d.error||JSON.stringify(d)));return;}
+  alert(`Cliente excluído. Pedidos apagados: ${d.pedidos_apagados||0}`);
+  await loadClientes();
+  await loadPedidos();
+  renderHistoricoPedidos();
 }
 function exportarClientesCSV(){
   const lista=state.clientes||[];
@@ -816,7 +839,17 @@ function renderFinanceiro(){
 
 function renderCardHistorico(p){
   const safePedido=JSON.stringify(p).replaceAll("'","&#39;");
-  return `<div class="order-card history-card"><div class="order-title"><b>#${numeroPedido(p)}</b><span>${brl(p.valor_total)}</span></div><div class="order-customer">👤 ${escapeHtml(textoPrint(p.cliente_nome||''))}<br>📞 ${escapeHtml(p.cliente_telefone||'')}</div><div class="order-items">${itensTexto(p.itens).replaceAll('\n','<br>')}</div><div class="order-address">📍 ${escapeHtml(enderecoPedido(p))}<br>💳 ${escapeHtml(p.forma_pagamento||'pix')} • 🚚 ${brl(p.taxa_entrega||0)}<br>🕒 Arquivado: ${p.arquivado_em?dataBR(p.arquivado_em):'relatório diário'}</div><div class="order-actions"><button class="order-action print" onclick='imprimirPedido(${safePedido})'>🖨️ Imprimir</button><button class="order-action whats" onclick='abrirWhats(${safePedido},"aceito")'>💬 WhatsApp</button></div></div>`;
+  return `<div class="order-card history-card"><div class="order-title"><b>#${numeroPedido(p)}</b><span>${brl(p.valor_total)}</span></div><div class="order-customer">👤 ${escapeHtml(textoPrint(p.cliente_nome||''))}<br>📞 ${escapeHtml(p.cliente_telefone||'')}</div><div class="order-items">${itensTexto(p.itens).replaceAll('\n','<br>')}</div><div class="order-address">📍 ${escapeHtml(enderecoPedido(p))}<br>💳 ${escapeHtml(p.forma_pagamento||'pix')} • 🚚 ${brl(p.taxa_entrega||0)}<br>🕒 Arquivado: ${p.arquivado_em?dataBR(p.arquivado_em):'relatório diário'}</div><div class="order-actions"><button class="order-action print" onclick='imprimirPedido(${safePedido})'>🖨️ Imprimir</button><button class="order-action whats" onclick='abrirWhats(${safePedido},"aceito")'>💬 WhatsApp</button><button class="order-action danger" onclick='excluirPedidoArquivado(${safePedido})'>🗑️ Excluir</button></div></div>`;
+}
+async function excluirPedidoArquivado(p){
+  if(!p?.id){alert('Não encontrei o ID desse pedido.');return;}
+  if(!confirm(`Excluir o pedido arquivado #${numeroPedido(p)}? Essa ação apaga o pedido do histórico.`)) return;
+  const r=await fetch('/api/historico?id='+encodeURIComponent(p.id),{method:'DELETE'});
+  const d=await r.json();
+  if(!r.ok||!d.ok){alert('Erro ao excluir pedido arquivado: '+(d.error||JSON.stringify(d)));return;}
+  await loadPedidos();
+  renderHistoricoPedidos();
+  await loadClientes();
 }
 function irPaginaHistorico(pagina){
   const total=Math.max(1, Number(window.__totalPaginasHistorico||1));
