@@ -1,0 +1,22 @@
+VERSÃO LIMPA - SÓ MERCADO PAGO
+
+O Pix manual foi removido do backend.
+Agora o sistema só gera Pix pelo Mercado Pago.
+
+PASSO 1 - Vercel > Settings > Environment Variables
+Adicione:
+MP_TOKEN = seu Access Token do Mercado Pago
+
+Opcional, mas recomendado:
+MP_WEBHOOK_URL = https://SEU-SITE.vercel.app/api?route=webhook
+
+PASSO 2 - Supabase > SQL Editor
+Rode o arquivo:
+supabase/pagamentos_mercado_pago.sql
+
+PASSO 3 - Deploy
+Suba este ZIP no Vercel e faça novo deploy.
+
+IMPORTANTE
+Se aparecer erro dizendo MP_TOKEN não configurado, o token não foi salvo no Vercel ou o deploy não foi refeito.
+Se gerar QR, esse QR vem do Mercado Pago. Não existe mais fallback Pix manual neste ZIP.

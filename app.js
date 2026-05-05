@@ -246,7 +246,7 @@ async function finalizar(){
   if(lojaStatus?.aberto===false){result.innerHTML='<div class="err"><b>Loja fechada.</b><br>'+ (lojaConfig.mensagem_fechado||'Não estamos recebendo pedidos agora.') +'</div>';return}
   if(!carrinho.length){result.innerHTML='<div class="err"><b>Adicione pelo menos um item ao pedido.</b></div>';return}
   if(!nome.value||!telefone.value||!cidade.value||!bairro.value||!ruaTexto){result.innerHTML='<div class="err"><b>Preencha nome, WhatsApp, cidade, bairro e rua.</b></div>';return}
-  result.innerHTML= forma==='pix' ? '<p>Gerando Pix...</p>' : '<p>Finalizando pedido...</p>';
+  result.innerHTML= forma==='pix' ? '<p>Gerando Pix pelo Mercado Pago...</p>' : '<p>Finalizando pedido...</p>';
   try{
     const r=await fetch('/api?route=create-pix',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({
       cliente_nome:nome.value,cliente_telefone:telefone.value,cidade_id:cidade.value,cidade:cidadeNome,bairro_id:bairro.value,bairro:bairroNome,rua:ruaTexto,
@@ -254,7 +254,7 @@ async function finalizar(){
     })});
     const data=await r.json();
     if(!r.ok)throw new Error((data.error||'Erro')+' '+(data.detalhes?JSON.stringify(data.detalhes):''));
-    if(data.pix?.qr_code_base64){const pixCode=data.pix.pix_copia_cola||'';result.innerHTML=`<div class="ok"><h3>Pix gerado!</h3><p>Total com entrega: <b>${fmt(valor)}</b></p><img class="qr" src="data:image/png;base64,${data.pix.qr_code_base64}"><textarea id="pixCopiaCola" readonly>${pixCode}</textarea><button type="button" class="copy-pix-btn" onclick="copiarPixCopiaCola()">📋 Copiar código Pix</button><p class="small">Após pagar, o pedido entra automaticamente no painel e avisa a loja.</p></div>`; limparPedidoDepoisDeFinalizar(); }
+    if(data.pix?.qr_code_base64){const pixCode=data.pix.pix_copia_cola||'';result.innerHTML=`<div class="ok"><h3>Pix Mercado Pago gerado!</h3><p>Total com entrega: <b>${fmt(valor)}</b></p><img class="qr" src="data:image/png;base64,${data.pix.qr_code_base64}"><textarea id="pixCopiaCola" readonly>${pixCode}</textarea><button type="button" class="copy-pix-btn" onclick="copiarPixCopiaCola()">📋 Copiar código Pix</button><p class="small">Após pagar, o pedido entra automaticamente no painel e avisa a loja.</p></div>`; limparPedidoDepoisDeFinalizar(); }
     else{
       result.innerHTML=`<div class="ok"><h3>Pedido criado!</h3><p>Forma de pagamento: <b>${forma==='dinheiro'?'Dinheiro':'Cartão na entrega'}</b></p><p>Total com entrega: <b>${fmt(valor)}</b></p><p class="small">Carrinho limpo. Tela pronta para novo pedido.</p></div>`;
       limparPedidoDepoisDeFinalizar();
