@@ -166,6 +166,7 @@ function render(){
   total.textContent=fmt(totalGeral);
   if(typeof taxaEntrega !== 'undefined' && taxaEntrega) taxaEntrega.textContent=fmt(taxaEntregaSelecionada);
   if(typeof totalComEntrega !== 'undefined' && totalComEntrega) totalComEntrega.textContent=fmt(totalGeral);
+  atualizarTrocoBox();
   cart.innerHTML=carrinho.length?carrinho.map((p,index)=>`<div class="row cart-item-row"><span class="cart-item-info"><b>1x ${p.nome}</b><br><small class="small">${(p.addons||[]).map(a=>a.nome).join(', ')||'Sem adicionais'}${p.observacao?`<br>📝 Obs: ${p.observacao}`:''}</small></span><div class="cart-item-actions"><b>${fmt(p.preco)}</b><button class="cart-trash" type="button" title="Remover produto" aria-label="Remover produto" onclick="removerItemCarrinho(${index})">🗑️</button></div></div>`).join(''):'<div class="cart-empty">🛒<br>Seu carrinho está vazio<br><small>Adicione itens deliciosos para começar!</small></div>';
 }
 
@@ -258,6 +259,27 @@ function atualizarBotaoPagamento(){
   if(typeof btnFinalizar === 'undefined' || !btnFinalizar) return;
   const f=formaPagamento?.value||'pix';
   btnFinalizar.textContent = f==='pix' ? 'Gerar Pix e finalizar pedido' : 'Finalizar pedido';
+  atualizarTrocoBox();
+}
+function atualizarTrocoBox(){
+  const box=document.getElementById('trocoBox');
+  const precisa=document.getElementById('precisaTroco');
+  const campo=document.getElementById('trocoPara');
+  const info=document.getElementById('trocoInfo');
+  const forma=formaPagamento?.value||'pix';
+  if(!box) return;
+  const dinheiro=forma==='dinheiro';
+  box.style.display=dinheiro?'block':'none';
+  if(!dinheiro){ if(precisa) precisa.checked=false; if(campo) campo.value=''; if(info) info.textContent=''; return; }
+  if(campo) campo.style.display=precisa?.checked?'block':'none';
+  const totalGeral=carrinho.reduce((s,p)=>s+p.preco,0)+Number(taxaEntregaSelecionada||0);
+  const valorTroco=Number(campo?.value||0);
+  if(info){
+    if(!precisa?.checked) info.textContent='Sem troco / cliente vai pagar certinho.';
+    else if(!valorTroco) info.textContent='Informe o valor que o cliente vai entregar.';
+    else if(valorTroco < totalGeral) info.textContent='O valor do troco precisa ser maior que o total do pedido.';
+    else info.textContent='Troco calculado: '+fmt(valorTroco-totalGeral);
+  }
 }
 function nomeSelecionado(selectEl){return selectEl?.selectedOptions?.[0]?.textContent?.split('•')?.[0]?.trim()||'';}
 
@@ -271,6 +293,9 @@ function limparPedidoDepoisDeFinalizar(){
   if(typeof rua!=='undefined' && rua) rua.value='';
   if(typeof obs!=='undefined' && obs) obs.value='';
   if(typeof formaPagamento!=='undefined' && formaPagamento) formaPagamento.value='pix';
+  if(typeof precisaTroco!=='undefined' && precisaTroco) precisaTroco.checked=false;
+  if(typeof trocoPara!=='undefined' && trocoPara) trocoPara.value='';
+  atualizarTrocoBox();
   renderCidadesEntrega();
   render();
 }
@@ -282,20 +307,24 @@ async function finalizar(){
   const bairroNome=nomeSelecionado(bairro);
   const ruaTexto=(rua?.value||'').trim();
   const forma=(formaPagamento?.value||'pix');
+  const precisaTrocoMarcado = forma==='dinheiro' && !!document.getElementById('precisaTroco')?.checked;
+  const trocoParaValor = precisaTrocoMarcado ? Number(document.getElementById('trocoPara')?.value||0) : 0;
+  const trocoValor = precisaTrocoMarcado ? Math.max(0, trocoParaValor - valor) : 0;
   if(lojaStatus?.aberto===false){result.innerHTML='<div class="err"><b>Loja fechada.</b><br>'+ (lojaConfig.mensagem_fechado||'Não estamos recebendo pedidos agora.') +'</div>';return}
   if(!carrinho.length){result.innerHTML='<div class="err"><b>Adicione pelo menos um item ao pedido.</b></div>';return}
   if(!nome.value||!telefone.value||!cidade.value||!bairro.value||!ruaTexto){result.innerHTML='<div class="err"><b>Preencha nome, WhatsApp, cidade, bairro e rua.</b></div>';return}
+  if(precisaTrocoMarcado && trocoParaValor < valor){result.innerHTML='<div class="err"><b>Troco inválido.</b><br>O valor precisa ser maior que o total do pedido.</div>';return}
   result.innerHTML= forma==='pix' ? '<p>Gerando Pix pelo Mercado Pago...</p>' : '<p>Finalizando pedido...</p>';
   try{
     const r=await fetch('/api?route=create-pix',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({
       cliente_nome:nome.value,cliente_telefone:telefone.value,cidade_id:cidade.value,cidade:cidadeNome,bairro_id:bairro.value,bairro:bairroNome,rua:ruaTexto,
-      endereco:`${ruaTexto} - ${bairroNome} - ${cidadeNome}`,forma_pagamento:forma,taxa_entrega:Number(taxaEntregaSelecionada||0),observacao:obs.value,itens:carrinho,subtotal,valor_total:valor,tempo_estimado_minutos:Number(lojaConfig.tempo_entrega_padrao||40)
+      endereco:`${ruaTexto} - ${bairroNome} - ${cidadeNome}`,forma_pagamento:forma,taxa_entrega:Number(taxaEntregaSelecionada||0),observacao:obs.value,itens:carrinho,subtotal,valor_total:valor,tempo_estimado_minutos:Number(lojaConfig.tempo_entrega_padrao||40),precisa_troco:precisaTrocoMarcado,troco_para:trocoParaValor,troco_valor:trocoValor
     })});
     const data=await r.json();
     if(!r.ok)throw new Error((data.error||'Erro')+' '+(data.detalhes?JSON.stringify(data.detalhes):''));
     if(data.pix?.qr_code_base64){const pixCode=data.pix.pix_copia_cola||'';result.innerHTML=`<div class="ok"><h3>Pix Mercado Pago gerado!</h3><p>Total com entrega: <b>${fmt(valor)}</b></p><img class="qr" src="data:image/png;base64,${data.pix.qr_code_base64}"><textarea id="pixCopiaCola" readonly>${pixCode}</textarea><button type="button" class="copy-pix-btn" onclick="copiarPixCopiaCola()">📋 Copiar código Pix</button><p class="small">Após pagar, o pedido entra automaticamente no painel e avisa a loja.</p></div>`; limparPedidoDepoisDeFinalizar(); }
     else{
-      result.innerHTML=`<div class="ok"><h3>Pedido criado!</h3><p>Forma de pagamento: <b>${forma==='dinheiro'?'Dinheiro':'Cartão na entrega'}</b></p><p>Total com entrega: <b>${fmt(valor)}</b></p><p class="small">Carrinho limpo. Tela pronta para novo pedido.</p></div>`;
+      result.innerHTML=`<div class="ok"><h3>Pedido criado!</h3><p>Forma de pagamento: <b>${forma==='dinheiro'?'Dinheiro':'Cartão na entrega'}</b></p><p>Total com entrega: <b>${fmt(valor)}</b></p>${forma==='dinheiro'?`<p>Troco: <b>${precisaTrocoMarcado?('para '+fmt(trocoParaValor)+' / devolver '+fmt(trocoValor)):'Não precisa'}</b></p>`:''}<p class="small">Carrinho limpo. Tela pronta para novo pedido.</p></div>`;
       limparPedidoDepoisDeFinalizar();
       setTimeout(()=>{ if(result) result.innerHTML=''; }, 3500);
     }

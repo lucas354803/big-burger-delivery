@@ -33,7 +33,7 @@ const orderStatuses=[
   {id:'finalizado',titulo:'Finalizados',emoji:'⚫',cls:'finalizado'}
 ];
 
-const impressoraPadrao={papel:80,fonte:13,titulo:22,margem:6,nome:'BIG BURGER',subtitulo:'COMANDA DE PEDIDO',negrito:true,auto:true,logo:true,fecharJanela:true,direto:true,qzAtivo:false,qzImpressora:''};
+const impressoraPadrao={papel:80,larguraUtil:72,fonte:13,titulo:22,margem:2,espacoItens:5,logoTamanho:42,qrTamanho:34,nome:'BIG BURGER',subtitulo:'COMANDA DE PEDIDO',negrito:true,auto:true,logo:true,mostrarBordas:false,fecharJanela:true,direto:true,qzAtivo:false,qzImpressora:''};
 function getConfigImpressora(){
   try{return {...impressoraPadrao,...JSON.parse(localStorage.getItem('configImpressoraBigBurger')||'{}')}}catch(e){return {...impressoraPadrao}}
 }
@@ -43,7 +43,12 @@ function carregarConfigImpressora(){
   if(typeof imp_papel!=='undefined') imp_papel.value=String(c.papel||80);
   if(typeof imp_fonte!=='undefined') imp_fonte.value=c.fonte||13;
   if(typeof imp_titulo!=='undefined') imp_titulo.value=c.titulo||22;
-  if(typeof imp_margem!=='undefined') imp_margem.value=c.margem||6;
+  if(typeof imp_margem!=='undefined') imp_margem.value=c.margem??2;
+  if(typeof imp_largura_util!=='undefined') imp_largura_util.value=c.larguraUtil||72;
+  if(typeof imp_espaco_itens!=='undefined') imp_espaco_itens.value=c.espacoItens||5;
+  if(typeof imp_logo_tamanho!=='undefined') imp_logo_tamanho.value=c.logoTamanho||42;
+  if(typeof imp_qr_tamanho!=='undefined') imp_qr_tamanho.value=c.qrTamanho||34;
+  if(typeof imp_bordas!=='undefined') imp_bordas.checked=c.mostrarBordas===true;
   if(typeof imp_nome!=='undefined') imp_nome.value=c.nome||'BIG BURGER';
   if(typeof imp_subtitulo!=='undefined') imp_subtitulo.value=c.subtitulo||'COMANDA DE PEDIDO';
   if(typeof imp_negrito!=='undefined') imp_negrito.checked=c.negrito!==false;
@@ -55,7 +60,7 @@ function carregarConfigImpressora(){
   if(typeof imp_qz_nome!=='undefined') imp_qz_nome.value=c.qzImpressora||'';
   renderPreviewComanda();
 }
-function lerConfigImpressoraTela(){return {papel:Number(imp_papel?.value||80),fonte:Number(imp_fonte?.value||13),titulo:Number(imp_titulo?.value||22),margem:Number(imp_margem?.value||6),nome:(imp_nome?.value||'BIG BURGER').trim(),subtitulo:(imp_subtitulo?.value||'COMANDA DE PEDIDO').trim(),negrito:!!imp_negrito?.checked,auto:!!imp_auto?.checked,logo:!!imp_logo?.checked,fecharJanela:!!imp_fechar?.checked,direto:!!imp_direto?.checked,qzAtivo:!!imp_qz_ativo?.checked,qzImpressora:(imp_qz_nome?.value||'').trim()};}
+function lerConfigImpressoraTela(){return {papel:Number(imp_papel?.value||80),larguraUtil:Number(imp_largura_util?.value||(Number(imp_papel?.value||80)===58?48:72)),fonte:Number(imp_fonte?.value||13),titulo:Number(imp_titulo?.value||22),margem:Number(imp_margem?.value||2),espacoItens:Number(imp_espaco_itens?.value||5),logoTamanho:Number(imp_logo_tamanho?.value||42),qrTamanho:Number(imp_qr_tamanho?.value||34),nome:(imp_nome?.value||'BIG BURGER').trim(),subtitulo:(imp_subtitulo?.value||'COMANDA DE PEDIDO').trim(),negrito:!!imp_negrito?.checked,auto:!!imp_auto?.checked,logo:!!imp_logo?.checked,mostrarBordas:!!imp_bordas?.checked,fecharJanela:!!imp_fechar?.checked,direto:!!imp_direto?.checked,qzAtivo:!!imp_qz_ativo?.checked,qzImpressora:(imp_qz_nome?.value||'').trim()};}
 function salvarConfigImpressora(e){
   if(e) e.preventDefault();
   setConfigImpressora(lerConfigImpressoraTela());
@@ -65,10 +70,10 @@ function salvarConfigImpressora(e){
 function renderPreviewComanda(){
   const box=document.getElementById('previewComanda'); if(!box) return;
   const c=(typeof imp_papel!=='undefined')?lerConfigImpressoraTela():getConfigImpressora();
-  box.style.maxWidth=(c.papel||80)+'mm';
+  box.style.maxWidth=(c.larguraUtil||72)+'mm';
   box.style.fontSize=(c.fonte||13)+'px';
   box.style.fontWeight=c.negrito!==false?'800':'400';
-  box.innerHTML=`${c.logo!==false?'<div class="preview-logo-wrap"><img src="/print-logo.png" class="preview-logo" alt="Big Burger"></div>':''}<h3 style="font-size:${c.titulo||22}px">${escapeHtml(c.nome||'BIG BURGER')}</h3><p>${escapeHtml(c.subtitulo||'COMANDA DE PEDIDO')}</p><hr><div><b>Pedido #01</b></div><div>Cliente: Lucas</div><div>1x Big Burger</div><div>1x Fritas</div><hr><div><b>TOTAL: R$ 39,90</b></div>`;
+  box.innerHTML=`${c.logo!==false?'<div class="preview-logo-wrap"><img src="/print-logo.png" class="preview-logo" alt="Big Burger"></div>':''}<h3 style="font-size:${c.titulo||22}px">${escapeHtml(c.nome||'BIG BURGER')}</h3><p>${escapeHtml(c.subtitulo||'COMANDA DE PEDIDO')}</p><hr><div><b>Pedido #01</b></div><div>Cliente: Lucas</div><div>1x Big Burger</div><div>1x Fritas</div><div>Pagamento: dinheiro</div><div>Troco: para R$ 50,00 / devolver R$ 10,10</div><hr><div><b>TOTAL: R$ 39,90</b></div>`;
 }
 function testarImpressora(){
   salvarConfigImpressora();
@@ -79,10 +84,11 @@ function normalizarStatusPedido(status){
   if(['aguardando_pagamento','aguardando_pix'].includes(status)) return 'aguardando_pagamento';
   if(['preparo'].includes(status)) return 'em_preparo';
   if(['entregue'].includes(status)) return 'finalizado';
+  if(['nao_realizado','não_realizado','recusado'].includes(status)) return 'nao_realizado';
   return status || 'em_analise';
 }
 function pedidoArquivado(p){return p?.arquivado_relatorio===true || p?.arquivado_relatorio==='true' || p?.arquivado===true || p?.arquivado==='true';}
-function pedidosVisiveisPainel(){return pedidosCache.filter(p=>!pedidoArquivado(p) && !['aguardando_pagamento','aguardando_pix'].includes(String(p.status||'')));}
+function pedidosVisiveisPainel(){return pedidosCache.filter(p=>!pedidoArquivado(p) && !['aguardando_pagamento','aguardando_pix','nao_realizado','cancelado'].includes(String(p.status||'')));}
 function pedidosHistoricoRelatorio(){return pedidosCache.filter(p=>pedidoArquivado(p) && normalizarStatusPedido(p.status)==='finalizado');}
 function numeroPedido(p){ if(p && p.numero_pedido) return String(p.numero_pedido).padStart(2, '0'); return String(p?.id||'').split('-')[0].toUpperCase(); }
 function shortId(id){return String(id||'').split('-')[0].toUpperCase()}
@@ -178,9 +184,14 @@ async function conectarQZ(){
 function montarHtmlComandaQZ(p){
   const cfg=getConfigImpressora();
   const papel=Number(cfg.papel||80);
+  const larguraUtil=Number(cfg.larguraUtil||(papel===58?48:72));
   const fonte=Number(cfg.fonte||13);
   const titulo=Number(cfg.titulo||22);
-  const margem=Number(cfg.margem||6);
+  const margem=Number(cfg.margem??2);
+  const espacoItens=Number(cfg.espacoItens||5);
+  const logoTamanho=Number(cfg.logoTamanho||(papel===58?34:42));
+  const qrTamanho=Number(cfg.qrTamanho||(papel===58?30:34));
+  const bordaItem=cfg.mostrarBordas===true?'1px solid #000':'0';
   const peso=cfg.negrito!==false?'800':'500';
   const data=new Date().toLocaleString('pt-BR');
   const logoUrl=location.origin + '/print-logo.png';
@@ -208,6 +219,7 @@ function montarHtmlComandaQZ(p){
     <div class="dash"></div>
     <div class="row"><span class="label">Pagamento</span><span>${escapeHtml(p.forma_pagamento||'pix')}</span></div>
     <div class="row"><span class="label">Taxa entrega</span><span>${brl(p.taxa_entrega||0)}</span></div>
+    ${String(p.forma_pagamento||'').toLowerCase()==='dinheiro'?`<div class="row"><span class="label">Troco</span><span>${(p.precisa_troco===true||p.precisa_troco==='true'||Number(p.troco_para||0)>0)?('para '+brl(p.troco_para||0)+' / devolver '+brl(p.troco_valor||0)):'não precisa'}</span></div>`:''}
     <div class="total">TOTAL: ${brl(p.valor_total||0)}</div>
     ${obs}
     <div class="dash"></div>
@@ -237,6 +249,7 @@ function textoComandaQZ(p){
     '------------------------------\n' +
     'Pagamento: ' + (p.forma_pagamento||'pix') + '\n' +
     'Taxa entrega: ' + brl(p.taxa_entrega||0) + '\n' +
+    (String(p.forma_pagamento||'').toLowerCase()==='dinheiro' ? ('Troco: ' + ((p.precisa_troco===true||p.precisa_troco==='true'||Number(p.troco_para||0)>0)?('para '+brl(p.troco_para||0)+' / devolver '+brl(p.troco_valor||0)):'nao precisa') + '\n') : '') +
     negritoOn + 'TOTAL: ' + brl(p.valor_total||0) + negritoOff + '\n' +
     (p.observacao ? '\nOBS: ' + textoPrint(p.observacao) + '\n' : '') +
     '------------------------------\n' +
@@ -291,15 +304,20 @@ async function imprimirPedidoQZ(p){
 function htmlComandaPedido(p, autoPrint=true){
   const cfg=getConfigImpressora();
   const papel=Number(cfg.papel||80);
+  const larguraUtil=Number(cfg.larguraUtil||(papel===58?48:72));
   const fonte=Number(cfg.fonte||13);
   const titulo=Number(cfg.titulo||22);
-  const margem=Number(cfg.margem||6);
+  const margem=Number(cfg.margem??2);
+  const espacoItens=Number(cfg.espacoItens||5);
+  const logoTamanho=Number(cfg.logoTamanho||(papel===58?34:42));
+  const qrTamanho=Number(cfg.qrTamanho||(papel===58?30:34));
+  const bordaItem=cfg.mostrarBordas===true?'1px solid #000':'0';
   const peso=cfg.negrito!==false?'800':'400';
   const itens=itensHtmlComanda(p.itens);
   const data=new Date().toLocaleString('pt-BR');
   return `<!doctype html><html><head><meta charset="utf-8"><title>Comanda #${numeroPedido(p)}</title><style>
-  *{box-sizing:border-box}body{font-family:Arial,Helvetica,sans-serif;margin:0;padding:${margem}px;color:#000;background:#fff;font-size:${fonte}px;font-weight:${peso}}.ticket{width:${papel}mm;max-width:${papel}mm;margin:0 auto}.logo{display:block;width:${papel==58?'34':'42'}mm;max-height:28mm;object-fit:contain;margin:0 auto 6px}h1{font-size:${titulo}px;text-align:center;margin:0 0 4px;font-weight:900}.sub{text-align:center;border-bottom:1px dashed #000;padding-bottom:8px;margin-bottom:8px;font-weight:${peso}}.row{display:flex;justify-content:space-between;gap:8px;margin:4px 0}.big{font-size:${Math.max(fonte+5,18)}px;font-weight:900}.sec{border-top:1px dashed #000;margin-top:8px;padding-top:8px}.items{font-size:${Math.max(fonte+2,15)}px;line-height:1.35}.item-box{border:1px solid #000;border-radius:6px;padding:6px 7px;margin:6px 0;page-break-inside:avoid}.item-name{font-weight:900}.item-price{float:right}.item-add{padding-left:10px;margin-top:2px}.item-obs{padding-left:10px;margin-top:3px;font-weight:900}.total{font-size:${Math.max(fonte+7,20)}px;font-weight:900;text-align:right;margin-top:8px}.obs{font-size:${Math.max(fonte+1,14)}px;white-space:pre-wrap}@media print{body{padding:${margem}px}.ticket{width:${papel}mm;max-width:${papel}mm}button{display:none}}
-  </style></head><body><div class="ticket">${cfg.logo!==false?'<img src="/print-logo.png" class="logo" alt="Big Burger">':''}<h1>${escapeHtml(cfg.nome||'BIG BURGER')}</h1><div class="sub">${escapeHtml(cfg.subtitulo||'COMANDA DE PEDIDO')}<br>${data}</div><div class="row big"><span>Pedido</span><span>#${numeroPedido(p)}</span></div><div class="row"><span>Cliente</span><b>${escapeHtml(textoPrint(p.cliente_nome||''))}</b></div><div class="row"><span>Telefone</span><b>${escapeHtml(p.cliente_telefone||'')}</b></div><div class="sec"><b>ITENS</b><div class="items">${itens}</div></div><div class="sec"><b>ENDEREÇO</b><div>${escapeHtml(textoPrint(enderecoPedido(p)||'Retirada/sem endereco'))}</div></div><div class="sec"><div class="row"><span>Pagamento</span><b>${escapeHtml(p.forma_pagamento||'pix')}</b></div><div class="row"><span>Taxa entrega</span><b>${brl(p.taxa_entrega||0)}</b></div><div class="total">TOTAL: ${brl(p.valor_total||0)}</div></div>${p.observacao?`<div class="sec obs"><b>OBS:</b><br>${escapeHtml(textoPrint(p.observacao))}</div>`:''}<div class="sec" style="text-align:center"><b>QR CODE DO MOTOBOY</b><br><img style="width:${papel==58?'32':'38'}mm;height:${papel==58?'32':'38'}mm;object-fit:contain" src="https://api.qrserver.com/v1/create-qr-code/?size=180x180&data=${encodeURIComponent(location.origin+'/motoboy?pedido='+p.id)}" alt="QR Pedido"><br><small>Escanear para registrar pedido</small></div></div>${autoPrint?`<script>window.onload=function(){const imgs=[...document.images];Promise.all(imgs.map(img=>img.complete?Promise.resolve():new Promise(r=>{img.onload=img.onerror=r;setTimeout(r,1800)}))).then(()=>setTimeout(()=>window.print(),250)); if(${cfg.fecharJanela!==false?'true':'false'}){window.onafterprint=function(){setTimeout(function(){window.close();},300)}}}<\/script>`:''}</body></html>`;
+  *{box-sizing:border-box}body{font-family:Arial,Helvetica,sans-serif;margin:0;padding:${margem}px;color:#000;background:#fff;font-size:${fonte}px;font-weight:${peso};overflow:visible}.ticket{width:${larguraUtil}mm;max-width:${larguraUtil}mm;margin:0 auto;overflow:hidden}.logo{display:block;width:${logoTamanho}mm;max-height:28mm;object-fit:contain;margin:0 auto 4px}h1{font-size:${titulo}px;text-align:center;margin:0 0 4px;font-weight:900}.sub{text-align:center;border-bottom:1px dashed #000;padding-bottom:8px;margin-bottom:8px;font-weight:${peso}}.row{display:flex;justify-content:space-between;gap:8px;margin:4px 0}.big{font-size:${Math.max(fonte+5,18)}px;font-weight:900}.sec{border-top:1px dashed #000;margin-top:8px;padding-top:8px}.items{font-size:${Math.max(fonte+2,15)}px;line-height:1.35}.item-box{border:${bordaItem};border-radius:4px;padding:${cfg.mostrarBordas===true?'5px 6px':'2px 0'};margin:${espacoItens}px 0;page-break-inside:avoid;break-inside:avoid}.item-name{font-weight:900}.item-price{float:right}.item-add{padding-left:10px;margin-top:2px}.item-obs{padding-left:10px;margin-top:3px;font-weight:900}.total{font-size:${Math.max(fonte+7,20)}px;font-weight:900;text-align:right;margin-top:8px}.obs{font-size:${Math.max(fonte+1,14)}px;white-space:pre-wrap}@page{size:${papel}mm auto;margin:0}@media print{html,body{width:${papel}mm;margin:0!important;padding:0!important}.ticket{width:${larguraUtil}mm;max-width:${larguraUtil}mm;margin:0 auto;overflow:hidden}button{display:none}}
+  </style></head><body><div class="ticket">${cfg.logo!==false?'<img src="/print-logo.png" class="logo" alt="Big Burger">':''}<h1>${escapeHtml(cfg.nome||'BIG BURGER')}</h1><div class="sub">${escapeHtml(cfg.subtitulo||'COMANDA DE PEDIDO')}<br>${data}</div><div class="row big"><span>Pedido</span><span>#${numeroPedido(p)}</span></div><div class="row"><span>Cliente</span><b>${escapeHtml(textoPrint(p.cliente_nome||''))}</b></div><div class="row"><span>Telefone</span><b>${escapeHtml(p.cliente_telefone||'')}</b></div><div class="sec"><b>ITENS</b><div class="items">${itens}</div></div><div class="sec"><b>ENDEREÇO</b><div>${escapeHtml(textoPrint(enderecoPedido(p)||'Retirada/sem endereco'))}</div></div><div class="sec"><div class="row"><span>Pagamento</span><b>${escapeHtml(p.forma_pagamento||'pix')}</b></div><div class="row"><span>Taxa entrega</span><b>${brl(p.taxa_entrega||0)}</b></div>${String(p.forma_pagamento||'').toLowerCase()==='dinheiro'?`<div class="row"><span>Troco</span><b>${(p.precisa_troco===true||p.precisa_troco==='true'||Number(p.troco_para||0)>0)?('para '+brl(p.troco_para||0)+' / devolver '+brl(p.troco_valor||0)):'não precisa'}</b></div>`:''}<div class="total">TOTAL: ${brl(p.valor_total||0)}</div></div>${p.observacao?`<div class="sec obs"><b>OBS:</b><br>${escapeHtml(textoPrint(p.observacao))}</div>`:''}<div class="sec" style="text-align:center"><b>QR CODE DO MOTOBOY</b><br><img style="width:${qrTamanho}mm;height:${qrTamanho}mm;object-fit:contain" src="https://api.qrserver.com/v1/create-qr-code/?size=180x180&data=${encodeURIComponent(location.origin+'/motoboy?pedido='+p.id)}" alt="QR Pedido"><br><small>Escanear para registrar pedido</small></div></div>${autoPrint?`<script>window.onload=function(){const imgs=[...document.images];Promise.all(imgs.map(img=>img.complete?Promise.resolve():new Promise(r=>{img.onload=img.onerror=r;setTimeout(r,1800)}))).then(()=>setTimeout(()=>window.print(),250)); if(${cfg.fecharJanela!==false?'true':'false'}){window.onafterprint=function(){setTimeout(function(){window.close();},300)}}}<\/script>`:''}</body></html>`;
 }
 function imprimirPedidoDireto(p){
   if(!p){alert('Pedido não encontrado para imprimir.');return;}
@@ -413,6 +431,52 @@ function trocarUrlRoboNgrok(){
   if(nova){localStorage.setItem('BIGBURGER_ROBO_URL', nova.trim().replace(/\/+$/,'')); alert('URL do robô salva!');}
 }
 
+
+function dataAceitePedido(p){return p?.aceito_em || p?.accepted_at || p?.preparo_iniciado_em || p?.updated_at || p?.created_at;}
+function timerPedidoHtml(p){
+  const st=normalizarStatusPedido(p.status);
+  if(!['em_preparo','pronto','em_entrega'].includes(st)) return '';
+  const min=Number(p.tempo_estimado_minutos||0);
+  if(!min) return '';
+  const inicio=dataAceitePedido(p);
+  if(!inicio) return `<div class="order-timer">Tempo: ${min}:00</div>`;
+  const fim=new Date(inicio).getTime()+min*60000;
+  const diff=fim-Date.now();
+  if(diff>=0){
+    const m=Math.floor(diff/60000), ss=Math.floor((diff%60000)/1000);
+    return `<div class="order-timer" data-fim="${fim}">⏱ Entrega: ${String(m).padStart(2,'0')}:${String(ss).padStart(2,'0')}</div>`;
+  }
+  const atraso=Math.abs(diff);
+  const m=Math.floor(atraso/60000), ss=Math.floor((atraso%60000)/1000);
+  return `<div class="order-timer late" data-fim="${fim}">🔴 Atrasado: +${String(m).padStart(2,'0')}:${String(ss).padStart(2,'0')}</div>`;
+}
+function atualizarTimersPedidos(){
+  document.querySelectorAll('.order-timer[data-fim]').forEach(el=>{
+    const fim=Number(el.dataset.fim||0); if(!fim) return;
+    const diff=fim-Date.now();
+    if(diff>=0){const m=Math.floor(diff/60000), s=Math.floor((diff%60000)/1000); el.classList.remove('late'); el.textContent=`⏱ Entrega: ${String(m).padStart(2,'0')}:${String(s).padStart(2,'0')}`;}
+    else{const atraso=Math.abs(diff); const m=Math.floor(atraso/60000), s=Math.floor((atraso%60000)/1000); el.classList.add('late'); el.textContent=`🔴 Atrasado: +${String(m).padStart(2,'0')}:${String(s).padStart(2,'0')}`;}
+  });
+}
+setInterval(atualizarTimersPedidos,1000);
+function trocoPedidoHtml(p){
+  if(String(p.forma_pagamento||'').toLowerCase()!=='dinheiro') return '';
+  const precisa=p.precisa_troco===true || p.precisa_troco==='true' || Number(p.troco_para||0)>0;
+  if(!precisa) return '<br>💵 Troco: não precisa';
+  return `<br>💵 Troco para: ${brl(p.troco_para||0)} • devolver: ${brl(p.troco_valor||0)}`;
+}
+async function marcarNaoRealizado(id){
+  if(!id) return;
+  if(!confirm('Marcar este pedido como NÃO REALIZADO?\n\nEle sai do painel e NÃO entra no relatório.')) return;
+  try{
+    const r=await fetch('/api?route=order-status',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({id,status:'nao_realizado',nao_realizado_em:new Date().toISOString()})});
+    const d=await r.json().catch(()=>({}));
+    if(!r.ok||!d.ok) throw new Error(d.error||JSON.stringify(d));
+    alert('Pedido marcado como não realizado e removido do relatório.');
+    await loadPedidos();
+  }catch(e){alert('Erro ao marcar não realizado: '+e.message)}
+}
+
 async function atualizarStatusPedido(id,status,whatsTipo){
   const pedido=pedidosCache.find(p=>p.id===id);
   let tempo = pedido?.tempo_estimado_minutos || '';
@@ -456,12 +520,12 @@ function cardPedido(p){
   const st=normalizarStatusPedido(p.status);
   const itens=itensTexto(p.itens).replaceAll('\n','<br>');
   let acoes='';
-  if(st==='em_analise') acoes=`<button class="order-action accept" onclick="atualizarStatusPedido('${p.id}','em_preparo','aceito')">✅ Aceitar pedido</button><button class="order-action refuse" onclick="recusarPedido('${p.id}')">❌ Recusar pedido</button>`;
+  if(st==='em_analise') acoes=`<button class="order-action accept" onclick="atualizarStatusPedido('${p.id}','em_preparo','aceito')">✅ Aceitar pedido</button><button class="order-action no-realizado" onclick="marcarNaoRealizado('${p.id}')">🚫 Não realizado</button><button class="order-action refuse" onclick="recusarPedido('${p.id}')">❌ Recusar pedido</button>`;
   if(st==='em_preparo') acoes=`<button class="order-action ready" onclick="atualizarStatusPedido('${p.id}','pronto','pronto')">🔵 Marcar pronto</button><button class="order-action delivery" onclick="atualizarStatusPedido('${p.id}','em_entrega','entrega')">🛵 Saiu para entrega</button>`;
   if(st==='pronto') acoes=`<button class="order-action delivery" onclick="atualizarStatusPedido('${p.id}','em_entrega','entrega')">🛵 Saiu para entrega</button>`;
   if(st==='em_entrega') acoes=`<button class="order-action done" onclick="atualizarStatusPedido('${p.id}','finalizado','')">✅ Finalizar</button>`;
   if(st==='finalizado') acoes=`<span class="order-done">Pedido finalizado</span>`;
-  return `<div class="order-card"><div class="order-title"><b>#${numeroPedido(p)}</b><span>${brl(p.valor_total)}</span></div><div class="order-customer">👤 ${p.cliente_nome||''}<br>📞 ${p.cliente_telefone||''}</div><div class="order-items">${itens}</div><div class="order-address">📍 ${enderecoPedido(p)}<br>💳 ${p.forma_pagamento||'pix'} • 🚚 ${brl(p.taxa_entrega||0)}</div><div class="order-actions">${acoes}<button class="order-action print" onclick='imprimirPedido(${JSON.stringify(p).replaceAll("'","&#39;")})'>🖨️ Imprimir</button><button class="order-action whats" onclick='abrirWhats(${JSON.stringify(p).replaceAll("'","&#39;")},"aceito")'>💬 WhatsApp</button></div></div>`;
+  return `<div class="order-card"><div class="order-title"><b>#${numeroPedido(p)}</b><span>${brl(p.valor_total)}</span></div><div class="order-customer">👤 ${p.cliente_nome||''}<br>📞 ${p.cliente_telefone||''}</div><div class="order-items">${itens}</div><div class="order-address">📍 ${enderecoPedido(p)}<br>💳 ${p.forma_pagamento||'pix'} • 🚚 ${brl(p.taxa_entrega||0)}${trocoPedidoHtml(p)}</div>${timerPedidoHtml(p)}<div class="order-actions">${acoes}<button class="order-action print" onclick='imprimirPedido(${JSON.stringify(p).replaceAll("'","&#39;")})'>🖨️ Imprimir</button><button class="order-action whats" onclick='abrirWhats(${JSON.stringify(p).replaceAll("'","&#39;")},"aceito")'>💬 WhatsApp</button></div></div>`;
 }
 let somPedidoLoopTimer=null;
 let somPedidoAudioCtx=null;
@@ -788,7 +852,8 @@ function pedidosDoRelatorioDiario(){
   const reset=new Date(getFinanceiroResetISO()).getTime();
   const hoje=new Date();
   return [...pedidosCache].filter(p=>{
-    if(normalizarStatusPedido(p.status)==='cancelado') return false;
+    const st=normalizarStatusPedido(p.status);
+    if(st!=='finalizado') return false;
     const dt=new Date(p.created_at||Date.now());
     return dt.toDateString()===hoje.toDateString() && dt.getTime()>=reset;
   });

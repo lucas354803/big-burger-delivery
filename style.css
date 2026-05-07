@@ -1098,3 +1098,12 @@
   .category-products{display:grid!important;grid-template-columns:1fr!important;gap:14px!important}
   .err{background:#fff1f1!important;color:#7a1111!important;border:1px solid #ff4d4d!important;border-radius:14px!important;padding:14px!important;line-height:1.35!important;font-size:14px!important}
 }
+
+
+.troco-box{background:#fff8df;border:1px solid #ffd36b;border-radius:14px;padding:12px;margin:8px 0;display:grid;gap:8px;color:#211400}
+.troco-box input[type=number]{width:100%;padding:12px;border-radius:12px;border:1px solid rgba(0,0,0,.16)}
+.troco-box small{color:#7a4a00;font-weight:700}
+.order-timer{margin-top:10px;padding:9px 10px;border-radius:10px;background:#182215;color:#80ff9a;font-weight:1000;text-align:center;border:1px solid rgba(128,255,154,.35)}
+.order-timer.late{background:#2b0909;color:#ff5a5a;border-color:#ff3b3b;animation:pulseLate 1s ease-in-out infinite}
+@keyframes pulseLate{50%{filter:brightness(1.35)}}
+.order-action.no-realizado{background:#7f1d1d;color:#fff}

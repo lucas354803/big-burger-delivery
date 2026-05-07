@@ -86,6 +86,11 @@
           <option value="dinheiro">Dinheiro</option>
           <option value="cartao">Cartão na entrega</option>
         </select>
+        <div id="trocoBox" class="troco-box" style="display:none">
+          <label class="check"><input id="precisaTroco" type="checkbox" onchange="atualizarTrocoBox()"> Precisa de troco?</label>
+          <input id="trocoPara" type="number" min="0" step="0.01" placeholder="Troco para quanto? Ex: 100" oninput="atualizarTrocoBox()">
+          <small id="trocoInfo">Marque se precisar de troco.</small>
+        </div>
         <textarea id="obs" placeholder="Observação do pedido"></textarea>
         <div class="delivery-summary"><span>Taxa de entrega</span><b id="taxaEntrega">R$ 0,00</b></div>
         <div class="delivery-summary strong"><span>Total com entrega</span><b id="totalComEntrega">R$ 0,00</b></div>

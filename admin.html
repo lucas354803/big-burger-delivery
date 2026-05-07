@@ -238,7 +238,23 @@
               <input id="imp_titulo" type="number" min="14" max="34" value="22">
             </label>
             <label>Margem da impressão
-              <input id="imp_margem" type="number" min="0" max="20" value="6">
+              <input id="imp_margem" type="number" min="0" max="20" value="2">
+            </label>
+          </div>
+          <div class="mini-grid">
+            <label>Largura útil da comanda
+              <input id="imp_largura_util" type="number" min="45" max="80" value="72">
+            </label>
+            <label>Espaço entre produtos
+              <input id="imp_espaco_itens" type="number" min="0" max="15" value="5">
+            </label>
+          </div>
+          <div class="mini-grid">
+            <label>Tamanho da logo
+              <input id="imp_logo_tamanho" type="number" min="20" max="70" value="42">
+            </label>
+            <label>Tamanho do QR Code
+              <input id="imp_qr_tamanho" type="number" min="20" max="55" value="34">
             </label>
           </div>
           <div class="mini-grid">
@@ -255,6 +271,9 @@
           </div>
           <div class="mini-grid">
             <label class="check switch-line"><input id="imp_logo" type="checkbox" checked> Mostrar logo da Big Burger na comanda</label>
+            <label class="check switch-line"><input id="imp_bordas" type="checkbox"> Mostrar bordas nos produtos</label>
+          </div>
+          <div class="mini-grid">
             <label class="check switch-line"><input id="imp_fechar" type="checkbox" checked> Fechar janela depois da impressão</label>
           </div>
           <div class="mini-grid">

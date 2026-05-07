@@ -84,6 +84,11 @@ CREATE TABLE pedidos (
   valor_total numeric(10,2) NOT NULL DEFAULT 0,
   status text NOT NULL DEFAULT 'aguardando_pagamento',
   tempo_estimado_minutos integer,
+  aceito_em timestamptz,
+  nao_realizado_em timestamptz,
+  precisa_troco boolean NOT NULL DEFAULT false,
+  troco_para numeric(10,2) NOT NULL DEFAULT 0,
+  troco_valor numeric(10,2) NOT NULL DEFAULT 0,
   arquivado_relatorio boolean NOT NULL DEFAULT false,
   arquivado_em timestamptz,
   created_at timestamptz NOT NULL DEFAULT now()
@@ -400,3 +405,11 @@ $$;
 GRANT EXECUTE ON FUNCTION resetar_numero_pedidos_diario() TO anon;
 GRANT EXECUTE ON FUNCTION resetar_numero_pedidos_diario() TO authenticated;
 GRANT EXECUTE ON FUNCTION resetar_numero_pedidos_diario() TO service_role;
+
+
+-- Atualização: troco, timer e pedido não realizado
+ALTER TABLE pedidos ADD COLUMN IF NOT EXISTS aceito_em timestamptz;
+ALTER TABLE pedidos ADD COLUMN IF NOT EXISTS nao_realizado_em timestamptz;
+ALTER TABLE pedidos ADD COLUMN IF NOT EXISTS precisa_troco boolean NOT NULL DEFAULT false;
+ALTER TABLE pedidos ADD COLUMN IF NOT EXISTS troco_para numeric(10,2) NOT NULL DEFAULT 0;
+ALTER TABLE pedidos ADD COLUMN IF NOT EXISTS troco_valor numeric(10,2) NOT NULL DEFAULT 0;
