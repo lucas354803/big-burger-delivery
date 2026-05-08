@@ -1177,3 +1177,270 @@
   border:1px solid #333;
 }
 
+
+
+/* ===============================
+   ÁREA DO CLIENTE - VERSÃO PROFISSIONAL
+   =============================== */
+
+.cliente-modal{
+  position:fixed;
+  inset:0;
+  background:rgba(0,0,0,.82);
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  z-index:99999;
+  padding:18px;
+  backdrop-filter: blur(4px);
+}
+
+.hidden{
+  display:none !important;
+}
+
+.cliente-box{
+  width:95%;
+  max-width:540px;
+  max-height:88vh;
+  overflow-y:auto;
+  background:#121212;
+  border:1px solid rgba(255,255,255,.12);
+  border-radius:22px;
+  padding:18px;
+  color:#fff;
+  box-shadow:0 20px 60px rgba(0,0,0,.5);
+}
+
+.cliente-topo{
+  display:flex;
+  justify-content:space-between;
+  align-items:flex-start;
+  gap:12px;
+  margin-bottom:16px;
+}
+
+.cliente-topo h2{
+  margin:0;
+  font-size:24px;
+  line-height:1.2;
+}
+
+.cliente-topo p{
+  margin:4px 0 0;
+  color:#aaa;
+  font-size:14px;
+}
+
+.cliente-topo button{
+  background:#ff2020;
+  border:none;
+  color:#fff;
+  width:36px;
+  height:36px;
+  border-radius:50%;
+  cursor:pointer;
+  font-weight:800;
+}
+
+.cliente-login{
+  display:grid;
+  grid-template-columns:1fr 1fr;
+  gap:10px;
+  margin-bottom:14px;
+}
+
+.cliente-login input{
+  padding:14px;
+  border-radius:14px;
+  border:1px solid rgba(255,255,255,.10);
+  background:#0b0b0b;
+  color:#fff;
+  outline:none;
+}
+
+.cliente-login button{
+  grid-column:1 / -1;
+  padding:14px;
+  background:#ffb300;
+  border:none;
+  border-radius:14px;
+  font-weight:900;
+  cursor:pointer;
+  color:#1b1b1b;
+}
+
+.cliente-resumo{
+  background:#1b1b1b;
+  border:1px solid rgba(255,255,255,.10);
+  padding:12px 14px;
+  border-radius:14px;
+  margin:10px 0 12px;
+  display:flex;
+  justify-content:space-between;
+  gap:12px;
+  align-items:center;
+  color:#fff;
+}
+
+.cliente-resumo span{
+  color:#aaa;
+  font-size:12px;
+}
+
+.pedido-cliente{
+  background:#1d1d1d;
+  margin-top:14px;
+  padding:16px;
+  border-radius:18px;
+  border:1px solid rgba(255,255,255,.12);
+}
+
+.pedido-cliente-topo{
+  display:flex;
+  justify-content:space-between;
+  align-items:flex-start;
+  gap:12px;
+  margin-bottom:12px;
+}
+
+.pedido-cliente h3{
+  margin:0;
+  font-size:18px;
+  word-break:break-word;
+}
+
+.pedido-cliente small{
+  color:#999;
+  display:block;
+  margin-top:4px;
+}
+
+.cliente-status{
+  white-space:nowrap;
+  border-radius:999px;
+  padding:7px 10px;
+  font-size:12px;
+  font-weight:900;
+  background:#2b2b2b;
+}
+
+.cliente-status.aguardando{ background:#493b08; color:#ffd36b; }
+.cliente-status.analise{ background:#3d3500; color:#ffd500; }
+.cliente-status.preparo{ background:#482100; color:#ff9c3a; }
+.cliente-status.entrega{ background:#062c4d; color:#68bdff; }
+.cliente-status.entregue{ background:#063b1b; color:#58e47d; }
+.cliente-status.cancelado{ background:#4b0b0b; color:#ff6b6b; }
+
+.cliente-progresso{
+  height:10px;
+  border-radius:999px;
+  overflow:hidden;
+  background:#2a2a2a;
+  margin:12px 0;
+}
+
+.cliente-progresso div{
+  height:100%;
+  background:#ffb300;
+  border-radius:999px;
+  transition:.35s;
+}
+
+.pedido-status-entrega .cliente-progresso div{ background:#2196f3; }
+.pedido-status-entregue .cliente-progresso div{ background:#00c853; }
+.pedido-status-preparo .cliente-progresso div{ background:#ff6b00; }
+.pedido-status-cancelado .cliente-progresso div{ background:#ff2020; }
+
+.cliente-passos{
+  display:grid;
+  grid-template-columns:repeat(4,1fr);
+  gap:6px;
+  margin:12px 0;
+}
+
+.cliente-passo{
+  background:#151515;
+  border:1px solid rgba(255,255,255,.08);
+  border-radius:12px;
+  padding:8px 4px;
+  text-align:center;
+  opacity:.45;
+}
+
+.cliente-passo.ativo{
+  opacity:1;
+  border-color:rgba(255,179,0,.55);
+}
+
+.cliente-passo span{
+  display:block;
+  font-size:18px;
+  margin-bottom:3px;
+}
+
+.cliente-passo small{
+  color:#ddd;
+  font-size:11px;
+}
+
+.pedido-cliente-info{
+  margin-top:10px;
+  background:#151515;
+  border-radius:14px;
+  padding:10px 12px;
+}
+
+.pedido-cliente-info p{
+  margin:7px 0;
+  color:#e8e8e8;
+  font-size:14px;
+}
+
+.cliente-vazio,
+.cliente-vazio-card{
+  color:#ddd;
+  background:#1b1b1b;
+  border:1px solid rgba(255,255,255,.10);
+  border-radius:16px;
+  padding:16px;
+  margin-top:12px;
+}
+
+.cliente-vazio-card{
+  text-align:center;
+}
+
+.cliente-vazio-icone{
+  font-size:34px;
+  margin-bottom:8px;
+}
+
+@media(max-width:600px){
+  .cliente-modal{
+    align-items:flex-end;
+    padding:0;
+  }
+
+  .cliente-box{
+    width:100%;
+    max-width:none;
+    max-height:92vh;
+    border-radius:24px 24px 0 0;
+    padding:16px;
+  }
+
+  .cliente-login{
+    grid-template-columns:1fr;
+  }
+
+  .pedido-cliente-topo,
+  .cliente-resumo{
+    flex-direction:column;
+    align-items:flex-start;
+  }
+
+  .cliente-status{
+    white-space:normal;
+  }
+}

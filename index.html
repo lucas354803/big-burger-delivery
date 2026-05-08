@@ -122,27 +122,28 @@
   </div>
 
   <footer>Big Burger Delivery © Pedido direto, mais rápido e mais barato.</footer>
-  <script src="/app.js"></script>
   <button id="installAppBtn" class="install-app-btn">📲 Instalar App</button>
   <script src="/pwa.js"></script>
 
 <div id="clienteModal" class="cliente-modal hidden">
   <div class="cliente-box">
     <div class="cliente-topo">
-      <h2>👤 Área do Cliente</h2>
+      <div>
+        <h2>👤 Área do Cliente</h2>
+        <p>Acompanhe seus pedidos em tempo real</p>
+      </div>
       <button onclick="fecharAreaCliente()">✖</button>
     </div>
 
     <div class="cliente-login">
       <input type="text" id="clienteNome" placeholder="Seu nome">
       <input type="text" id="clienteWhats" placeholder="Seu WhatsApp">
-      <button onclick="salvarCliente()">Entrar</button>
+      <button onclick="salvarCliente()">Entrar e ver meus pedidos</button>
     </div>
 
     <div id="clientePedidos"></div>
   </div>
 </div>
-
 <script src='/app.js'></script>
 </body>
 </html>

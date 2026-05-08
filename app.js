@@ -392,6 +392,142 @@ async function copiarPixCopiaCola(){
 
 
 
+
+// ===============================
+// ÁREA DO CLIENTE - BIG BURGER
+// Login simples por nome + WhatsApp
+// Histórico e acompanhamento de status
+// ===============================
+
+let clienteAutoRefresh = null;
+
+function limparNumeroCliente(n = ''){
+  return String(n || '').replace(/\D/g, '');
+}
+
+function normalizarTextoCliente(v = ''){
+  return String(v || '').trim();
+}
+
+function formatarMoedaCliente(valor){
+  const n = Number(valor || 0);
+  return n.toLocaleString('pt-BR', { style:'currency', currency:'BRL' });
+}
+
+function formatarDataCliente(valor){
+  if(!valor) return '';
+  const d = new Date(valor);
+  if(isNaN(d.getTime())) return '';
+  return d.toLocaleString('pt-BR', {
+    day:'2-digit',
+    month:'2-digit',
+    year:'2-digit',
+    hour:'2-digit',
+    minute:'2-digit'
+  });
+}
+
+function pegarNumeroPedidoCliente(p){
+  return p.numero_pedido || p.numero || p.order_number || p.codigo || p.codigo_pedido || (p.id ? String(p.id).slice(0, 8).toUpperCase() : '---');
+}
+
+function pegarTotalPedidoCliente(p){
+  return p.total || p.valor_total || p.total_pedido || p.valor || p.subtotal || 0;
+}
+
+function pegarTempoPedidoCliente(p){
+  return p.tempo_entrega || p.delivery_time || p.previsao_entrega || p.tempo || 35;
+}
+
+function pegarDataPedidoCliente(p){
+  return p.created_at || p.criado_em || p.data || p.horario || p.updated_at || '';
+}
+
+function pegarPagamentoPedidoCliente(p){
+  return p.pagamento || p.forma_pagamento || p.payment_method || p.metodo_pagamento || '';
+}
+
+function pegarEnderecoPedidoCliente(p){
+  const partes = [
+    p.endereco,
+    p.rua,
+    p.numero_casa || p.numero_endereco,
+    p.bairro,
+    p.cidade
+  ].filter(Boolean);
+  return partes.join(', ');
+}
+
+function traduzirStatusCliente(statusOriginal = ''){
+  const s = String(statusOriginal || '').toLowerCase();
+
+  if(s.includes('aguardando_pagamento') || s.includes('pagamento')) {
+    return { texto:'Aguardando pagamento', emoji:'⏳', classe:'aguardando', progresso:15 };
+  }
+
+  if(s.includes('analise') || s.includes('análise') || s.includes('novo') || s.includes('pendente')) {
+    return { texto:'Pedido recebido', emoji:'🟡', classe:'analise', progresso:25 };
+  }
+
+  if(s.includes('preparo') || s.includes('preparando') || s.includes('aceito')) {
+    return { texto:'Em preparo', emoji:'🍔', classe:'preparo', progresso:50 };
+  }
+
+  if(s.includes('entrega') || s.includes('saiu') || s.includes('rota')) {
+    return { texto:'Saiu para entrega', emoji:'🛵', classe:'entrega', progresso:80 };
+  }
+
+  if(s.includes('finalizado') || s.includes('entregue') || s.includes('concluido') || s.includes('concluído')) {
+    return { texto:'Entregue', emoji:'✅', classe:'entregue', progresso:100 };
+  }
+
+  if(s.includes('cancelado') || s.includes('recusado')) {
+    return { texto:'Cancelado', emoji:'❌', classe:'cancelado', progresso:100 };
+  }
+
+  return { texto:'Pedido recebido', emoji:'🟡', classe:'analise', progresso:25 };
+}
+
+function extrairItensPedidoCliente(p){
+  let itens = p.itens || p.items || p.produtos || p.carrinho || p.pedido_itens || [];
+
+  if(typeof itens === 'string'){
+    try { itens = JSON.parse(itens); } catch(e) { return itens; }
+  }
+
+  if(!Array.isArray(itens)) return '';
+
+  return itens.map(item => {
+    if(typeof item === 'string') return item;
+    const qtd = item.quantidade || item.qtd || item.qty || 1;
+    const nome = item.nome || item.name || item.produto || item.titulo || 'Item';
+    return `${qtd}x ${nome}`;
+  }).join(', ');
+}
+
+function criarLinhaStatusCliente(status){
+  const passos = [
+    { key:'analise', label:'Recebido', emoji:'🟡' },
+    { key:'preparo', label:'Preparo', emoji:'🍔' },
+    { key:'entrega', label:'Entrega', emoji:'🛵' },
+    { key:'entregue', label:'Entregue', emoji:'✅' }
+  ];
+
+  const ordem = { aguardando:0, analise:1, preparo:2, entrega:3, entregue:4, cancelado:0 };
+  const atual = ordem[status.classe] ?? 1;
+
+  return `
+    <div class="cliente-passos">
+      ${passos.map((p, i) => `
+        <div class="cliente-passo ${i < atual ? 'ativo' : ''}">
+          <span>${p.emoji}</span>
+          <small>${p.label}</small>
+        </div>
+      `).join('')}
+    </div>
+  `;
+}
+
 async function abrirAreaCliente(){
   document.getElementById('clienteModal').classList.remove('hidden');
 
@@ -402,12 +538,24 @@ async function abrirAreaCliente(){
   document.getElementById('clienteWhats').value = whats;
 
   if(whats){
-    carregarPedidosCliente();
+    await carregarPedidosCliente();
   }
+
+  if(clienteAutoRefresh) clearInterval(clienteAutoRefresh);
+  clienteAutoRefresh = setInterval(() => {
+    const modal = document.getElementById('clienteModal');
+    if(modal && !modal.classList.contains('hidden')){
+      carregarPedidosCliente(true);
+    }
+  }, 5000);
 }
 
 function fecharAreaCliente(){
   document.getElementById('clienteModal').classList.add('hidden');
+  if(clienteAutoRefresh){
+    clearInterval(clienteAutoRefresh);
+    clienteAutoRefresh = null;
+  }
 }
 
 function salvarCliente(){
@@ -420,83 +568,128 @@ function salvarCliente(){
   }
 
   localStorage.setItem('cliente_nome', nome);
-  localStorage.setItem('cliente_whats', whats);
+  localStorage.setItem('cliente_whats', limparNumeroCliente(whats));
 
   carregarPedidosCliente();
 }
 
-async function carregarPedidosCliente(){
+async function carregarPedidosCliente(silencioso = false){
   const whats = localStorage.getItem('cliente_whats');
+  const nome = localStorage.getItem('cliente_nome') || '';
 
   const area = document.getElementById('clientePedidos');
-  area.innerHTML = '<p>Carregando pedidos...</p>';
+  if(!area) return;
+
+  if(!whats){
+    area.innerHTML = '<p class="cliente-vazio">Digite seu nome e WhatsApp para ver seus pedidos.</p>';
+    return;
+  }
+
+  if(!silencioso){
+    area.innerHTML = '<p class="cliente-vazio">Carregando seus pedidos...</p>';
+  }
 
   try{
-    const r = await fetch('/api?route=pedidos');
+    const r = await fetch('/api?route=pedidos&_=' + Date.now());
     const pedidos = await r.json();
-
-    const limparNumero = (n='') => String(n).replace(/\D/g,'');
-
-    const whatsLimpo = limparNumero(whats);
 
     const listaPedidos = Array.isArray(pedidos)
       ? pedidos
-      : (pedidos.pedidos || pedidos.data || []);
+      : (pedidos.pedidos || pedidos.data || pedidos.orders || []);
 
-    const meus = listaPedidos.filter(p => {
+    const whatsLimpo = limparNumeroCliente(whats);
+    const nomeLimpo = normalizarTextoCliente(nome).toLowerCase();
+
+    let meus = listaPedidos.filter(p => {
       const numeros = [
         p.whatsapp,
         p.telefone,
         p.cliente_whatsapp,
         p.celular,
-        p.phone
-      ].map(v => limparNumero(v));
+        p.phone,
+        p.customer_phone
+      ].map(v => limparNumeroCliente(v)).filter(Boolean);
 
-      return numeros.some(n => n.includes(whatsLimpo) || whatsLimpo.includes(n));
+      const nomes = [
+        p.nome,
+        p.cliente_nome,
+        p.nome_cliente,
+        p.customer_name,
+        p.cliente
+      ].map(v => normalizarTextoCliente(v).toLowerCase()).filter(Boolean);
+
+      const bateNumero = numeros.some(n => n.includes(whatsLimpo) || whatsLimpo.includes(n));
+      const bateNome = nomeLimpo && nomes.some(n => n.includes(nomeLimpo) || nomeLimpo.includes(n));
+
+      // Principal: WhatsApp. Nome ajuda quando o pedido antigo não salvou telefone certo.
+      return bateNumero || (bateNome && numeros.length === 0);
+    });
+
+    meus.sort((a,b) => {
+      const da = new Date(pegarDataPedidoCliente(a)).getTime() || 0;
+      const db = new Date(pegarDataPedidoCliente(b)).getTime() || 0;
+      return db - da;
     });
 
     if(!meus.length){
-      area.innerHTML = '<p>Nenhum pedido encontrado.</p>';
+      area.innerHTML = `
+        <div class="cliente-vazio-card">
+          <div class="cliente-vazio-icone">📦</div>
+          <h3>Nenhum pedido encontrado</h3>
+          <p>Confira se o WhatsApp digitado é o mesmo usado no pedido.</p>
+        </div>
+      `;
       return;
     }
 
-    area.innerHTML = meus.reverse().map(p => {
-      const status = (p.status || 'Em análise').toLowerCase();
-
-      let cor = '#ffb300';
-
-      if(status.includes('preparo')) cor = '#ff6b00';
-      if(status.includes('entrega')) cor = '#2196f3';
-      if(status.includes('entregue')) cor = '#00c853';
-
-      return `
-      <div class="pedido-cliente">
-        <h3>Pedido #${p.numero || p.id}</h3>
-        <p>Status: <b>${p.status || 'Em análise'}</b></p>
-        <p>Total: <b>R$ ${Number(p.total || 0).toFixed(2)}</b></p>
-        <p>Tempo: ${p.tempo_entrega || 40} min</p>
-      <div style="margin-top:10px;background:#222;border-radius:999px;height:10px;overflow:hidden;">
-          <div style="width:${
-            status.includes('análise') ? '25%' :
-            status.includes('preparo') ? '50%' :
-            status.includes('entrega') ? '80%' :
-            status.includes('entregue') ? '100%' : '20%'
-          };height:100%;background:${cor};transition:.3s;"></div>
-        </div>
-
+    area.innerHTML = `
+      <div class="cliente-resumo">
+        <b>${meus.length}</b> pedido${meus.length > 1 ? 's' : ''} encontrado${meus.length > 1 ? 's' : ''}
+        <span>Atualiza automático a cada 5s</span>
       </div>
+      ${meus.map(p => {
+        const status = traduzirStatusCliente(p.status || p.status_pedido || p.situacao);
+        const numero = pegarNumeroPedidoCliente(p);
+        const total = pegarTotalPedidoCliente(p);
+        const tempo = pegarTempoPedidoCliente(p);
+        const data = formatarDataCliente(pegarDataPedidoCliente(p));
+        const pagamento = pegarPagamentoPedidoCliente(p);
+        const endereco = pegarEnderecoPedidoCliente(p);
+        const itens = extrairItensPedidoCliente(p);
+
+        return `
+          <div class="pedido-cliente pedido-status-${status.classe}">
+            <div class="pedido-cliente-topo">
+              <div>
+                <h3>Pedido #${numero}</h3>
+                ${data ? `<small>${data}</small>` : ''}
+              </div>
+              <span class="cliente-status ${status.classe}">${status.emoji} ${status.texto}</span>
+            </div>
+
+            <div class="cliente-progresso">
+              <div style="width:${status.progresso}%"></div>
+            </div>
+
+            ${criarLinhaStatusCliente(status)}
+
+            <div class="pedido-cliente-info">
+              <p><b>Total:</b> ${formatarMoedaCliente(total)}</p>
+              <p><b>Previsão:</b> ${tempo} min</p>
+              ${pagamento ? `<p><b>Pagamento:</b> ${pagamento}</p>` : ''}
+              ${endereco ? `<p><b>Endereço:</b> ${endereco}</p>` : ''}
+              ${itens ? `<p><b>Itens:</b> ${itens}</p>` : ''}
+            </div>
+          </div>
+        `;
+      }).join('')}
     `;
-    }).join('');
 
   }catch(e){
-    area.innerHTML = '<p>Erro ao carregar pedidos.</p>';
+    console.error(e);
+    area.innerHTML = '<p class="cliente-vazio">Erro ao carregar seus pedidos.</p>';
   }
 }
 
-setInterval(()=>{
-  const modal = document.getElementById('clienteModal');
-  if(modal && !modal.classList.contains('hidden')){
-    carregarPedidosCliente();
-  }
-}, 5000);
+
 
