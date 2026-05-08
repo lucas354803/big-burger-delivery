@@ -1444,3 +1444,31 @@
     white-space:normal;
   }
 }
+
+
+.cliente-abas{
+  display:flex;
+  gap:10px;
+  margin:14px 0;
+}
+
+.cliente-aba{
+  flex:1;
+  padding:12px;
+  border:none;
+  border-radius:14px;
+  background:#1d1d1d;
+  color:#fff;
+  font-weight:700;
+  cursor:pointer;
+  border:1px solid rgba(255,255,255,.08);
+}
+
+.cliente-aba.ativa{
+  background:#ffb300;
+  color:#111;
+}
+
+.cliente-conteudo-aba{
+  display:block;
+}
