@@ -631,16 +631,6 @@ async function carregarPedidosCliente(silencioso = false){
       return db - da;
     });
 
-    const pedidosAndamento = meus.filter(p => {
-      const s = String(p.status || p.status_pedido || '').toLowerCase();
-      return !s.includes('finalizado') && !s.includes('entregue');
-    });
-
-    const pedidosFinalizados = meus.filter(p => {
-      const s = String(p.status || p.status_pedido || '').toLowerCase();
-      return s.includes('finalizado') || s.includes('entregue');
-    });
-
     if(!meus.length){
       area.innerHTML = `
         <div class="cliente-vazio-card">
@@ -652,8 +642,88 @@ async function carregarPedidosCliente(silencioso = false){
       return;
     }
 
-    const renderPedido = (p) => {
-}catch(e){
+    const renderPedidoCliente = (p) => {
+      const status = traduzirStatusCliente(p.status || p.status_pedido || p.situacao);
+      const numero = pegarNumeroPedidoCliente(p);
+      const total = pegarTotalPedidoCliente(p);
+      const tempo = pegarTempoPedidoCliente(p);
+      const data = formatarDataCliente(pegarDataPedidoCliente(p));
+      const pagamento = pegarPagamentoPedidoCliente(p);
+      const endereco = pegarEnderecoPedidoCliente(p);
+      const itens = extrairItensPedidoCliente(p);
+
+      return `
+        <div class="pedido-cliente pedido-status-${status.classe}">
+          <div class="pedido-cliente-topo">
+            <div>
+              <h3>Pedido #${numero}</h3>
+              ${data ? `<small>${data}</small>` : ''}
+            </div>
+            <span class="cliente-status ${status.classe}">${status.emoji} ${status.texto}</span>
+          </div>
+
+          <div class="cliente-progresso">
+            <div style="width:${status.progresso}%"></div>
+          </div>
+
+          ${criarLinhaStatusCliente(status)}
+
+          <div class="pedido-cliente-info">
+            <p><b>Total:</b> ${formatarMoedaCliente(total)}</p>
+            <p><b>Previsão:</b> ${tempo} min</p>
+            ${pagamento ? `<p><b>Pagamento:</b> ${pagamento}</p>` : ''}
+            ${endereco ? `<p><b>Endereço:</b> ${endereco}</p>` : ''}
+            ${itens ? `<p><b>Itens:</b> ${itens}</p>` : ''}
+          </div>
+        </div>
+      `;
+    };
+
+    const pedidosFinalizados = meus.filter(p => {
+      const status = traduzirStatusCliente(p.status || p.status_pedido || p.situacao);
+      return status.classe === 'entregue';
+    });
+
+    const pedidosAndamento = meus.filter(p => {
+      const status = traduzirStatusCliente(p.status || p.status_pedido || p.situacao);
+      return status.classe !== 'entregue';
+    });
+
+    area.innerHTML = `
+      <div class="cliente-resumo">
+        <b>${meus.length}</b> pedido${meus.length > 1 ? 's' : ''} encontrado${meus.length > 1 ? 's' : ''}
+        <span>Atualiza automático a cada 5s</span>
+      </div>
+
+      <div class="cliente-abas">
+        <button type="button" class="cliente-aba ativa" onclick="trocarAbaCliente('andamento', this)">
+          🟡 Em andamento (${pedidosAndamento.length})
+        </button>
+        <button type="button" class="cliente-aba" onclick="trocarAbaCliente('finalizados', this)">
+          ✅ Finalizados (${pedidosFinalizados.length})
+        </button>
+      </div>
+
+      <div id="aba-andamento" class="cliente-conteudo-aba">
+        ${pedidosAndamento.length ? pedidosAndamento.map(renderPedidoCliente).join('') : `
+          <div class="cliente-vazio-card">
+            <div class="cliente-vazio-icone">🟡</div>
+            <h3>Nenhum pedido em andamento</h3>
+          </div>
+        `}
+      </div>
+
+      <div id="aba-finalizados" class="cliente-conteudo-aba hidden">
+        ${pedidosFinalizados.length ? pedidosFinalizados.map(renderPedidoCliente).join('') : `
+          <div class="cliente-vazio-card">
+            <div class="cliente-vazio-icone">✅</div>
+            <h3>Nenhum pedido finalizado</h3>
+          </div>
+        `}
+      </div>
+    `;
+
+  }catch(e){
     console.error(e);
     area.innerHTML = '<p class="cliente-vazio">Erro ao carregar seus pedidos.</p>';
   }
@@ -665,13 +735,12 @@ async function carregarPedidosCliente(silencioso = false){
 
 function trocarAbaCliente(tipo, botao){
   document.querySelectorAll('.cliente-aba').forEach(b => b.classList.remove('ativa'));
-
-  if(botao){
-    botao.classList.add('ativa');
-  }
+  if(botao) botao.classList.add('ativa');
 
   const andamento = document.getElementById('aba-andamento');
   const finalizados = document.getElementById('aba-finalizados');
+
+  if(!andamento || !finalizados) return;
 
   if(tipo === 'finalizados'){
     andamento.classList.add('hidden');

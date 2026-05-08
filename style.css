@@ -1459,9 +1459,9 @@
   border-radius:14px;
   background:#1d1d1d;
   color:#fff;
-  font-weight:700;
+  font-weight:800;
   cursor:pointer;
-  border:1px solid rgba(255,255,255,.08);
+  border:1px solid rgba(255,255,255,.12);
 }
 
 .cliente-aba.ativa{
@@ -1471,4 +1471,10 @@
 
 .cliente-conteudo-aba{
   display:block;
+}
+
+@media(max-width:600px){
+  .cliente-abas{
+    flex-direction:column;
+  }
 }
