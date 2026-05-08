@@ -435,22 +435,58 @@ async function carregarPedidosCliente(){
     const r = await fetch('/api?route=pedidos');
     const pedidos = await r.json();
 
-    const meus = (Array.isArray(pedidos)?pedidos:pedidos.pedidos||[])
-      .filter(p => (p.whatsapp || p.telefone || '').includes(whats));
+    const limparNumero = (n='') => String(n).replace(/\D/g,'');
+
+    const whatsLimpo = limparNumero(whats);
+
+    const listaPedidos = Array.isArray(pedidos)
+      ? pedidos
+      : (pedidos.pedidos || pedidos.data || []);
+
+    const meus = listaPedidos.filter(p => {
+      const numeros = [
+        p.whatsapp,
+        p.telefone,
+        p.cliente_whatsapp,
+        p.celular,
+        p.phone
+      ].map(v => limparNumero(v));
+
+      return numeros.some(n => n.includes(whatsLimpo) || whatsLimpo.includes(n));
+    });
 
     if(!meus.length){
       area.innerHTML = '<p>Nenhum pedido encontrado.</p>';
       return;
     }
 
-    area.innerHTML = meus.reverse().map(p => `
+    area.innerHTML = meus.reverse().map(p => {
+      const status = (p.status || 'Em análise').toLowerCase();
+
+      let cor = '#ffb300';
+
+      if(status.includes('preparo')) cor = '#ff6b00';
+      if(status.includes('entrega')) cor = '#2196f3';
+      if(status.includes('entregue')) cor = '#00c853';
+
+      return `
       <div class="pedido-cliente">
         <h3>Pedido #${p.numero || p.id}</h3>
         <p>Status: <b>${p.status || 'Em análise'}</b></p>
         <p>Total: <b>R$ ${Number(p.total || 0).toFixed(2)}</b></p>
         <p>Tempo: ${p.tempo_entrega || 40} min</p>
+      <div style="margin-top:10px;background:#222;border-radius:999px;height:10px;overflow:hidden;">
+          <div style="width:${
+            status.includes('análise') ? '25%' :
+            status.includes('preparo') ? '50%' :
+            status.includes('entrega') ? '80%' :
+            status.includes('entregue') ? '100%' : '20%'
+          };height:100%;background:${cor};transition:.3s;"></div>
+        </div>
+
       </div>
-    `).join('');
+    `;
+    }).join('');
 
   }catch(e){
     area.innerHTML = '<p>Erro ao carregar pedidos.</p>';
