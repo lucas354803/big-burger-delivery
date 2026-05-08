@@ -389,3 +389,78 @@ async function copiarPixCopiaCola(){
     catch(_){alert('Não consegui copiar automático. Segure no código e copie manualmente.');}
   }
 }
+
+
+
+async function abrirAreaCliente(){
+  document.getElementById('clienteModal').classList.remove('hidden');
+
+  const nome = localStorage.getItem('cliente_nome') || '';
+  const whats = localStorage.getItem('cliente_whats') || '';
+
+  document.getElementById('clienteNome').value = nome;
+  document.getElementById('clienteWhats').value = whats;
+
+  if(whats){
+    carregarPedidosCliente();
+  }
+}
+
+function fecharAreaCliente(){
+  document.getElementById('clienteModal').classList.add('hidden');
+}
+
+function salvarCliente(){
+  const nome = document.getElementById('clienteNome').value.trim();
+  const whats = document.getElementById('clienteWhats').value.trim();
+
+  if(!nome || !whats){
+    alert('Preencha nome e WhatsApp');
+    return;
+  }
+
+  localStorage.setItem('cliente_nome', nome);
+  localStorage.setItem('cliente_whats', whats);
+
+  carregarPedidosCliente();
+}
+
+async function carregarPedidosCliente(){
+  const whats = localStorage.getItem('cliente_whats');
+
+  const area = document.getElementById('clientePedidos');
+  area.innerHTML = '<p>Carregando pedidos...</p>';
+
+  try{
+    const r = await fetch('/api?route=pedidos');
+    const pedidos = await r.json();
+
+    const meus = (Array.isArray(pedidos)?pedidos:pedidos.pedidos||[])
+      .filter(p => (p.whatsapp || p.telefone || '').includes(whats));
+
+    if(!meus.length){
+      area.innerHTML = '<p>Nenhum pedido encontrado.</p>';
+      return;
+    }
+
+    area.innerHTML = meus.reverse().map(p => `
+      <div class="pedido-cliente">
+        <h3>Pedido #${p.numero || p.id}</h3>
+        <p>Status: <b>${p.status || 'Em análise'}</b></p>
+        <p>Total: <b>R$ ${Number(p.total || 0).toFixed(2)}</b></p>
+        <p>Tempo: ${p.tempo_entrega || 40} min</p>
+      </div>
+    `).join('');
+
+  }catch(e){
+    area.innerHTML = '<p>Erro ao carregar pedidos.</p>';
+  }
+}
+
+setInterval(()=>{
+  const modal = document.getElementById('clienteModal');
+  if(modal && !modal.classList.contains('hidden')){
+    carregarPedidosCliente();
+  }
+}, 5000);
+

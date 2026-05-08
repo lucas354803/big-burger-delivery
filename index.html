@@ -17,6 +17,7 @@
       <a class="active" href="#inicio">🏠 Início</a>
       <a href="#cardapio">🍟 Cardápio</a>
       <a href="#promos">🎁 Promoções</a>
+      <a href="#" onclick="abrirAreaCliente()">👤 Minha Conta</a>
       <a href="/admin">🔐 ADMIN</a>
     </nav>
     <div class="cart-pill">🛒 Meu pedido <b id="topTotal">R$ 0,00</b></div>
@@ -124,5 +125,24 @@
   <script src="/app.js"></script>
   <button id="installAppBtn" class="install-app-btn">📲 Instalar App</button>
   <script src="/pwa.js"></script>
+
+<div id="clienteModal" class="cliente-modal hidden">
+  <div class="cliente-box">
+    <div class="cliente-topo">
+      <h2>👤 Área do Cliente</h2>
+      <button onclick="fecharAreaCliente()">✖</button>
+    </div>
+
+    <div class="cliente-login">
+      <input type="text" id="clienteNome" placeholder="Seu nome">
+      <input type="text" id="clienteWhats" placeholder="Seu WhatsApp">
+      <button onclick="salvarCliente()">Entrar</button>
+    </div>
+
+    <div id="clientePedidos"></div>
+  </div>
+</div>
+
+<script src='/app.js'></script>
 </body>
 </html>

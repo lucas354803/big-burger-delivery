@@ -1107,3 +1107,73 @@
 .order-timer.late{background:#2b0909;color:#ff5a5a;border-color:#ff3b3b;animation:pulseLate 1s ease-in-out infinite}
 @keyframes pulseLate{50%{filter:brightness(1.35)}}
 .order-action.no-realizado{background:#7f1d1d;color:#fff}
+
+
+.cliente-modal{
+  position:fixed;
+  inset:0;
+  background:rgba(0,0,0,.8);
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  z-index:9999;
+}
+
+.hidden{
+  display:none;
+}
+
+.cliente-box{
+  width:95%;
+  max-width:500px;
+  background:#111;
+  border-radius:20px;
+  padding:20px;
+  color:#fff;
+}
+
+.cliente-topo{
+  display:flex;
+  justify-content:space-between;
+  align-items:center;
+  margin-bottom:20px;
+}
+
+.cliente-topo button{
+  background:red;
+  border:none;
+  color:#fff;
+  padding:8px 12px;
+  border-radius:10px;
+  cursor:pointer;
+}
+
+.cliente-login{
+  display:flex;
+  flex-direction:column;
+  gap:10px;
+}
+
+.cliente-login input{
+  padding:14px;
+  border-radius:12px;
+  border:none;
+}
+
+.cliente-login button{
+  padding:14px;
+  background:#ffb300;
+  border:none;
+  border-radius:12px;
+  font-weight:bold;
+  cursor:pointer;
+}
+
+.pedido-cliente{
+  background:#1d1d1d;
+  margin-top:15px;
+  padding:15px;
+  border-radius:15px;
+  border:1px solid #333;
+}
+
