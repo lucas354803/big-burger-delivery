@@ -1115,3 +1115,26 @@ async function salvarBannerInicial(e){
 loadPedidos();loadClientes();loadTudo();loadConfigLoja();loadBannerInicial();carregarConfigImpressora();loadMotoboys();
 if(pedidosAutoRefreshTimer) clearInterval(pedidosAutoRefreshTimer);
 pedidosAutoRefreshTimer=setInterval(()=>loadPedidos(true),5000);
+
+
+// ================================
+// CRONÔMETRO ENTREGA BIG BURGER
+// ================================
+function iniciarCronometroEntrega(idPedido, minutos=20){
+  console.log('Cronômetro entrega iniciado:', idPedido, minutos);
+  localStorage.setItem('cronometroEntrega_'+idPedido, Date.now());
+}
+
+// botão cancelar pedido
+async function cancelarPedido(id){
+  const ok = confirm('Cancelar este pedido?');
+  if(!ok) return;
+
+  try{
+    await api('pedidos','PUT',{status:'cancelado'},id);
+    alert('Pedido cancelado.');
+    if(typeof carregarPedidos==='function') carregarPedidos();
+  }catch(e){
+    alert('Erro ao cancelar pedido');
+  }
+}

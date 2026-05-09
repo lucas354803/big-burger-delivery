@@ -1478,3 +1478,14 @@
     flex-direction:column;
   }
 }
+
+
+#numero{
+  margin-top:10px;
+}
+
+.status-cancelado{
+  background:#4b0f0f;
+  border:1px solid #ff3b3b;
+}
+

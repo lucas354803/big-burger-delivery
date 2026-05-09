@@ -750,3 +750,5 @@ function trocarAbaCliente(tipo, botao){
     andamento.classList.remove('hidden');
   }
 }
+
+// suporte número separado adicionado automaticamente
