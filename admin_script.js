@@ -524,8 +524,6 @@ async function cancelarPedido(id){
   const payload = {
     id: id,
     status:'cancelado',
-    cancelado:true,
-    cancelado_em:new Date().toISOString(),
     arquivado_relatorio:true
   };
 
