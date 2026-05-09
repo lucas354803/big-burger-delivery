@@ -516,15 +516,59 @@ async function recusarPedido(id){
   }catch(e){alert('Erro ao recusar pedido: '+e.message)}
 }
 
+
+async function cancelarPedido(id){
+  if(!id){ alert('Não encontrei o ID do pedido.'); return; }
+  if(!confirm('Cancelar este pedido? Ele vai sair do painel e não entra no financeiro.')) return;
+
+  try{
+    let r = await fetch('/api?route=pedidos&id=' + encodeURIComponent(id), {
+      method:'PUT',
+      headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({
+        status:'cancelado',
+        cancelado:true,
+        cancelado_em:new Date().toISOString(),
+        arquivado_relatorio:true
+      })
+    });
+
+    let d = await r.json().catch(()=>({}));
+
+    if(!r.ok || d.error){
+      r = await fetch('/api/pedidos?id=' + encodeURIComponent(id), {
+        method:'PUT',
+        headers:{'Content-Type':'application/json'},
+        body: JSON.stringify({
+          status:'cancelado',
+          cancelado:true,
+          cancelado_em:new Date().toISOString(),
+          arquivado_relatorio:true
+        })
+      });
+      d = await r.json().catch(()=>({}));
+      if(!r.ok || d.error) throw new Error(d.error || JSON.stringify(d));
+    }
+
+    await loadPedidos(true);
+    if(typeof renderFinanceiro==='function') renderFinanceiro();
+    if(typeof renderHistoricoPedidos==='function') renderHistoricoPedidos();
+    alert('Pedido cancelado com sucesso.');
+  }catch(e){
+    alert('Erro ao cancelar pedido: ' + e.message);
+  }
+}
+
+
 function cardPedido(p){
   const st=normalizarStatusPedido(p.status);
   const itens=itensTexto(p.itens).replaceAll('\n','<br>');
   let acoes='';
   if(st==='em_analise') acoes=`<button class="order-action accept" onclick="atualizarStatusPedido('${p.id}','em_preparo','aceito')">✅ Aceitar pedido</button><button class="order-action no-realizado" onclick="marcarNaoRealizado('${p.id}')">🚫 Não realizado</button><button class="order-action refuse" onclick="recusarPedido('${p.id}')">❌ Recusar pedido</button>`;
-  if(st==='em_preparo') acoes=`<button class="order-action ready" onclick="atualizarStatusPedido('${p.id}','pronto','pronto')">🔵 Marcar pronto</button><button class="order-action delivery" onclick="atualizarStatusPedido('${p.id}','em_entrega','entrega')">🛵 Saiu para entrega</button>`;
-  if(st==='pronto') acoes=`<button class="order-action delivery" onclick="atualizarStatusPedido('${p.id}','em_entrega','entrega')">🛵 Saiu para entrega</button>`;
-  if(st==='em_entrega') acoes=`<button class="order-action done" onclick="atualizarStatusPedido('${p.id}','finalizado','')">✅ Finalizar</button>`;
-  if(st==='finalizado') acoes=`<span class="order-done">Pedido finalizado</span>`;
+  if(st==='em_preparo') acoes=`<button class="order-action danger cancel" onclick="cancelarPedido('${p.id}')">❌ Cancelar</button><button class="order-action ready" onclick="atualizarStatusPedido('${p.id}','pronto','pronto')">🔵 Marcar pronto</button><button class="order-action delivery" onclick="atualizarStatusPedido('${p.id}','em_entrega','entrega')">🛵 Saiu para entrega</button>`;
+  if(st==='pronto') acoes=`<button class="order-action danger cancel" onclick="cancelarPedido('${p.id}')">❌ Cancelar</button><button class="order-action delivery" onclick="atualizarStatusPedido('${p.id}','em_entrega','entrega')">🛵 Saiu para entrega</button>`;
+  if(st==='em_entrega') acoes=`<button class="order-action danger cancel" onclick="cancelarPedido('${p.id}')">❌ Cancelar</button><button class="order-action done" onclick="atualizarStatusPedido('${p.id}','finalizado','')">✅ Finalizar</button>`;
+  if(st==='finalizado') acoes=`<button class="order-action danger cancel" onclick="cancelarPedido('${p.id}')">❌ Cancelar</button><span class="order-done">Pedido finalizado</span>`;
   return `<div class="order-card"><div class="order-title"><b>#${numeroPedido(p)}</b><span>${brl(p.valor_total)}</span></div><div class="order-customer">👤 ${p.cliente_nome||''}<br>📞 ${p.cliente_telefone||''}</div><div class="order-items">${itens}</div><div class="order-address">📍 ${enderecoPedido(p)}<br>💳 ${p.forma_pagamento||'pix'} • 🚚 ${brl(p.taxa_entrega||0)}${trocoPedidoHtml(p)}</div>${timerPedidoHtml(p)}<div class="order-actions">${acoes}<button class="order-action print" onclick='imprimirPedido(${JSON.stringify(p).replaceAll("'","&#39;")})'>🖨️ Imprimir</button><button class="order-action whats" onclick='abrirWhats(${JSON.stringify(p).replaceAll("'","&#39;")},"aceito")'>💬 WhatsApp</button></div></div>`;
 }
 let somPedidoLoopTimer=null;
@@ -1132,27 +1176,3 @@ function iniciarCronometroEntrega(idPedido, minutos=20){
 }
 
 // botão cancelar pedido
-async function cancelarPedido(id){
-  if(!id){ alert('Não encontrei o ID do pedido.'); return; }
-  if(!confirm('Cancelar este pedido? Ele não vai entrar no financeiro e ficará como cancelado.')) return;
-  try{
-    const r = await fetch('/api/pedidos?id=' + encodeURIComponent(id), {
-      method:'PATCH',
-      headers:{'Content-Type':'application/json'},
-      body: JSON.stringify({
-        status:'cancelado',
-        cancelado:true,
-        cancelado_em:new Date().toISOString(),
-        arquivado_relatorio:true
-      })
-    });
-    const d = await r.json().catch(()=>({}));
-    if(!r.ok || d.error) throw new Error(d.error || JSON.stringify(d));
-    await loadPedidos(true);
-    if(typeof renderFinanceiro==='function') renderFinanceiro();
-    if(typeof renderHistoricoPedidos==='function') renderHistoricoPedidos();
-    alert('Pedido cancelado com sucesso.');
-  }catch(e){
-    alert('Erro ao cancelar pedido: ' + e.message);
-  }
-}
