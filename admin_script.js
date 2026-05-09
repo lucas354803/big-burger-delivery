@@ -925,7 +925,7 @@ function renderFinanceiro(){
 
 function renderCardHistorico(p){
   const safePedido=JSON.stringify(p).replaceAll("'","&#39;");
-  return `<div class="order-card history-card"><div class="order-title"><b>#${numeroPedido(p)}</b><span>${brl(p.valor_total)}</span></div><div class="order-customer">👤 ${escapeHtml(textoPrint(p.cliente_nome||''))}<br>📞 ${escapeHtml(p.cliente_telefone||'')}</div><div class="order-items">${itensTexto(p.itens).replaceAll('\n','<br>')}</div><div class="order-address">📍 ${escapeHtml(enderecoPedido(p))}<br>💳 ${escapeHtml(p.forma_pagamento||'pix')} • 🚚 ${brl(p.taxa_entrega||0)}<br>🕒 Arquivado: ${p.arquivado_em?dataBR(p.arquivado_em):'relatório diário'}</div><div class="order-actions"><button class="order-action print" onclick='imprimirPedido(${safePedido})'>🖨️ Imprimir</button><button class="order-action whats" onclick='abrirWhats(${safePedido},"aceito")'>💬 WhatsApp</button><button class="order-action danger" onclick='excluirPedidoArquivado(${safePedido})'>🗑️ Excluir</button></div></div>`;
+  return `<div class="order-card history-card"><div class="order-title"><b>#${numeroPedido(p)}</b><span>${brl(p.valor_total)}</span></div><div class="order-customer">👤 ${escapeHtml(textoPrint(p.cliente_nome||''))}<br>📞 ${escapeHtml(p.cliente_telefone||'')}</div><div class="order-items">${itensTexto(p.itens).replaceAll('\n','<br>')}</div><div class="order-address">📍 ${escapeHtml(enderecoPedido(p))}<br>💳 ${escapeHtml(p.forma_pagamento||'pix')} • 🚚 ${brl(p.taxa_entrega||0)}<br>🕒 Arquivado: ${p.arquivado_em?dataBR(p.arquivado_em):'relatório diário'}</div><div class="order-actions"><button class="order-action danger cancel" onclick="cancelarPedido('${p.id}')">❌ Cancelar</button><button class="order-action print" onclick='imprimirPedido(${safePedido})'>🖨️ Imprimir</button><button class="order-action whats" onclick='abrirWhats(${safePedido},"aceito")'>💬 WhatsApp</button><button class="order-action danger" onclick='excluirPedidoArquivado(${safePedido})'>🗑️ Excluir</button></div></div>`;
 }
 async function excluirPedidoArquivado(p){
   if(!p?.id){alert('Não encontrei o ID desse pedido.');return;}
@@ -1133,14 +1133,26 @@ function iniciarCronometroEntrega(idPedido, minutos=20){
 
 // botão cancelar pedido
 async function cancelarPedido(id){
-  const ok = confirm('Cancelar este pedido?');
-  if(!ok) return;
-
+  if(!id){ alert('Não encontrei o ID do pedido.'); return; }
+  if(!confirm('Cancelar este pedido? Ele não vai entrar no financeiro e ficará como cancelado.')) return;
   try{
-    await api('pedidos','PUT',{status:'cancelado'},id);
-    alert('Pedido cancelado.');
-    if(typeof carregarPedidos==='function') carregarPedidos();
+    const r = await fetch('/api/pedidos?id=' + encodeURIComponent(id), {
+      method:'PATCH',
+      headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({
+        status:'cancelado',
+        cancelado:true,
+        cancelado_em:new Date().toISOString(),
+        arquivado_relatorio:true
+      })
+    });
+    const d = await r.json().catch(()=>({}));
+    if(!r.ok || d.error) throw new Error(d.error || JSON.stringify(d));
+    await loadPedidos(true);
+    if(typeof renderFinanceiro==='function') renderFinanceiro();
+    if(typeof renderHistoricoPedidos==='function') renderHistoricoPedidos();
+    alert('Pedido cancelado com sucesso.');
   }catch(e){
-    alert('Erro ao cancelar pedido');
+    alert('Erro ao cancelar pedido: ' + e.message);
   }
 }

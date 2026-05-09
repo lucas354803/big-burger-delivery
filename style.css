@@ -1560,3 +1560,16 @@
     border-radius:16px !important;
   }
 }
+
+
+.order-action.cancel,
+button.cancel{
+  background:#7f1d1d !important;
+  color:#fff !important;
+  border:1px solid #ef4444 !important;
+  font-weight:900 !important;
+}
+.order-action.cancel:hover,
+button.cancel:hover{
+  filter:brightness(1.15);
+}
