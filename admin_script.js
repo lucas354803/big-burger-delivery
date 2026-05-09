@@ -523,7 +523,7 @@ async function cancelarPedido(id){
 
   try{
     let r = await fetch('/api?route=pedidos&id=' + encodeURIComponent(id), {
-      method:'PUT',
+      method:'PATCH',
       headers:{'Content-Type':'application/json'},
       body: JSON.stringify({
         status:'cancelado',
@@ -537,7 +537,7 @@ async function cancelarPedido(id){
 
     if(!r.ok || d.error){
       r = await fetch('/api/pedidos?id=' + encodeURIComponent(id), {
-        method:'PUT',
+        method:'PATCH',
         headers:{'Content-Type':'application/json'},
         body: JSON.stringify({
           status:'cancelado',
@@ -555,7 +555,7 @@ async function cancelarPedido(id){
     if(typeof renderHistoricoPedidos==='function') renderHistoricoPedidos();
     alert('Pedido cancelado com sucesso.');
   }catch(e){
-    alert('Erro ao cancelar pedido: ' + e.message);
+    alert('Erro ao cancelar pedido: ' + (e.message || 'falha desconhecida'));
   }
 }
 
