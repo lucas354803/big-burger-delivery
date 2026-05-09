@@ -847,15 +847,21 @@ async function salvarConfigLoja(e){
   }
 }
 function inicioDiaISO(){const d=new Date();d.setHours(0,0,0,0);return d.toISOString();}
-function getFinanceiroResetISO(){return localStorage.getItem('financeiroResetDiarioISO') || inicioDiaISO();}
+function getFinanceiroResetISO(){
+  // IMPORTANTE:
+  // Antes o sistema usava inicioDiaISO() como padrão.
+  // Isso fazia o financeiro virar 00:00 sozinho depois da meia-noite.
+  // Agora o relatório só zera quando você clicar em "Zerar relatório diário".
+  return localStorage.getItem('financeiroResetDiarioISO') || '2000-01-01T00:00:00.000Z';
+}
 function pedidosDoRelatorioDiario(){
   const reset=new Date(getFinanceiroResetISO()).getTime();
-  const hoje=new Date();
   return [...pedidosCache].filter(p=>{
     const st=normalizarStatusPedido(p.status);
     if(st!=='finalizado') return false;
-    const dt=new Date(p.created_at||Date.now());
-    return dt.toDateString()===hoje.toDateString() && dt.getTime()>=reset;
+    if(pedidoArquivado(p)) return false;
+    const dt=new Date(p.created_at||p.updated_at||Date.now());
+    return dt.getTime()>=reset;
   });
 }
 function resumoFinanceiroLista(lista){
@@ -877,7 +883,7 @@ function htmlRelatorioDiario(lista=pedidosDoRelatorioDiario()){
   const data=new Date().toLocaleDateString('pt-BR');
   const gerado=new Date().toLocaleString('pt-BR');
   const linhas=lista.map(p=>`<tr><td>#${numeroPedido(p)}</td><td>${escapeHtml(textoPrint(p.cliente_nome||''))}</td><td>${escapeHtml(p.forma_pagamento||'')}</td><td>${escapeHtml(normalizarStatusPedido(p.status))}</td><td>${brl(p.valor_total||0)}</td><td>${brl(p.taxa_entrega||0)}</td><td>${dataBR(p.created_at)}</td></tr>`).join('') || '<tr><td colspan="7">Nenhum pedido neste relatório.</td></tr>';
-  return `<!doctype html><html lang="pt-BR"><head><meta charset="utf-8"><title>Relatório diário Big Burger</title><style>body{font-family:Arial,sans-serif;color:#111;margin:28px}h1{margin:0 0 6px}.muted{color:#555;margin-bottom:20px}.cards{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin:18px 0}.card{border:1px solid #ddd;border-radius:10px;padding:14px}.card b{font-size:22px;display:block;color:#d71919}table{width:100%;border-collapse:collapse;margin-top:16px}th{background:#111;color:#fff}td,th{border:1px solid #ddd;padding:8px;text-align:left}.total{font-weight:bold;background:#f5f5f5}@media print{button{display:none}body{margin:12px}}</style></head><body><button onclick="window.print()">Imprimir / Salvar em PDF</button><h1>Big Burger — Relatório diário</h1><div class="muted">Data: ${data} • Gerado em: ${gerado}</div><div class="cards"><div class="card"><span>Faturamento bruto</span><b>${brl(r.faturamento)}</b></div><div class="card"><span>Taxas de entrega</span><b>${brl(r.taxas)}</b></div><div class="card"><span>Faturamento líquido</span><b>${brl(r.liquido)}</b></div><div class="card"><span>Pedidos</span><b>${r.pedidos}</b></div><div class="card"><span>Ticket médio</span><b>${brl(r.ticket)}</b></div><div class="card"><span>Pix / dinheiro / cartão</span><b>${brl(r.pix)} • ${brl(r.dinheiro)} • ${brl(r.cartao)}</b></div></div><h2>Pedidos do dia</h2><table><tr><th>Pedido</th><th>Cliente</th><th>Pagamento</th><th>Status</th><th>Total</th><th>Taxa entrega</th><th>Data/Hora</th></tr>${linhas}<tr class="total"><td colspan="4">Totais</td><td>${brl(r.faturamento)}</td><td>${brl(r.taxas)}</td><td></td></tr></table><script>setTimeout(()=>window.print(),400)</script></body></html>`;
+  return `<!doctype html><html lang="pt-BR"><head><meta charset="utf-8"><title>Relatório diário Big Burger</title><style>body{font-family:Arial,sans-serif;color:#111;margin:28px}h1{margin:0 0 6px}.muted{color:#555;margin-bottom:20px}.cards{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin:18px 0}.card{border:1px solid #ddd;border-radius:10px;padding:14px}.card b{font-size:22px;display:block;color:#d71919}table{width:100%;border-collapse:collapse;margin-top:16px}th{background:#111;color:#fff}td,th{border:1px solid #ddd;padding:8px;text-align:left}.total{font-weight:bold;background:#f5f5f5}@media print{button{display:none}body{margin:12px}}</style></head><body><button onclick="window.print()">Imprimir / Salvar em PDF</button><h1>Big Burger — Relatório diário</h1><div class="muted">Período desde a última zeragem • Gerado em: ${gerado}</div><div class="cards"><div class="card"><span>Faturamento bruto</span><b>${brl(r.faturamento)}</b></div><div class="card"><span>Taxas de entrega</span><b>${brl(r.taxas)}</b></div><div class="card"><span>Faturamento líquido</span><b>${brl(r.liquido)}</b></div><div class="card"><span>Pedidos</span><b>${r.pedidos}</b></div><div class="card"><span>Ticket médio</span><b>${brl(r.ticket)}</b></div><div class="card"><span>Pix / dinheiro / cartão</span><b>${brl(r.pix)} • ${brl(r.dinheiro)} • ${brl(r.cartao)}</b></div></div><h2>Pedidos do dia</h2><table><tr><th>Pedido</th><th>Cliente</th><th>Pagamento</th><th>Status</th><th>Total</th><th>Taxa entrega</th><th>Data/Hora</th></tr>${linhas}<tr class="total"><td colspan="4">Totais</td><td>${brl(r.faturamento)}</td><td>${brl(r.taxas)}</td><td></td></tr></table><script>setTimeout(()=>window.print(),400)</script></body></html>`;
 }
 function baixarRelatorioDiario(){
   const html=htmlRelatorioDiario();
@@ -910,9 +916,9 @@ function renderFinanceiro(){
   const box=document.getElementById('financeiroResumo');
   const out=document.getElementById('financeiroOut');
   const dataRef=document.getElementById('financeiroDataRef');
-  if(dataRef){dataRef.textContent=`Relatório referente ao dia ${new Date().toLocaleDateString('pt-BR')} • última zeragem: ${new Date(getFinanceiroResetISO()).toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'})}`;}
+  if(dataRef){dataRef.textContent=`Relatório desde a última zeragem • última zeragem: ${new Date(getFinanceiroResetISO()).toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'})}`;}
   if(box){box.innerHTML=`<div class="stat-card dark-stat"><div>🛒</div><span>Faturamento bruto</span><b>${brl(resumo.faturamento)}</b></div><div class="stat-card dark-stat"><div>🧾</div><span>Taxas de entrega</span><b>${brl(resumo.taxas)}</b></div><div class="stat-card dark-stat"><div>💰</div><span>Faturamento líquido</span><b>${brl(resumo.liquido)}</b></div><div class="stat-card dark-stat"><div>📦</div><span>Pedidos</span><b>${resumo.pedidos}</b></div><div class="stat-card dark-stat"><div>🎟️</div><span>Ticket médio</span><b>${brl(resumo.ticket)}</b></div><div class="stat-card dark-stat"><div>💳</div><span>Pix / dinheiro / cartão</span><b>${brl(resumo.pix)} / ${brl(resumo.dinheiro)} / ${brl(resumo.cartao)}</b></div>`;}
-  if(out){out.innerHTML=lista.length?`<table class="table dark-table"><tr><th>Pedido</th><th>Cliente</th><th>Pagamento</th><th>Status</th><th>Entrega</th><th>Taxa entrega</th><th>Total</th><th>Data/Hora</th></tr>${lista.map(p=>`<tr><td>#${numeroPedido(p)}</td><td>${escapeHtml(textoPrint(p.cliente_nome||''))}</td><td>${escapeHtml(p.forma_pagamento||'')}</td><td>${escapeHtml(normalizarStatusPedido(p.status)).replaceAll('_',' ')}</td><td>${p.taxa_entrega?'Delivery':'Retirada'}</td><td>${brl(p.taxa_entrega||0)}</td><td><b>${brl(p.valor_total||0)}</b></td><td>${dataBR(p.created_at)}</td></tr>`).join('')}<tr class="finance-total"><td colspan="5"><b>Totais do dia</b></td><td><b>${brl(resumo.taxas)}</b></td><td><b>${brl(resumo.faturamento)}</b></td><td></td></tr></table>`:'<div class="empty-finance">Relatório diário zerado. Os próximos pedidos aparecerão aqui.</div>';}
+  if(out){out.innerHTML=lista.length?`<table class="table dark-table"><tr><th>Pedido</th><th>Cliente</th><th>Pagamento</th><th>Status</th><th>Entrega</th><th>Taxa entrega</th><th>Total</th><th>Data/Hora</th></tr>${lista.map(p=>`<tr><td>#${numeroPedido(p)}</td><td>${escapeHtml(textoPrint(p.cliente_nome||''))}</td><td>${escapeHtml(p.forma_pagamento||'')}</td><td>${escapeHtml(normalizarStatusPedido(p.status)).replaceAll('_',' ')}</td><td>${p.taxa_entrega?'Delivery':'Retirada'}</td><td>${brl(p.taxa_entrega||0)}</td><td><b>${brl(p.valor_total||0)}</b></td><td>${dataBR(p.created_at)}</td></tr>`).join('')}<tr class="finance-total"><td colspan="5"><b>Totais do dia</b></td><td><b>${brl(resumo.taxas)}</b></td><td><b>${brl(resumo.faturamento)}</b></td><td></td></tr></table>`:'<div class="empty-finance">Relatório zerado. Os próximos pedidos finalizados aparecerão aqui.</div>';}
 }
 
 
