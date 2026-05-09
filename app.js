@@ -696,15 +696,15 @@ async function carregarPedidosCliente(silencioso = false){
       </div>
 
       <div class="cliente-abas">
-        <button type="button" class="cliente-aba ativa" onclick="trocarAbaCliente('andamento', this)">
+        <button type="button" class="cliente-aba ${window.__abaClienteSelecionada !== 'finalizados' ? 'ativa' : ''}" onclick="trocarAbaCliente('andamento', this)">
           🟡 Em andamento (${pedidosAndamento.length})
         </button>
-        <button type="button" class="cliente-aba" onclick="trocarAbaCliente('finalizados', this)">
+        <button type="button" class="cliente-aba ${window.__abaClienteSelecionada === 'finalizados' ? 'ativa' : ''}" onclick="trocarAbaCliente('finalizados', this)">
           ✅ Finalizados (${pedidosFinalizados.length})
         </button>
       </div>
 
-      <div id="aba-andamento" class="cliente-conteudo-aba">
+      <div id="aba-andamento" class="cliente-conteudo-aba ${window.__abaClienteSelecionada === 'finalizados' ? 'hidden' : ''}">
         ${pedidosAndamento.length ? pedidosAndamento.map(renderPedidoCliente).join('') : `
           <div class="cliente-vazio-card">
             <div class="cliente-vazio-icone">🟡</div>
@@ -713,7 +713,7 @@ async function carregarPedidosCliente(silencioso = false){
         `}
       </div>
 
-      <div id="aba-finalizados" class="cliente-conteudo-aba hidden">
+      <div id="aba-finalizados" class="cliente-conteudo-aba ${window.__abaClienteSelecionada === 'finalizados' ? '' : 'hidden'}">
         ${pedidosFinalizados.length ? pedidosFinalizados.map(renderPedidoCliente).join('') : `
           <div class="cliente-vazio-card">
             <div class="cliente-vazio-icone">✅</div>
@@ -722,6 +722,8 @@ async function carregarPedidosCliente(silencioso = false){
         `}
       </div>
     `;
+
+    setTimeout(()=>trocarAbaCliente(window.__abaClienteSelecionada || 'andamento'), 0);
 
   }catch(e){
     console.error(e);
@@ -733,7 +735,10 @@ async function carregarPedidosCliente(silencioso = false){
 
 
 
+window.__abaClienteSelecionada = window.__abaClienteSelecionada || 'andamento';
+
 function trocarAbaCliente(tipo, botao){
+  window.__abaClienteSelecionada = tipo || 'andamento';
   document.querySelectorAll('.cliente-aba').forEach(b => b.classList.remove('ativa'));
   if(botao) botao.classList.add('ativa');
 

@@ -521,34 +521,23 @@ async function cancelarPedido(id){
   if(!id){ alert('Não encontrei o ID do pedido.'); return; }
   if(!confirm('Cancelar este pedido? Ele vai sair do painel e não entra no financeiro.')) return;
 
+  const payload = {
+    id: id,
+    status:'cancelado',
+    cancelado:true,
+    cancelado_em:new Date().toISOString(),
+    arquivado_relatorio:true
+  };
+
   try{
-    let r = await fetch('/api?route=pedidos&id=' + encodeURIComponent(id), {
+    const r = await fetch('/api/pedidos', {
       method:'PATCH',
       headers:{'Content-Type':'application/json'},
-      body: JSON.stringify({
-        status:'cancelado',
-        cancelado:true,
-        cancelado_em:new Date().toISOString(),
-        arquivado_relatorio:true
-      })
+      body: JSON.stringify(payload)
     });
 
-    let d = await r.json().catch(()=>({}));
-
-    if(!r.ok || d.error){
-      r = await fetch('/api/pedidos?id=' + encodeURIComponent(id), {
-        method:'PATCH',
-        headers:{'Content-Type':'application/json'},
-        body: JSON.stringify({
-          status:'cancelado',
-          cancelado:true,
-          cancelado_em:new Date().toISOString(),
-          arquivado_relatorio:true
-        })
-      });
-      d = await r.json().catch(()=>({}));
-      if(!r.ok || d.error) throw new Error(d.error || JSON.stringify(d));
-    }
+    const d = await r.json().catch(()=>({}));
+    if(!r.ok || d.error) throw new Error(d.error || JSON.stringify(d));
 
     await loadPedidos(true);
     if(typeof renderFinanceiro==='function') renderFinanceiro();
