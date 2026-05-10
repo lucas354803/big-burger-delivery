@@ -497,13 +497,13 @@ async function atualizarStatusPedido(id,status,whatsTipo){
     try{
       roboResultado = await enviarStatusPeloRoboNgrok(pedido,status,tempo);
     }catch(erroRobo){
-      alert('Status atualizado, mas o WhatsApp NÃO enviou. Verifique se o robô e o ngrok estão abertos. Erro: '+erroRobo.message);
+      alert('Status atualizado, mas o WhatsApp NÃO enviou. Verifique se a Evolution API, o Docker e o ngrok 8080 estão abertos. Erro: '+erroRobo.message);
       await loadPedidos();
       return;
     }
 
-    if(status==='em_preparo'){ alert('Pedido aceito, comanda enviada para impressão e WhatsApp enviado!'); }
-    else { alert('Status atualizado e WhatsApp enviado!'); }
+    if(status==='em_preparo'){ alert('Pedido aceito, comanda enviada para impressão e WhatsApp enviado pela Evolution!'); }
+    else { alert('Status atualizado e WhatsApp enviado pela Evolution!'); }
     await loadPedidos();
   }catch(e){alert('Erro ao atualizar pedido: '+e.message)}
 }
