@@ -493,17 +493,14 @@ async function atualizarStatusPedido(id,status,whatsTipo){
     if(!r.ok||!d.ok) throw new Error(d.error||JSON.stringify(d));
     if(status==='em_preparo'){ pararSomPedido(); imprimirPedidoAoAceitar(pedido); }
 
-    let roboResultado=null;
-    try{
-      roboResultado = await enviarStatusPeloRoboNgrok(pedido,status,tempo);
-    }catch(erroRobo){
-      alert('Status atualizado, mas o WhatsApp NÃO enviou. Verifique se a Evolution API, o Docker e o ngrok 8080 estão abertos. Erro: '+erroRobo.message);
-      await loadPedidos();
-      return;
+    const whatsapp = d.whatsapp || {};
+    if(whatsapp.ok){
+      if(status==='em_preparo'){ alert('Pedido aceito, comanda enviada para impressão e WhatsApp enviado pela Evolution!'); }
+      else { alert('Status atualizado e WhatsApp enviado pela Evolution!'); }
+    }else{
+      const erro = whatsapp.error || 'não enviado';
+      alert('Status atualizado, mas o WhatsApp NÃO enviou pela Evolution. Verifique EVOLUTION_API_URL, EVOLUTION_API_KEY, EVOLUTION_INSTANCE e ngrok 8080. Erro: '+erro);
     }
-
-    if(status==='em_preparo'){ alert('Pedido aceito, comanda enviada para impressão e WhatsApp enviado pela Evolution!'); }
-    else { alert('Status atualizado e WhatsApp enviado pela Evolution!'); }
     await loadPedidos();
   }catch(e){alert('Erro ao atualizar pedido: '+e.message)}
 }
