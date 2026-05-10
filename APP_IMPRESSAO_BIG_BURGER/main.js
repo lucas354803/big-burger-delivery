@@ -5,6 +5,14 @@ const fs = require('fs');
 const configPath = path.join(__dirname, 'config.json');
 let mainWindow;
 
+const printerSettingsPath = path.join(app.getPath('userData'), 'printer-settings.json');
+function loadPrinterSettings(){
+  try{return JSON.parse(fs.readFileSync(printerSettingsPath,'utf8'));}catch(e){return {};}
+}
+function savePrinterSettings(data){
+  try{fs.writeFileSync(printerSettingsPath, JSON.stringify(data,null,2)); return true;}catch(e){console.error(e); return false;}
+}
+
 function loadConfig() {
   const fallback = {
     siteUrl: 'https://big-burger-delivery-rho.vercel.app/admin',
@@ -100,3 +108,6 @@ ipcMain.handle('bigburger-list-printers', async () => {
 app.whenReady().then(createWindow);
 app.on('window-all-closed', () => { if (process.platform !== 'darwin') app.quit(); });
 app.on('activate', () => { if (BrowserWindow.getAllWindows().length === 0) createWindow(); });
+
+ipcMain.handle('bigburger-save-printer-settings', async (event, data) => savePrinterSettings(data));
+ipcMain.handle('bigburger-load-printer-settings', async () => loadPrinterSettings());

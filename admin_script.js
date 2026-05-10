@@ -34,12 +34,20 @@ const orderStatuses=[
 ];
 
 const impressoraPadrao={papel:80,larguraUtil:72,fonte:13,titulo:22,margem:2,espacoItens:5,logoTamanho:42,qrTamanho:34,nome:'BIG BURGER',subtitulo:'COMANDA DE PEDIDO',negrito:true,auto:true,logo:true,mostrarBordas:false,fecharJanela:true,direto:true,qzAtivo:false,qzImpressora:''};
-function getConfigImpressora(){
-  try{return {...impressoraPadrao,...JSON.parse(localStorage.getItem('configImpressoraBigBurger')||'{}')}}catch(e){return {...impressoraPadrao}}
+async function getConfigImpressora(){
+  let local={};
+  try{local=JSON.parse(localStorage.getItem('configImpressoraBigBurger')||'{}')}catch(e){}
+  let electron={};
+  try{ if(window.bigburgerAPI?.loadPrinterSettings) electron = await window.bigburgerAPI.loadPrinterSettings() || {}; }catch(e){}
+  return {...impressoraPadrao,...electron,...local};
 }
-function setConfigImpressora(cfg){localStorage.setItem('configImpressoraBigBurger',JSON.stringify({...getConfigImpressora(),...cfg}));}
-function carregarConfigImpressora(){
-  const c=getConfigImpressora();
+async function setConfigImpressora(cfg){
+ const finalCfg={...(await getConfigImpressora()),...cfg};
+ localStorage.setItem('configImpressoraBigBurger',JSON.stringify(finalCfg));
+ try{ if(window.bigburgerAPI?.savePrinterSettings) await window.bigburgerAPI.savePrinterSettings(finalCfg); }catch(e){}
+}
+async function carregarConfigImpressora(){
+  const c=await getConfigImpressora();
   if(typeof imp_papel!=='undefined') imp_papel.value=String(c.papel||80);
   if(typeof imp_fonte!=='undefined') imp_fonte.value=c.fonte||13;
   if(typeof imp_titulo!=='undefined') imp_titulo.value=c.titulo||22;
@@ -61,29 +69,12 @@ function carregarConfigImpressora(){
   renderPreviewComanda();
 }
 function lerConfigImpressoraTela(){return {papel:Number(imp_papel?.value||80),larguraUtil:Number(imp_largura_util?.value||(Number(imp_papel?.value||80)===58?48:72)),fonte:Number(imp_fonte?.value||13),titulo:Number(imp_titulo?.value||22),margem:Number(imp_margem?.value||2),espacoItens:Number(imp_espaco_itens?.value||5),logoTamanho:Number(imp_logo_tamanho?.value||42),qrTamanho:Number(imp_qr_tamanho?.value||34),nome:(imp_nome?.value||'BIG BURGER').trim(),subtitulo:(imp_subtitulo?.value||'COMANDA DE PEDIDO').trim(),negrito:!!imp_negrito?.checked,auto:!!imp_auto?.checked,logo:!!imp_logo?.checked,mostrarBordas:!!imp_bordas?.checked,fecharJanela:!!imp_fechar?.checked,direto:!!imp_direto?.checked,qzAtivo:!!imp_qz_ativo?.checked,qzImpressora:(imp_qz_nome?.value||'').trim()};}
-function salvarConfigImpressora(e){
+async function salvarConfigImpressora(e){
   if(e) e.preventDefault();
-  setConfigImpressora(lerConfigImpressoraTela());
+  await setConfigImpressora(lerConfigImpressoraTela());
   renderPreviewComanda();
   const out=document.getElementById('impressoraStatus'); if(out) out.innerHTML='✅ Configuração da impressora salva com sucesso!';
 }
-
-function ativarAutoSaveImpressora(){
-  const ids=['imp_papel','imp_fonte','imp_titulo','imp_margem','imp_largura_util','imp_espaco_itens','imp_logo_tamanho','imp_qr_tamanho','imp_nome','imp_subtitulo','imp_qz_nome','imp_bordas','imp_negrito','imp_auto','imp_logo','imp_fechar','imp_direto','imp_qz_ativo'];
-  ids.forEach(id=>{
-    const el=document.getElementById(id);
-    if(!el) return;
-    ['change','input'].forEach(evt=>{
-      el.addEventListener(evt,()=>{
-        try{salvarConfigImpressora();}catch(e){console.warn(e)}
-      });
-    });
-  });
-  window.addEventListener('beforeunload',()=>{
-    try{salvarConfigImpressora();}catch(e){}
-  });
-}
-
 function renderPreviewComanda(){
   const box=document.getElementById('previewComanda'); if(!box) return;
   const c=(typeof imp_papel!=='undefined')?lerConfigImpressoraTela():getConfigImpressora();
@@ -94,7 +85,7 @@ function renderPreviewComanda(){
 }
 function testarImpressora(){
   salvarConfigImpressora();
-  imprimirPedido({id:'TESTE',numero_pedido:'01',cliente_nome:'Cliente Teste',cliente_telefone:'(48) 99999-9999',itens:[{qtd:1,nome:'Big Burger',preco:29.9},{qtd:1,nome:'Fritas',preco:10}],cidade:'Criciúma',bairro:'Centro',rua:'Rua Teste',numero:'123',forma_pagamento:'pix',taxa_entrega:5,valor_total:44.9,observacao:'Teste de impressão da comanda.'});
+  imprimirPedido({id:'TESTE',numero_pedido:'01',cliente_nome:'Cliente Teste',cliente_telefone:'(48) 99999-9999',itens:[{qtd:1,nome:'Big Burger',preco:29.9},{qtd:1,nome:'Fritas',preco:10}],cidade:'Criciúma',bairro:'Centro',rua:'Rua Teste, 123',forma_pagamento:'pix',taxa_entrega:5,valor_total:44.9,observacao:'Teste de impressão da comanda.'});
 }
 function normalizarStatusPedido(status){
   if(['pedido_recebido','pago','aprovado','pendente'].includes(status)) return 'em_analise';
@@ -1170,8 +1161,7 @@ async function salvarBannerInicial(e){
   }
 }
 
-loadPedidos();loadClientes();loadTudo();loadConfigLoja();loadBannerInicial();carregarConfigImpressora();
-ativarAutoSaveImpressora();loadMotoboys();
+loadPedidos();loadClientes();loadTudo();loadConfigLoja();loadBannerInicial();carregarConfigImpressora();loadMotoboys();
 if(pedidosAutoRefreshTimer) clearInterval(pedidosAutoRefreshTimer);
 pedidosAutoRefreshTimer=setInterval(()=>loadPedidos(true),5000);
 
