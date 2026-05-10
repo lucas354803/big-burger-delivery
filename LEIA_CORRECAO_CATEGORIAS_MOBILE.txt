@@ -1,8 +1,0 @@
-ATUALIZAÇÃO - Categorias e avisos no mobile
-
-1. O cardápio agora fica separado por categorias quando estiver na opção Todos.
-2. Os títulos aparecem como separadores: HAMBÚRGUERES, COMBOS, BEBIDAS, PORÇÕES etc.
-3. Corrigido o aviso escuro de loja fechada/erro: agora fica claro e legível no celular.
-4. Mantido Mercado Pago funcionando.
-
-Depois de subir no Vercel, faça Redeploy e limpe o cache do celular/navegador.
