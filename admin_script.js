@@ -67,6 +67,23 @@ function salvarConfigImpressora(e){
   renderPreviewComanda();
   const out=document.getElementById('impressoraStatus'); if(out) out.innerHTML='✅ Configuração da impressora salva com sucesso!';
 }
+
+function ativarAutoSaveImpressora(){
+  const ids=['imp_papel','imp_fonte','imp_titulo','imp_margem','imp_largura_util','imp_espaco_itens','imp_logo_tamanho','imp_qr_tamanho','imp_nome','imp_subtitulo','imp_qz_nome','imp_bordas','imp_negrito','imp_auto','imp_logo','imp_fechar','imp_direto','imp_qz_ativo'];
+  ids.forEach(id=>{
+    const el=document.getElementById(id);
+    if(!el) return;
+    ['change','input'].forEach(evt=>{
+      el.addEventListener(evt,()=>{
+        try{salvarConfigImpressora();}catch(e){console.warn(e)}
+      });
+    });
+  });
+  window.addEventListener('beforeunload',()=>{
+    try{salvarConfigImpressora();}catch(e){}
+  });
+}
+
 function renderPreviewComanda(){
   const box=document.getElementById('previewComanda'); if(!box) return;
   const c=(typeof imp_papel!=='undefined')?lerConfigImpressoraTela():getConfigImpressora();
@@ -77,7 +94,7 @@ function renderPreviewComanda(){
 }
 function testarImpressora(){
   salvarConfigImpressora();
-  imprimirPedido({id:'TESTE',numero_pedido:'01',cliente_nome:'Cliente Teste',cliente_telefone:'(48) 99999-9999',itens:[{qtd:1,nome:'Big Burger',preco:29.9},{qtd:1,nome:'Fritas',preco:10}],cidade:'Criciúma',bairro:'Centro',rua:'Rua Teste, 123',forma_pagamento:'pix',taxa_entrega:5,valor_total:44.9,observacao:'Teste de impressão da comanda.'});
+  imprimirPedido({id:'TESTE',numero_pedido:'01',cliente_nome:'Cliente Teste',cliente_telefone:'(48) 99999-9999',itens:[{qtd:1,nome:'Big Burger',preco:29.9},{qtd:1,nome:'Fritas',preco:10}],cidade:'Criciúma',bairro:'Centro',rua:'Rua Teste',numero:'123',forma_pagamento:'pix',taxa_entrega:5,valor_total:44.9,observacao:'Teste de impressão da comanda.'});
 }
 function normalizarStatusPedido(status){
   if(['pedido_recebido','pago','aprovado','pendente'].includes(status)) return 'em_analise';
@@ -1153,7 +1170,8 @@ async function salvarBannerInicial(e){
   }
 }
 
-loadPedidos();loadClientes();loadTudo();loadConfigLoja();loadBannerInicial();carregarConfigImpressora();loadMotoboys();
+loadPedidos();loadClientes();loadTudo();loadConfigLoja();loadBannerInicial();carregarConfigImpressora();
+ativarAutoSaveImpressora();loadMotoboys();
 if(pedidosAutoRefreshTimer) clearInterval(pedidosAutoRefreshTimer);
 pedidosAutoRefreshTimer=setInterval(()=>loadPedidos(true),5000);
 
