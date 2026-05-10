@@ -141,7 +141,11 @@ function itensHtmlComanda(itens){
     return `<div class="item-box"><div class="item-name">${escapeHtml(String(i.qtd))}x ${escapeHtml(textoPrint(i.nome))}${preco}</div>${adds}${obs}</div>`;
   }).join('');
 }
-function enderecoPedido(p){const numero=p.numero||p.numero_casa||p.numero_endereco||''; const ruaNumero=[p.rua,numero?('Nº '+numero):''].filter(Boolean).join(', '); return [p.cidade,p.bairro,ruaNumero].filter(Boolean).join(' • ') || p.endereco || ''}
+function enderecoPedido(p){
+  const numero = p.numero || p.numero_casa || p.numero_endereco || '';
+  const ruaNumero = p.rua ? (numero ? `${p.rua}, Nº ${numero}` : p.rua) : '';
+  return [p.cidade,p.bairro,ruaNumero].filter(Boolean).join(' • ') || p.endereco || ''
+}
 function limparTel(t){return String(t||'').replace(/\D/g,'').replace(/^55/,'')}
 function abrirWhats(p,tipo){
   const tel=limparTel(p.cliente_telefone);

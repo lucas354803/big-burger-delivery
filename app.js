@@ -291,6 +291,7 @@ function limparPedidoDepoisDeFinalizar(){
   if(typeof cidade!=='undefined' && cidade) cidade.value='';
   if(typeof bairro!=='undefined' && bairro) bairro.innerHTML='<option value="">Selecione o bairro</option>';
   if(typeof rua!=='undefined' && rua) rua.value='';
+  const numeroEl=document.getElementById('numero'); if(numeroEl) numeroEl.value='';
   if(typeof obs!=='undefined' && obs) obs.value='';
   if(typeof formaPagamento!=='undefined' && formaPagamento) formaPagamento.value='pix';
   if(typeof precisaTroco!=='undefined' && precisaTroco) precisaTroco.checked=false;
@@ -306,19 +307,20 @@ async function finalizar(){
   const cidadeNome=nomeSelecionado(cidade);
   const bairroNome=nomeSelecionado(bairro);
   const ruaTexto=(rua?.value||'').trim();
+  const numeroTexto=(document.getElementById('numero')?.value||'').trim();
   const forma=(formaPagamento?.value||'pix');
   const precisaTrocoMarcado = forma==='dinheiro' && !!document.getElementById('precisaTroco')?.checked;
   const trocoParaValor = precisaTrocoMarcado ? Number(document.getElementById('trocoPara')?.value||0) : 0;
   const trocoValor = precisaTrocoMarcado ? Math.max(0, trocoParaValor - valor) : 0;
   if(lojaStatus?.aberto===false){result.innerHTML='<div class="err"><b>Loja fechada.</b><br>'+ (lojaConfig.mensagem_fechado||'Não estamos recebendo pedidos agora.') +'</div>';return}
   if(!carrinho.length){result.innerHTML='<div class="err"><b>Adicione pelo menos um item ao pedido.</b></div>';return}
-  if(!nome.value||!telefone.value||!cidade.value||!bairro.value||!ruaTexto){result.innerHTML='<div class="err"><b>Preencha nome, WhatsApp, cidade, bairro e rua.</b></div>';return}
+  if(!nome.value||!telefone.value||!cidade.value||!bairro.value||!ruaTexto||!numeroTexto){result.innerHTML='<div class="err"><b>Preencha nome, WhatsApp, cidade, bairro, rua e número.</b></div>';return}
   if(precisaTrocoMarcado && trocoParaValor < valor){result.innerHTML='<div class="err"><b>Troco inválido.</b><br>O valor precisa ser maior que o total do pedido.</div>';return}
   result.innerHTML= forma==='pix' ? '<p>Gerando Pix pelo Mercado Pago...</p>' : '<p>Finalizando pedido...</p>';
   try{
     const r=await fetch('/api?route=create-pix',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({
-      cliente_nome:nome.value,cliente_telefone:telefone.value,cidade_id:cidade.value,cidade:cidadeNome,bairro_id:bairro.value,bairro:bairroNome,rua:ruaTexto,
-      endereco:`${ruaTexto} - ${bairroNome} - ${cidadeNome}`,forma_pagamento:forma,taxa_entrega:Number(taxaEntregaSelecionada||0),observacao:obs.value,itens:carrinho,subtotal,valor_total:valor,tempo_estimado_minutos:Number(lojaConfig.tempo_entrega_padrao||40),precisa_troco:precisaTrocoMarcado,troco_para:trocoParaValor,troco_valor:trocoValor
+      cliente_nome:nome.value,cliente_telefone:telefone.value,cidade_id:cidade.value,cidade:cidadeNome,bairro_id:bairro.value,bairro:bairroNome,rua:ruaTexto,numero:numeroTexto,numero_casa:numeroTexto,numero_endereco:numeroTexto,
+      endereco:`${ruaTexto}, Nº ${numeroTexto} - ${bairroNome} - ${cidadeNome}`,forma_pagamento:forma,taxa_entrega:Number(taxaEntregaSelecionada||0),observacao:obs.value,itens:carrinho,subtotal,valor_total:valor,tempo_estimado_minutos:Number(lojaConfig.tempo_entrega_padrao||40),precisa_troco:precisaTrocoMarcado,troco_para:trocoParaValor,troco_valor:trocoValor
     })});
     const data=await r.json();
     if(!r.ok)throw new Error((data.error||'Erro')+' '+(data.detalhes?JSON.stringify(data.detalhes):''));

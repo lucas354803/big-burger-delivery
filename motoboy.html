@@ -55,7 +55,7 @@ async function loadPerfil(){
   const d=await r.json();
   if(!r.ok||!d.ok){statusMotoboy.innerHTML='<span class="err">Erro: '+(d.error||JSON.stringify(d))+'</span>';return;}
   perfil=d.motoboy; tituloMotoboy.textContent='🏍️ '+perfil.nome;
-  const rows=(d.entregas||[]).map(e=>`<div class="order-card"><h3>Pedido #${numeroPedido(e.pedidos)}</h3><p><b>Cliente:</b> ${esc(e.pedidos?.cliente_nome||'')}</p><p><b>Endereço:</b> ${esc([e.pedidos?.cidade,e.pedidos?.bairro,e.pedidos?.rua].filter(Boolean).join(' • ')||e.pedidos?.endereco||'')}</p><p><b>Total:</b> ${brl(e.pedidos?.valor_total||0)} • <b>Entrega:</b> ${brl(e.valor_entrega||0)}</p><small>Registrado em ${new Date(e.created_at).toLocaleString('pt-BR')}</small></div>`).join('');
+  const rows=(d.entregas||[]).map(e=>`<div class="order-card"><h3>Pedido #${numeroPedido(e.pedidos)}</h3><p><b>Cliente:</b> ${esc(e.pedidos?.cliente_nome||'')}</p><p><b>Endereço:</b> ${esc([e.pedidos?.cidade,e.pedidos?.bairro,(e.pedidos?.rua ? (e.pedidos?.numero ? e.pedidos.rua+', Nº '+e.pedidos.numero : e.pedidos.rua) : '')].filter(Boolean).join(' • ')||e.pedidos?.endereco||'')}</p><p><b>Total:</b> ${brl(e.pedidos?.valor_total||0)} • <b>Entrega:</b> ${brl(e.valor_entrega||0)}</p><small>Registrado em ${new Date(e.created_at).toLocaleString('pt-BR')}</small></div>`).join('');
   minhasEntregas.innerHTML=rows||'<p class="empty-finance">Nenhuma entrega registrada ainda.</p>';
 }
 async function registrarPedido(pedido){

@@ -76,6 +76,7 @@ CREATE TABLE pedidos (
   cidade text,
   bairro text,
   rua text,
+  numero text,
   forma_pagamento text NOT NULL DEFAULT 'pix',
   taxa_entrega numeric(10,2) NOT NULL DEFAULT 0,
   subtotal numeric(10,2) NOT NULL DEFAULT 0,
