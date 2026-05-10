@@ -451,7 +451,7 @@ function pegarEnderecoPedidoCliente(p){
   const partes = [
     p.endereco,
     p.rua,
-    p.numero_casa || p.numero_endereco,
+    p.numero || p.numero_casa || p.numero_endereco,
     p.bairro,
     p.cidade
   ].filter(Boolean);
