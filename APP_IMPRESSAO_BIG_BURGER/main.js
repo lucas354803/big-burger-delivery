@@ -35,16 +35,20 @@ function getSiteUrl() {
   return u.startsWith('http') ? u : 'https://' + u;
 }
 
+function getMergedPrintConfig() {
+  return { ...loadConfig(), ...loadPrinterSettings() };
+}
+
 function getPrintOptions() {
-  const cfg = loadConfig();
-  const widthMm = Number(cfg.paperWidthMm || 80);
+  const cfg = getMergedPrintConfig();
+  const widthMm = Number(cfg.paperWidthMm || cfg.papel || 80);
   const opts = {
     silent: cfg.silent !== false,
     printBackground: true,
     margins: { marginType: 'none' },
     pageSize: { width: widthMm <= 60 ? 58000 : 80000, height: 297000 }
   };
-  const printer = String(cfg.printerName || '').trim();
+  const printer = String(cfg.printerName || cfg.qzImpressora || '').trim();
   if (printer) opts.deviceName = printer;
   return opts;
 }
@@ -87,9 +91,10 @@ function createWindow() {
       webSecurity: true
     }
   });
-  const cfg = loadConfig();
+  const cfg = getMergedPrintConfig();
   console.log('Abrindo sistema:', getSiteUrl());
-  console.log('Impressora:', String(cfg.printerName || '').trim() || '(padrao do Windows)');
+  console.log('Arquivo de config permanente:', printerSettingsPath);
+  console.log('Impressora:', String(cfg.printerName || cfg.qzImpressora || '').trim() || '(padrao do Windows)');
   console.log('Impressao silenciosa:', cfg.silent !== false);
   mainWindow.loadURL(getSiteUrl()).catch((err) => dialog.showErrorBox('Erro ao abrir sistema', err.message));
   if (cfg.openDevTools) mainWindow.webContents.openDevTools();
