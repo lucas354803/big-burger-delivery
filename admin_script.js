@@ -34,47 +34,12 @@ const orderStatuses=[
 ];
 
 const impressoraPadrao={papel:80,larguraUtil:72,fonte:13,titulo:22,margem:2,espacoItens:5,logoTamanho:42,qrTamanho:34,nome:'BIG BURGER',subtitulo:'COMANDA DE PEDIDO',negrito:true,auto:true,logo:true,mostrarBordas:false,fecharJanela:true,direto:true,qzAtivo:false,qzImpressora:''};
-function getElectronPrinterAPI(){
-  return window.BigBurgerApp || window.bigburgerAPI || null;
+function getConfigImpressora(){
+  try{return {...impressoraPadrao,...JSON.parse(localStorage.getItem('configImpressoraBigBurger')||'{}')}}catch(e){return {...impressoraPadrao}}
 }
-async function getConfigImpressora(){
-  let local={};
-  try{local=JSON.parse(localStorage.getItem('configImpressoraBigBurger')||'{}')}catch(e){}
-  let electron={};
-  try{
-    const api=getElectronPrinterAPI();
-    if(api?.loadPrinterSettings) electron = await api.loadPrinterSettings() || {};
-  }catch(e){ console.warn('Nao carregou config do Electron:', e); }
-  // Electron tem prioridade sobre o localStorage, porque é o salvamento permanente do app.
-  return {...impressoraPadrao,...local,...electron};
-}
-async function setConfigImpressora(cfg){
- const finalCfg={...(await getConfigImpressora()),...cfg};
- // Compatibilidade com o app Electron: também salva os campos usados pelo main.js.
- finalCfg.paperWidthMm = Number(finalCfg.papel || finalCfg.paperWidthMm || 80);
- finalCfg.silent = finalCfg.direto !== false;
- finalCfg.printerName = finalCfg.qzImpressora || finalCfg.printerName || '';
- localStorage.setItem('configImpressoraBigBurger',JSON.stringify(finalCfg));
- try{
-   const api=getElectronPrinterAPI();
-   if(api?.savePrinterSettings){
-     const ok = await api.savePrinterSettings(finalCfg);
-     if(!ok) throw new Error('Electron retornou false ao salvar');
-   }
- }catch(e){ console.warn('Nao salvou config no Electron:', e); }
-}
-function ativarAutoSaveImpressora(){
-  const ids=['imp_papel','imp_fonte','imp_titulo','imp_margem','imp_largura_util','imp_espaco_itens','imp_logo_tamanho','imp_qr_tamanho','imp_bordas','imp_nome','imp_subtitulo','imp_negrito','imp_auto','imp_logo','imp_fechar','imp_direto','imp_qz_ativo','imp_qz_nome'];
-  ids.forEach(id=>{
-    const el=document.getElementById(id);
-    if(!el || el.dataset.autosavePrinter==='1') return;
-    el.dataset.autosavePrinter='1';
-    el.addEventListener('change', async()=>{ await setConfigImpressora(lerConfigImpressoraTela()); renderPreviewComanda(); });
-    el.addEventListener('input', ()=>{ renderPreviewComanda(); clearTimeout(window.__bbPrinterSaveTimer); window.__bbPrinterSaveTimer=setTimeout(()=>setConfigImpressora(lerConfigImpressoraTela()),350); });
-  });
-}
-async function carregarConfigImpressora(){
-  const c=await getConfigImpressora();
+function setConfigImpressora(cfg){localStorage.setItem('configImpressoraBigBurger',JSON.stringify({...getConfigImpressora(),...cfg}));}
+function carregarConfigImpressora(){
+  const c=getConfigImpressora();
   if(typeof imp_papel!=='undefined') imp_papel.value=String(c.papel||80);
   if(typeof imp_fonte!=='undefined') imp_fonte.value=c.fonte||13;
   if(typeof imp_titulo!=='undefined') imp_titulo.value=c.titulo||22;
@@ -94,12 +59,11 @@ async function carregarConfigImpressora(){
   if(typeof imp_qz_ativo!=='undefined') imp_qz_ativo.checked=c.qzAtivo===true;
   if(typeof imp_qz_nome!=='undefined') imp_qz_nome.value=c.qzImpressora||'';
   renderPreviewComanda();
-  ativarAutoSaveImpressora();
 }
 function lerConfigImpressoraTela(){return {papel:Number(imp_papel?.value||80),larguraUtil:Number(imp_largura_util?.value||(Number(imp_papel?.value||80)===58?48:72)),fonte:Number(imp_fonte?.value||13),titulo:Number(imp_titulo?.value||22),margem:Number(imp_margem?.value||2),espacoItens:Number(imp_espaco_itens?.value||5),logoTamanho:Number(imp_logo_tamanho?.value||42),qrTamanho:Number(imp_qr_tamanho?.value||34),nome:(imp_nome?.value||'BIG BURGER').trim(),subtitulo:(imp_subtitulo?.value||'COMANDA DE PEDIDO').trim(),negrito:!!imp_negrito?.checked,auto:!!imp_auto?.checked,logo:!!imp_logo?.checked,mostrarBordas:!!imp_bordas?.checked,fecharJanela:!!imp_fechar?.checked,direto:!!imp_direto?.checked,qzAtivo:!!imp_qz_ativo?.checked,qzImpressora:(imp_qz_nome?.value||'').trim()};}
-async function salvarConfigImpressora(e){
+function salvarConfigImpressora(e){
   if(e) e.preventDefault();
-  await setConfigImpressora(lerConfigImpressoraTela());
+  setConfigImpressora(lerConfigImpressoraTela());
   renderPreviewComanda();
   const out=document.getElementById('impressoraStatus'); if(out) out.innerHTML='✅ Configuração da impressora salva com sucesso!';
 }
@@ -476,6 +440,7 @@ function dataAceitePedido(p){return p?.aceito_em || p?.accepted_at || p?.preparo
 function timerPedidoHtml(p){
   const st=normalizarStatusPedido(p.status);
   if(!['em_preparo','pronto','em_entrega'].includes(st)) return '';
+  const emEntrega = st==='em_entrega';
   const min=Number(p.tempo_estimado_minutos||0);
   if(!min) return '';
   const inicio=dataAceitePedido(p);
@@ -484,7 +449,7 @@ function timerPedidoHtml(p){
   const diff=fim-Date.now();
   if(diff>=0){
     const m=Math.floor(diff/60000), ss=Math.floor((diff%60000)/1000);
-    return `<div class="order-timer" data-fim="${fim}">⏱ Entrega: ${String(m).padStart(2,'0')}:${String(ss).padStart(2,'0')}</div>`;
+    return `<div class="order-timer ${emEntrega ? 'delivery-mode' : ''}" data-fim="${fim}">${emEntrega ? '🛵 Tempo de entrega' : '⏱ Entrega'}: ${String(m).padStart(2,'0')}:${String(ss).padStart(2,'0')}</div>`;
   }
   const atraso=Math.abs(diff);
   const m=Math.floor(atraso/60000), ss=Math.floor((atraso%60000)/1000);
