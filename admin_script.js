@@ -401,38 +401,13 @@ function imprimirPedidoAoAceitar(p){
 
 
 async function enviarStatusPeloRoboNgrok(pedido, status, tempo){
-  if(status === 'cancelado') return { ok:false, pulado:true };
-
-  let roboUrl = localStorage.getItem('BIGBURGER_ROBO_URL') || '';
-  if(!roboUrl){
-    roboUrl = prompt('Cole aqui o link do ngrok do robô. Exemplo: https://xxxx.ngrok-free.dev');
-    if(roboUrl) localStorage.setItem('BIGBURGER_ROBO_URL', roboUrl.trim().replace(/\/+$/,''));
-  }
-  roboUrl = (localStorage.getItem('BIGBURGER_ROBO_URL') || roboUrl || '').trim().replace(/\/+$/,'');
-  if(!roboUrl) return { ok:false, error:'URL do robô não configurada' };
-
-  const payload = {
-    id: pedido?.id,
-    numeroPedido: pedido?.numero_pedido || pedido?.id,
-    telefone: pedido?.cliente_telefone || pedido?.telefone_cliente || pedido?.telefone || pedido?.whatsapp || pedido?.celular,
-    status,
-    tempo_estimado_minutos: tempo,
-    pedido: {...(pedido||{}), status, tempo_estimado_minutos: tempo}
-  };
-
-  const r = await fetch(`${roboUrl}/enviar-status`, {
-    method:'POST',
-    headers:{'Content-Type':'application/json'},
-    body: JSON.stringify(payload)
-  });
-  const d = await r.json().catch(()=>({}));
-  if(!r.ok || !d.ok) throw new Error(d.error || `Erro HTTP ${r.status} no robô`);
-  return d;
+  // REMOVIDO: envio pelo robô antigo /enviar-status.
+  // Agora quem envia WhatsApp é a rota /api?route=order-status direto pela Evolution API.
+  // Esta função fica aqui só para não quebrar botões antigos, mas não chama mais ngrok 3001.
+  return { ok:true, evolutionDireto:true, status, tempo_estimado_minutos: tempo };
 }
 function trocarUrlRoboNgrok(){
-  const atual=localStorage.getItem('BIGBURGER_ROBO_URL')||'';
-  const nova=prompt('Cole a nova URL do ngrok do robô:', atual);
-  if(nova){localStorage.setItem('BIGBURGER_ROBO_URL', nova.trim().replace(/\/+$/,'')); alert('URL do robô salva!');}
+  alert('Esta versão não usa mais o robô antigo. O envio é direto pela Evolution API configurada no Vercel.');
 }
 
 
@@ -489,17 +464,19 @@ async function atualizarStatusPedido(id,status,whatsTipo){
   if(status==='em_entrega') tempo = prompt('Tempo estimado até chegar no cliente (minutos):', 15) || 15;
   try{
     const r=await fetch('/api?route=order-status',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({id,status,tempo_estimado_minutos:tempo,enviar_whatsapp:true})});
-    const d=await r.json();
+    const d=await r.json().catch(()=>({}));
     if(!r.ok||!d.ok) throw new Error(d.error||JSON.stringify(d));
     if(status==='em_preparo'){ pararSomPedido(); imprimirPedidoAoAceitar(pedido); }
 
-    const whatsapp = d.whatsapp || {};
-    if(whatsapp.ok){
-      if(status==='em_preparo'){ alert('Pedido aceito, comanda enviada para impressão e WhatsApp enviado pela Evolution!'); }
-      else { alert('Status atualizado e WhatsApp enviado pela Evolution!'); }
+    const w = d.whatsapp || {};
+    if(w.ok){
+      const enviadoPara = w.number ? `\nEnviado para: ${w.number}` : '';
+      if(status==='em_preparo') alert('Pedido aceito, comanda enviada para impressão e WhatsApp enviado pela Evolution!'+enviadoPara);
+      else alert('Status atualizado e WhatsApp enviado pela Evolution!'+enviadoPara);
+    }else if(w.skipped){
+      alert('Status atualizado. WhatsApp não foi enviado: '+(w.error||'telefone vazio ou Evolution não configurada.'));
     }else{
-      const erro = whatsapp.error || 'não enviado';
-      alert('Status atualizado, mas o WhatsApp NÃO enviou pela Evolution. Verifique EVOLUTION_API_URL, EVOLUTION_API_KEY, EVOLUTION_INSTANCE e ngrok 8080. Erro: '+erro);
+      alert('Status atualizado, mas o WhatsApp NÃO enviou. Erro: '+(w.error||'erro desconhecido')+(w.number?'\nNúmero usado: '+w.number:''));
     }
     await loadPedidos();
   }catch(e){alert('Erro ao atualizar pedido: '+e.message)}
