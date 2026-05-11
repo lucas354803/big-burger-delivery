@@ -436,48 +436,39 @@ function trocarUrlRoboNgrok(){
 }
 
 
-function dataInicioTimerPedido(p){
-  const st=normalizarStatusPedido(p?.status);
-
-  // Quando o pedido vai para EM ENTREGA, o cronômetro precisa começar dali,
-  // não da hora que foi aceito/preparado.
-  // Primeiro tenta campos próprios; se o banco não tiver esses campos, usa updated_at,
-  // que é atualizado no momento em que o status muda para em_entrega.
-  if(st==='em_entrega'){
-    return p?.saiu_entrega_em || p?.em_entrega_em || p?.entrega_iniciada_em || p?.updated_at || p?.aceito_em || p?.created_at;
-  }
-
-  // Em preparo/pronto continuam contando a partir do aceite do pedido.
-  return p?.aceito_em || p?.accepted_at || p?.preparo_iniciado_em || p?.updated_at || p?.created_at;
-}
+function dataAceitePedido(p){return p?.aceito_em || p?.accepted_at || p?.preparo_iniciado_em || p?.updated_at || p?.created_at;}
 function timerPedidoHtml(p){
   const st=normalizarStatusPedido(p.status);
   if(!['em_preparo','pronto','em_entrega'].includes(st)) return '';
   const emEntrega = st==='em_entrega';
   const min=Number(p.tempo_estimado_minutos||0);
   if(!min) return '';
-  const inicio=dataInicioTimerPedido(p);
-  if(!inicio) return `<div class="order-timer ${emEntrega ? 'delivery-mode' : ''}" data-tipo="${emEntrega ? 'entrega' : 'preparo'}">${emEntrega ? '🛵 Tempo de entrega' : '⏱ Tempo'}: ${min}:00</div>`;
+
+  // O campo aceito_em também é atualizado no backend quando clica em
+  // "Saiu para entrega". Dessa forma o cronômetro reinicia no momento
+  // exato da saída, sem precisar mexer no banco/Supabase.
+  const inicio=dataAceitePedido(p);
+  if(!inicio) return `<div class="order-timer ${emEntrega ? 'delivery-mode' : ''}">${emEntrega ? '🛵 Entrega' : '⏱ Tempo'}: ${String(min).padStart(2,'0')}:00</div>`;
   const fim=new Date(inicio).getTime()+min*60000;
   const diff=fim-Date.now();
+  const rotulo = emEntrega ? '🛵 Entrega' : '⏱ Entrega';
   if(diff>=0){
     const m=Math.floor(diff/60000), ss=Math.floor((diff%60000)/1000);
-    return `<div class="order-timer ${emEntrega ? 'delivery-mode' : ''}" data-tipo="${emEntrega ? 'entrega' : 'preparo'}" data-fim="${fim}">${emEntrega ? '🛵 Tempo de entrega' : '⏱ Tempo'}: ${String(m).padStart(2,'0')}:${String(ss).padStart(2,'0')}</div>`;
+    return `<div class="order-timer ${emEntrega ? 'delivery-mode' : ''}" data-fim="${fim}" data-delivery="${emEntrega?'1':'0'}">${rotulo}: ${String(m).padStart(2,'0')}:${String(ss).padStart(2,'0')}</div>`;
   }
   const atraso=Math.abs(diff);
   const m=Math.floor(atraso/60000), ss=Math.floor((atraso%60000)/1000);
-  return `<div class="order-timer late ${emEntrega ? 'delivery-mode' : ''}" data-tipo="${emEntrega ? 'entrega' : 'preparo'}" data-fim="${fim}">🔴 Atrasado: +${String(m).padStart(2,'0')}:${String(ss).padStart(2,'0')}</div>`;
+  return `<div class="order-timer late ${emEntrega ? 'delivery-mode' : ''}" data-fim="${fim}" data-delivery="${emEntrega?'1':'0'}">🔴 Atrasado: +${String(m).padStart(2,'0')}:${String(ss).padStart(2,'0')}</div>`;
 }
 function atualizarTimersPedidos(){
   document.querySelectorAll('.order-timer[data-fim]').forEach(el=>{
     const fim=Number(el.dataset.fim||0); if(!fim) return;
     const diff=fim-Date.now();
-    const tipo=el.dataset.tipo||'preparo';
-    const label=tipo==='entrega'?'🛵 Tempo de entrega':'⏱ Tempo';
+    const delivery=el.dataset.delivery==='1';
     if(diff>=0){
       const m=Math.floor(diff/60000), s=Math.floor((diff%60000)/1000);
       el.classList.remove('late');
-      el.textContent=`${label}: ${String(m).padStart(2,'0')}:${String(s).padStart(2,'0')}`;
+      el.textContent=`${delivery?'🛵 Entrega':'⏱ Entrega'}: ${String(m).padStart(2,'0')}:${String(s).padStart(2,'0')}`;
     } else {
       const atraso=Math.abs(diff); const m=Math.floor(atraso/60000), s=Math.floor((atraso%60000)/1000);
       el.classList.add('late');
@@ -508,7 +499,7 @@ async function atualizarStatusPedido(id,status,whatsTipo){
   const pedido=pedidosCache.find(p=>p.id===id);
   let tempo = pedido?.tempo_estimado_minutos || '';
   if(status==='em_preparo') tempo = prompt('Tempo estimado para preparo e entrega (minutos):', tempo || 40) || tempo;
-  if(status==='em_entrega') tempo = prompt('Tempo estimado até chegar no cliente (minutos):', 20) || 20;
+  if(status==='em_entrega') tempo = prompt('Tempo estimado até chegar no cliente (minutos):', 15) || 15;
   try{
     const r=await fetch('/api?route=order-status',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({id,status,tempo_estimado_minutos:tempo,enviar_whatsapp:true})});
     const d=await r.json();
