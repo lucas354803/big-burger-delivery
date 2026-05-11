@@ -493,14 +493,17 @@ async function atualizarStatusPedido(id,status,whatsTipo){
     if(!r.ok||!d.ok) throw new Error(d.error||JSON.stringify(d));
     if(status==='em_preparo'){ pararSomPedido(); imprimirPedidoAoAceitar(pedido); }
 
-    const whatsapp = d.whatsapp || {};
-    if(whatsapp.ok){
-      if(status==='em_preparo'){ alert('Pedido aceito, comanda enviada para impressão e WhatsApp enviado pela Evolution!'); }
-      else { alert('Status atualizado e WhatsApp enviado pela Evolution!'); }
-    }else{
-      const erro = whatsapp.error || 'não enviado';
-      alert('Status atualizado, mas o WhatsApp NÃO enviou pela Evolution. Verifique EVOLUTION_API_URL, EVOLUTION_API_KEY, EVOLUTION_INSTANCE e ngrok 8080. Erro: '+erro);
+    let roboResultado=null;
+    try{
+      roboResultado = await enviarStatusPeloRoboNgrok(pedido,status,tempo);
+    }catch(erroRobo){
+      alert('Status atualizado, mas o WhatsApp NÃO enviou. Verifique se o robô e o ngrok estão abertos. Erro: '+erroRobo.message);
+      await loadPedidos();
+      return;
     }
+
+    if(status==='em_preparo'){ alert('Pedido aceito, comanda enviada para impressão e WhatsApp enviado!'); }
+    else { alert('Status atualizado e WhatsApp enviado!'); }
     await loadPedidos();
   }catch(e){alert('Erro ao atualizar pedido: '+e.message)}
 }
