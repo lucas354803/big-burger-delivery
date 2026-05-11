@@ -11,7 +11,6 @@ import webhook from '../lib/api/webhook.js';
 import siteBanner from '../lib/api/site-banner.js';
 import zerarRelatorio from '../lib/api/zerar-relatorio.js';
 import historico from '../lib/api/historico.js';
-import testWhatsapp from '../lib/api/test-whatsapp.js';
 
 const routes = {
   'admin-menu': adminMenu,
@@ -27,7 +26,6 @@ const routes = {
   'site-banner': siteBanner,
   'zerar-relatorio': zerarRelatorio,
   historico,
-  'test-whatsapp': testWhatsapp,
 };
 
 export default async function handler(req, res) {
